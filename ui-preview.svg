@@ -1,0 +1,195 @@
+<svg width="1600" height="1000" viewBox="0 0 1600 1000" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="140" y1="80" x2="1480" y2="940" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#F6EFCF"/>
+      <stop offset="0.5" stop-color="#FFDCC6"/>
+      <stop offset="1" stop-color="#FFE9B5"/>
+    </linearGradient>
+    <linearGradient id="card" x1="0" y1="0" x2="0" y2="140" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFFFFF" stop-opacity="0.97"/>
+      <stop offset="1" stop-color="#FFF8EE" stop-opacity="0.92"/>
+    </linearGradient>
+    <linearGradient id="activeBlue" x1="0" y1="0" x2="0" y2="84" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#86D9FF"/>
+      <stop offset="1" stop-color="#65B6FF"/>
+    </linearGradient>
+    <linearGradient id="activeYellow" x1="0" y1="0" x2="0" y2="64" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFE17D"/>
+      <stop offset="1" stop-color="#FFC15D"/>
+    </linearGradient>
+    <linearGradient id="activeGreen" x1="0" y1="0" x2="0" y2="84" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#93E4AB"/>
+      <stop offset="1" stop-color="#73D090"/>
+    </linearGradient>
+    <filter id="shadow" x="0" y="0" width="1700" height="1100" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feDropShadow dx="0" dy="22" stdDeviation="26" flood-color="#6F5630" flood-opacity="0.16"/>
+    </filter>
+    <filter id="soft" x="-30%" y="-30%" width="160%" height="160%" filterUnits="objectBoundingBox" color-interpolation-filters="sRGB">
+      <feDropShadow dx="0" dy="12" stdDeviation="16" flood-color="#6F5630" flood-opacity="0.14"/>
+    </filter>
+  </defs>
+
+  <rect width="1600" height="1000" fill="url(#bg)"/>
+  <circle cx="190" cy="170" r="120" fill="white" fill-opacity="0.34"/>
+  <circle cx="1390" cy="840" r="180" fill="#FFF4CC" fill-opacity="0.62"/>
+
+  <g filter="url(#shadow)">
+    <rect x="56" y="48" width="1488" height="904" rx="56" fill="#FFFFFF"/>
+  </g>
+
+  <g filter="url(#soft)">
+    <rect x="92" y="84" width="334" height="84" rx="30" fill="url(#card)"/>
+    <rect x="1190" y="84" width="318" height="84" rx="30" fill="url(#card)"/>
+    <rect x="96" y="214" width="108" height="410" rx="34" fill="url(#card)"/>
+    <rect x="1206" y="214" width="270" height="194" rx="34" fill="url(#card)"/>
+    <rect x="1206" y="430" width="270" height="182" rx="34" fill="url(#card)"/>
+    <rect x="1206" y="634" width="270" height="206" rx="34" fill="url(#card)"/>
+    <rect x="210" y="816" width="1180" height="100" rx="40" fill="url(#card)"/>
+  </g>
+
+  <rect x="238" y="140" width="936" height="632" rx="34" fill="#FFFFFF" stroke="#EEF1F6" stroke-width="2"/>
+
+  <g>
+    <rect x="112" y="104" width="58" height="44" rx="18" fill="url(#activeYellow)"/>
+    <text x="141" y="133" text-anchor="middle" font-size="24">🎨</text>
+    <rect x="184" y="104" width="58" height="44" rx="18" fill="#FFFFFF"/>
+    <text x="213" y="132" text-anchor="middle" font-size="22">＋</text>
+    <rect x="256" y="104" width="58" height="44" rx="18" fill="#FFFFFF"/>
+    <text x="285" y="132" text-anchor="middle" font-size="20">↶</text>
+    <rect x="328" y="104" width="58" height="44" rx="18" fill="#FFFFFF"/>
+    <text x="357" y="132" text-anchor="middle" font-size="20">↷</text>
+
+    <rect x="1214" y="104" width="58" height="44" rx="18" fill="#FFFFFF"/>
+    <text x="1243" y="132" text-anchor="middle" font-size="18">📚</text>
+    <rect x="1286" y="104" width="58" height="44" rx="18" fill="#FFFFFF"/>
+    <text x="1315" y="132" text-anchor="middle" font-size="18">📤</text>
+    <rect x="1358" y="104" width="58" height="44" rx="18" fill="#FFFFFF"/>
+    <text x="1387" y="132" text-anchor="middle" font-size="18">🖼️</text>
+    <rect x="1430" y="104" width="58" height="44" rx="18" fill="url(#activeBlue)"/>
+    <text x="1459" y="132" text-anchor="middle" font-size="18">💾</text>
+  </g>
+
+  <g>
+    <rect x="116" y="234" width="68" height="68" rx="24" fill="url(#activeGreen)"/>
+    <text x="150" y="276" text-anchor="middle" font-size="28">✏️</text>
+    <rect x="116" y="316" width="68" height="68" rx="24" fill="#FFFFFF"/>
+    <text x="150" y="358" text-anchor="middle" font-size="28">🧽</text>
+    <rect x="116" y="398" width="68" height="68" rx="24" fill="#FFFFFF"/>
+    <text x="150" y="440" text-anchor="middle" font-size="28">🪣</text>
+    <rect x="116" y="480" width="68" height="68" rx="24" fill="#FFFFFF"/>
+    <text x="150" y="522" text-anchor="middle" font-size="28">🌟</text>
+
+    <rect x="116" y="566" width="68" height="38" rx="18" fill="url(#activeYellow)"/>
+    <text x="150" y="590" text-anchor="middle" font-size="18">🍭</text>
+  </g>
+
+  <g>
+    <text x="1232" y="250" fill="#253143" font-size="18" font-weight="700" font-family="Arial, sans-serif">Colors</text>
+    <rect x="1230" y="266" width="226" height="42" rx="18" fill="#FFFFFF"/>
+    <rect x="1238" y="272" width="72" height="30" rx="15" fill="url(#activeYellow)"/>
+    <text x="1274" y="292" text-anchor="middle" fill="#5C3A00" font-size="13" font-weight="700" font-family="Arial, sans-serif">24</text>
+    <text x="1350" y="292" text-anchor="middle" fill="#6B7485" font-size="13" font-weight="700" font-family="Arial, sans-serif">36</text>
+
+    <rect x="1230" y="322" width="34" height="34" rx="12" fill="#FF6B6B"/>
+    <rect x="1272" y="322" width="34" height="34" rx="12" fill="#FF9149"/>
+    <rect x="1314" y="322" width="34" height="34" rx="12" fill="#FFD95D"/>
+    <rect x="1356" y="322" width="34" height="34" rx="12" fill="#B7E36A"/>
+    <rect x="1398" y="322" width="34" height="34" rx="12" fill="#70D7A2"/>
+    <rect x="1230" y="364" width="34" height="34" rx="12" fill="#6BD8FF"/>
+    <rect x="1272" y="364" width="34" height="34" rx="12" fill="#7690FF"/>
+    <rect x="1314" y="364" width="34" height="34" rx="12" fill="#A371FF"/>
+    <rect x="1356" y="364" width="34" height="34" rx="12" fill="#FF85CB"/>
+    <rect x="1398" y="364" width="34" height="34" rx="12" fill="#585858"/>
+    <rect x="1227" y="319" width="40" height="40" rx="14" stroke="#253143" stroke-opacity="0.18" stroke-width="3"/>
+  </g>
+
+  <g>
+    <text x="1232" y="466" fill="#253143" font-size="18" font-weight="700" font-family="Arial, sans-serif">Brush Size</text>
+    <rect x="1230" y="490" width="224" height="56" rx="22" fill="#FFFFFF"/>
+    <rect x="1252" y="512" width="180" height="12" rx="6" fill="#FFE082"/>
+    <circle cx="1364" cy="518" r="16" fill="#FFFFFF" stroke="#E7EAF0" stroke-width="2"/>
+    <circle cx="1264" cy="574" r="6" fill="#FFAA64"/>
+    <circle cx="1298" cy="574" r="10" fill="#FFAA64"/>
+    <circle cx="1346" cy="574" r="14" fill="#FFAA64"/>
+    <circle cx="1408" cy="574" r="18" fill="#FFAA64"/>
+  </g>
+
+  <g>
+    <text x="1232" y="670" fill="#253143" font-size="18" font-weight="700" font-family="Arial, sans-serif">History</text>
+    <rect x="1230" y="694" width="108" height="126" rx="24" fill="#F9FBFF" stroke="#EEF1F6" stroke-width="2"/>
+    <rect x="1350" y="694" width="108" height="126" rx="24" fill="#FFF9F3" stroke="#EEF1F6" stroke-width="2"/>
+    <circle cx="1268" cy="732" r="12" fill="#FFB56C"/>
+    <circle cx="1298" cy="762" r="14" fill="#74D893"/>
+    <circle cx="1310" cy="724" r="10" fill="#7AC0FF"/>
+    <circle cx="1388" cy="732" r="12" fill="#FFE077"/>
+    <circle cx="1416" cy="762" r="14" fill="#FF8F86"/>
+    <circle cx="1428" cy="724" r="10" fill="#72D7A2"/>
+    <rect x="1230" y="834" width="108" height="32" rx="16" fill="#FFFFFF"/>
+    <rect x="1350" y="834" width="108" height="32" rx="16" fill="#FFFFFF"/>
+    <text x="1284" y="855" text-anchor="middle" fill="#6B7485" font-size="12" font-weight="700" font-family="Arial, sans-serif">Open</text>
+    <text x="1404" y="855" text-anchor="middle" fill="#6B7485" font-size="12" font-weight="700" font-family="Arial, sans-serif">Import</text>
+  </g>
+
+  <g>
+    <text x="264" y="842" fill="#253143" font-size="18" font-weight="700" font-family="Arial, sans-serif">Brushes</text>
+
+    <g transform="translate(344 836)">
+      <rect width="124" height="60" rx="26" fill="url(#activeGreen)"/>
+      <polygon points="34,18 56,18 78,44 56,44" fill="#F7CE65"/>
+      <rect x="22" y="42" width="56" height="8" rx="4" fill="#FF6B6B"/>
+      <text x="92" y="37" text-anchor="middle" fill="#253143" font-size="14" font-weight="700" font-family="Arial, sans-serif">Pencil</text>
+    </g>
+
+    <g transform="translate(482 836)">
+      <rect width="124" height="60" rx="26" fill="#FFFFFF"/>
+      <rect x="28" y="18" width="18" height="26" rx="8" fill="#555C70"/>
+      <path d="M46 18H62L72 44H46V18Z" fill="#4A87FF"/>
+      <text x="92" y="37" text-anchor="middle" fill="#253143" font-size="14" font-weight="700" font-family="Arial, sans-serif">Pen</text>
+    </g>
+
+    <g transform="translate(620 836)">
+      <rect width="124" height="60" rx="26" fill="#FFFFFF"/>
+      <rect x="20" y="18" width="52" height="26" rx="10" fill="#FF9558"/>
+      <path d="M72 18H82L92 44H72V18Z" fill="#FFDD7B"/>
+      <text x="96" y="37" text-anchor="middle" fill="#253143" font-size="14" font-weight="700" font-family="Arial, sans-serif">Crayon</text>
+    </g>
+
+    <g transform="translate(758 836)">
+      <rect width="124" height="60" rx="26" fill="#FFFFFF"/>
+      <circle cx="38" cy="30" r="14" fill="#F4F7FC" stroke="#DDE4EE" stroke-width="2"/>
+      <circle cx="38" cy="30" r="6" fill="#FFFFFF"/>
+      <text x="92" y="37" text-anchor="middle" fill="#253143" font-size="14" font-weight="700" font-family="Arial, sans-serif">Eraser</text>
+    </g>
+
+    <g transform="translate(896 836)">
+      <rect width="124" height="60" rx="26" fill="#FFFFFF"/>
+      <path d="M26 18H64V44H26L18 31L26 18Z" fill="#FFD470"/>
+      <rect x="64" y="20" width="10" height="22" rx="5" fill="#8C5A2A"/>
+      <text x="94" y="37" text-anchor="middle" fill="#253143" font-size="14" font-weight="700" font-family="Arial, sans-serif">Fill</text>
+    </g>
+
+    <g transform="translate(1034 836)">
+      <rect width="124" height="60" rx="26" fill="#FFFFFF"/>
+      <circle cx="34" cy="30" r="14" fill="#FFFFFF" stroke="#DDE4EE" stroke-width="2"/>
+      <circle cx="34" cy="30" r="8" fill="#7C86FF"/>
+      <path d="M34 16L42 8" stroke="#7C86FF" stroke-width="4" stroke-linecap="round"/>
+      <text x="90" y="37" text-anchor="middle" fill="#253143" font-size="14" font-weight="700" font-family="Arial, sans-serif">Picker</text>
+    </g>
+
+    <g transform="translate(1172 836)">
+      <rect width="124" height="60" rx="26" fill="#FFFFFF"/>
+      <rect x="20" y="18" width="24" height="24" rx="8" fill="#FFB8D8"/>
+      <rect x="40" y="14" width="24" height="24" rx="8" fill="#8ED7FF"/>
+      <rect x="56" y="24" width="24" height="24" rx="8" fill="#9DE7AB"/>
+      <text x="94" y="37" text-anchor="middle" fill="#253143" font-size="14" font-weight="700" font-family="Arial, sans-serif">Sticker</text>
+    </g>
+  </g>
+
+  <g>
+    <rect x="260" y="162" width="144" height="42" rx="18" fill="#FFFFFF"/>
+    <text x="332" y="189" text-anchor="middle" fill="#253143" font-size="15" font-weight="700" font-family="Arial, sans-serif">Canvas</text>
+
+    <rect x="978" y="162" width="176" height="42" rx="18" fill="#FFFFFF"/>
+    <text x="1066" y="189" text-anchor="middle" fill="#253143" font-size="15" font-weight="700" font-family="Arial, sans-serif">Line Art</text>
+  </g>
+</svg>

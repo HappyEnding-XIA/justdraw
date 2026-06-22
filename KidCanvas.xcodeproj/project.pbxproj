@@ -1,0 +1,282 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 56;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		A10000010000000000000001 /* main.m in Sources */ = {isa = PBXBuildFile; fileRef = A10000110000000000000001 /* main.m */; };
+		A10000010000000000000002 /* KDAppDelegate.m in Sources */ = {isa = PBXBuildFile; fileRef = A10000110000000000000002 /* KDAppDelegate.m */; };
+		A10000010000000000000003 /* KDSceneDelegate.m in Sources */ = {isa = PBXBuildFile; fileRef = A10000110000000000000004 /* KDSceneDelegate.m */; };
+		A10000010000000000000004 /* KDMainViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = A10000110000000000000006 /* KDMainViewController.m */; };
+		A10000010000000000000005 /* KDDrawingCanvasView.m in Sources */ = {isa = PBXBuildFile; fileRef = A10000110000000000000008 /* KDDrawingCanvasView.m */; };
+		A10000010000000000000006 /* KDArtworkSession.m in Sources */ = {isa = PBXBuildFile; fileRef = A1000011000000000000000D /* KDArtworkSession.m */; };
+		A10000010000000000000007 /* KDSessionStore.m in Sources */ = {isa = PBXBuildFile; fileRef = A1000011000000000000000F /* KDSessionStore.m */; };
+		A10000010000000000000008 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A10000110000000000000010 /* Assets.xcassets */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		A10000110000000000000001 /* main.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = main.m; sourceTree = "<group>"; };
+		A10000110000000000000002 /* KDAppDelegate.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = KDAppDelegate.m; sourceTree = "<group>"; };
+		A10000110000000000000003 /* KDAppDelegate.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = KDAppDelegate.h; sourceTree = "<group>"; };
+		A10000110000000000000004 /* KDSceneDelegate.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = KDSceneDelegate.m; sourceTree = "<group>"; };
+		A10000110000000000000005 /* KDSceneDelegate.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = KDSceneDelegate.h; sourceTree = "<group>"; };
+		A10000110000000000000006 /* KDMainViewController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = KDMainViewController.m; sourceTree = "<group>"; };
+		A10000110000000000000007 /* KDMainViewController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = KDMainViewController.h; sourceTree = "<group>"; };
+		A10000110000000000000008 /* KDDrawingCanvasView.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = KDDrawingCanvasView.m; sourceTree = "<group>"; };
+		A10000110000000000000009 /* KDDrawingCanvasView.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = KDDrawingCanvasView.h; sourceTree = "<group>"; };
+		A1000011000000000000000A /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		A1000011000000000000000B /* KidCanvas.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = KidCanvas.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		A1000011000000000000000C /* KDArtworkSession.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = KDArtworkSession.h; sourceTree = "<group>"; };
+		A1000011000000000000000D /* KDArtworkSession.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = KDArtworkSession.m; sourceTree = "<group>"; };
+		A1000011000000000000000E /* KDSessionStore.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = KDSessionStore.h; sourceTree = "<group>"; };
+		A1000011000000000000000F /* KDSessionStore.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = KDSessionStore.m; sourceTree = "<group>"; };
+		A10000110000000000000010 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		A10000210000000000000001 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		A10000310000000000000001 = {
+			isa = PBXGroup;
+			children = (
+				A10000310000000000000002 /* KidCanvas */,
+				A10000310000000000000003 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		A10000310000000000000002 /* KidCanvas */ = {
+			isa = PBXGroup;
+			children = (
+				A10000110000000000000001 /* main.m */,
+				A10000110000000000000003 /* KDAppDelegate.h */,
+				A10000110000000000000002 /* KDAppDelegate.m */,
+				A10000110000000000000005 /* KDSceneDelegate.h */,
+				A10000110000000000000004 /* KDSceneDelegate.m */,
+				A10000110000000000000007 /* KDMainViewController.h */,
+				A10000110000000000000006 /* KDMainViewController.m */,
+				A10000110000000000000009 /* KDDrawingCanvasView.h */,
+				A10000110000000000000008 /* KDDrawingCanvasView.m */,
+				A1000011000000000000000C /* KDArtworkSession.h */,
+				A1000011000000000000000D /* KDArtworkSession.m */,
+				A1000011000000000000000E /* KDSessionStore.h */,
+				A1000011000000000000000F /* KDSessionStore.m */,
+				A10000110000000000000010 /* Assets.xcassets */,
+				A1000011000000000000000A /* Info.plist */,
+			);
+			path = KidCanvas;
+			sourceTree = "<group>";
+		};
+		A10000310000000000000003 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				A1000011000000000000000B /* KidCanvas.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		A10000410000000000000001 /* KidCanvas */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = A10000510000000000000002 /* Build configuration list for PBXNativeTarget "KidCanvas" */;
+			buildPhases = (
+				A10000610000000000000001 /* Sources */,
+				A10000210000000000000001 /* Frameworks */,
+				A10000610000000000000002 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = KidCanvas;
+			productName = KidCanvas;
+			productReference = A1000011000000000000000B /* KidCanvas.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		A10000710000000000000001 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastUpgradeCheck = 1600;
+				TargetAttributes = {
+					A10000410000000000000001 = {
+						CreatedOnToolsVersion = 16.0;
+					};
+				};
+			};
+			buildConfigurationList = A10000510000000000000001 /* Build configuration list for PBXProject "KidCanvas" */;
+			compatibilityVersion = "Xcode 14.0";
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = A10000310000000000000001;
+			productRefGroup = A10000310000000000000003 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				A10000410000000000000001 /* KidCanvas */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		A10000610000000000000002 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A10000010000000000000008 /* Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		A10000610000000000000001 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A10000010000000000000001 /* main.m in Sources */,
+				A10000010000000000000002 /* KDAppDelegate.m in Sources */,
+				A10000010000000000000003 /* KDSceneDelegate.m in Sources */,
+				A10000010000000000000004 /* KDMainViewController.m in Sources */,
+				A10000010000000000000005 /* KDDrawingCanvasView.m in Sources */,
+				A10000010000000000000006 /* KDArtworkSession.m in Sources */,
+				A10000010000000000000007 /* KDSessionStore.m in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		A10000810000000000000001 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = 2;
+			};
+			name = Debug;
+		};
+		A10000810000000000000002 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_NO_COMMON_BLOCKS = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = 2;
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
+		A10000810000000000000003 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = "";
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = KidCanvas/Info.plist;
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.kidcanvas.drawing;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SWIFT_EMIT_LOC_STRINGS = NO;
+			};
+			name = Debug;
+		};
+		A10000810000000000000004 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = "";
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = KidCanvas/Info.plist;
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.kidcanvas.drawing;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SWIFT_EMIT_LOC_STRINGS = NO;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		A10000510000000000000001 /* Build configuration list for PBXProject "KidCanvas" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				A10000810000000000000001 /* Debug */,
+				A10000810000000000000002 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		A10000510000000000000002 /* Build configuration list for PBXNativeTarget "KidCanvas" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				A10000810000000000000003 /* Debug */,
+				A10000810000000000000004 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = A10000710000000000000001 /* Project object */;
+}
