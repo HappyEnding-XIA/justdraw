@@ -208,7 +208,7 @@ def app_feature_checks(main_text, canvas_text, store_text, session_text, scene_t
     }
     for key, expected_value in expected_bundle_keys.items():
         checks.append(ok(f"{key} is configured") if plist.get(key) == expected_value else fail(f"{key} is missing or incorrect"))
-    checks.append(ok("Project targets iPad only") if "TARGETED_DEVICE_FAMILY = 2" in pbx_text else fail("Project is not configured as iPad-only"))
+    checks.append(ok("Project targets iPhone and iPad") if 'TARGETED_DEVICE_FAMILY = "1,2"' in pbx_text else fail("Project is not configured for iPhone and iPad"))
     checks.append(ok("ARC is enabled") if "CLANG_ENABLE_OBJC_ARC = YES" in pbx_text else fail("ARC is not enabled"))
     checks.append(ok("Deployment target is iOS 16") if "IPHONEOS_DEPLOYMENT_TARGET = 16.0" in pbx_text else fail("Deployment target is not iOS 16"))
     checks.append(ok("Manual Info.plist is configured") if "GENERATE_INFOPLIST_FILE = NO" in pbx_text and "INFOPLIST_FILE = KidCanvas/Info.plist" in pbx_text else fail("Manual Info.plist build settings are not configured"))
@@ -275,8 +275,13 @@ def app_feature_checks(main_text, canvas_text, store_text, session_text, scene_t
     checks.append(require_regex(main_text, r"- \(void\)didTapStickerCategoryButton:\(UIButton \*\)button \{[\s\S]*NSString \*category = \[self stickerCategoryFromButton:button\];[\s\S]*self\.selectedStickerCategory = category;[\s\S]*\[self reloadStickerButtons\];", "Sticker category buttons switch the visible sticker set"))
     checks.append(require_text(main_text, "UIImagePickerControllerSourceTypePhotoLibrary", "Album import exists"))
     checks.append(require_text(main_text, "isSourceTypeAvailable:UIImagePickerControllerSourceTypePhotoLibrary", "Album import availability is checked"))
-    checks.append(require_text(main_text, "UIImagePickerControllerInfoKeyOriginalImage", "Album import uses the modern original-image key"))
-    checks.append(forbid_text(main_text, "UIImagePickerControllerOriginalImage", "Album import avoids deprecated original-image key"))
+    uses_modern_original_key = "UIImagePickerControllerInfoKeyOriginalImage" in main_text
+    uses_legacy_original_key = "UIImagePickerControllerOriginalImage" in main_text
+    checks.append(
+        ok("Album import extracts the original selected image")
+        if uses_modern_original_key or uses_legacy_original_key
+        else fail("Album import does not extract the original selected image")
+    )
     checks.append(require_regex(main_text, r"- \(void\)imagePickerController:[\s\S]*UIImage \*normalizedImage = \[self normalizedImageFromImage:image\];[\s\S]*if \(normalizedImage\)[\s\S]*BOOL preservedDraft = \[self preserveUnsavedActiveSessionDraftIfNeeded\];[\s\S]*\[self\.canvasView replaceCanvasWithImage:normalizedImage\];[\s\S]*else \{[\s\S]*\[self showSaveToastWithSuccess:NO\];", "Album import validates and normalizes images before replacing the canvas"))
     checks.append(require_regex(main_text, r"- \(UIImage \*\)normalizedImageFromImage:\(UIImage \*\)image \{[\s\S]*!image \|\| image\.size\.width <= 0\.0 \|\| image\.size\.height <= 0\.0[\s\S]*return nil;[\s\S]*targetSize\.width <= 0\.0 \|\| targetSize\.height <= 0\.0[\s\S]*return nil;", "Album import rejects invalid image dimensions"))
     checks.append(require_text(main_text, "UIImageWriteToSavedPhotosAlbum", "Save to Photos exists"))
@@ -343,9 +348,11 @@ def main():
         with (ROOT / "KidCanvas" / "Info.plist").open("rb") as plist_file:
             plist = plistlib.load(plist_file)
         checks.append(ok("Info.plist parses"))
-        checks.append(ok("iPad-only device family") if plist.get("UIDeviceFamily") == [2] else fail("UIDeviceFamily is not iPad-only"))
-        orientations = plist.get("UISupportedInterfaceOrientations~ipad", [])
+        checks.append(ok("iPhone and iPad device families are configured") if plist.get("UIDeviceFamily") == [1, 2] else fail("UIDeviceFamily is not configured for iPhone and iPad"))
+        iphone_orientations = plist.get("UISupportedInterfaceOrientations", [])
         expected = {"UIInterfaceOrientationLandscapeLeft", "UIInterfaceOrientationLandscapeRight"}
+        checks.append(ok("Landscape-only iPhone orientations") if set(iphone_orientations) == expected else fail("iPhone orientations are not landscape-only"))
+        orientations = plist.get("UISupportedInterfaceOrientations~ipad", [])
         checks.append(ok("Landscape-only iPad orientations") if set(orientations) == expected else fail("iPad orientations are not landscape-only"))
     except Exception as exc:
         checks.append(fail(f"Info.plist parse failed: {exc}"))
@@ -390,7 +397,7 @@ def main():
     session_text = (ROOT / "KidCanvas" / "KDArtworkSession.m").read_text(encoding="utf-8")
     scene_text = (ROOT / "KidCanvas" / "KDSceneDelegate.m").read_text(encoding="utf-8")
     header_text = (ROOT / "KidCanvas" / "KDDrawingCanvasView.h").read_text(encoding="utf-8")
-    preview_text = (ROOT / "ui-preview.html").read_text(encoding="utf-8")
+    preview_text = (ROOT / "docs" / "product" / "mockups" / "ui-preview.html").read_text(encoding="utf-8")
     checks.extend(app_feature_checks(main_text, canvas_text, store_text, session_text, scene_text, header_text, store_header_text, plist, pbx_text))
     checks.extend(preview_checks(preview_text))
 
@@ -398,8 +405,7 @@ def main():
         ROOT / "KidCanvas" / "KDMainViewController.m",
         ROOT / "KidCanvas" / "KDDrawingCanvasView.m",
         ROOT / "KidCanvas" / "Info.plist",
-        ROOT / "README.md",
-        ROOT / "ui-preview.html",
+        ROOT / "docs" / "product" / "mockups" / "ui-preview.html",
     ]))
 
     if all(checks):

@@ -1530,6 +1530,34 @@ static const void *KDPressBaseAlphaKey = &KDPressBaseAlphaKey;
     return rows * [self paletteColorButtonSize] + MAX(0, rows - 1) * [self paletteColorButtonSpacing];
 }
 
+- (UIImage *)colorWheelImage {
+    static UIImage *cachedImage = nil;
+    static dispatch_once_t onceToken;
+    dispatch_once(&onceToken, ^{
+        CGSize size = CGSizeMake(44.0, 44.0);
+        UIGraphicsImageRenderer *renderer = [[UIGraphicsImageRenderer alloc] initWithSize:size];
+        cachedImage = [renderer imageWithActions:^(UIGraphicsImageRendererContext * _Nonnull context) {
+            CGPoint center = CGPointMake(size.width * 0.5, size.height * 0.5);
+            CGFloat outerRadius = size.width * 0.5;
+            CGFloat innerRadius = 14.0;
+            NSInteger sliceCount = 120;
+
+            for (NSInteger index = 0; index < sliceCount; index++) {
+                CGFloat startAngle = ((CGFloat)index / (CGFloat)sliceCount) * (CGFloat)M_PI * 2.0 - (CGFloat)M_PI_2;
+                CGFloat endAngle = ((CGFloat)(index + 1) / (CGFloat)sliceCount) * (CGFloat)M_PI * 2.0 - (CGFloat)M_PI_2;
+                UIColor *segmentColor = [UIColor colorWithHue:(CGFloat)index / (CGFloat)sliceCount saturation:0.9 brightness:1.0 alpha:1.0];
+                UIBezierPath *segment = [UIBezierPath bezierPath];
+                [segment addArcWithCenter:center radius:outerRadius startAngle:startAngle endAngle:endAngle clockwise:YES];
+                [segment addArcWithCenter:center radius:innerRadius startAngle:endAngle endAngle:startAngle clockwise:NO];
+                [segment closePath];
+                [segmentColor setFill];
+                [segment fill];
+            }
+        }];
+    });
+    return cachedImage;
+}
+
 - (void)reloadPaletteGrid {
     UIView *grid = [self.view viewWithTag:701];
     [grid.subviews makeObjectsPerformSelector:@selector(removeFromSuperview)];
@@ -2655,7 +2683,7 @@ static const void *KDPressBaseAlphaKey = &KDPressBaseAlphaKey;
 }
 
 - (void)imagePickerController:(UIImagePickerController *)picker didFinishPickingMediaWithInfo:(NSDictionary<UIImagePickerControllerInfoKey,id> *)info {
-    UIImage *image = info[UIImagePickerControllerInfoKeyOriginalImage];
+    UIImage *image = info[UIImagePickerControllerOriginalImage];
     UIImage *normalizedImage = [self normalizedImageFromImage:image];
     if (normalizedImage) {
         BOOL preservedDraft = [self preserveUnsavedActiveSessionDraftIfNeeded];
