@@ -1,0 +1,341 @@
+<svg width="1600" height="1000" viewBox="0 0 1600 1000" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="pageBg" x1="180" y1="80" x2="1460" y2="940" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#F8F2E7"/>
+      <stop offset="0.52" stop-color="#F6E3D0"/>
+      <stop offset="1" stop-color="#F3EFDA"/>
+    </linearGradient>
+    <linearGradient id="canvasShine" x1="800" y1="0" x2="800" y2="760" gradientUnits="userSpaceOnUse">
+      <stop stop-color="white" stop-opacity="0.48"/>
+      <stop offset="1" stop-color="white" stop-opacity="0.06"/>
+    </linearGradient>
+    <linearGradient id="glass" x1="0" y1="0" x2="0" y2="140" gradientUnits="userSpaceOnUse">
+      <stop stop-color="white" stop-opacity="0.92"/>
+      <stop offset="1" stop-color="#FFF9F0" stop-opacity="0.76"/>
+    </linearGradient>
+    <linearGradient id="saveBlue" x1="0" y1="0" x2="0" y2="52" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#92D1FF"/>
+      <stop offset="1" stop-color="#77BAF8"/>
+    </linearGradient>
+    <linearGradient id="mintActive" x1="0" y1="0" x2="0" y2="72" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#A8E2B3"/>
+      <stop offset="1" stop-color="#88D39B"/>
+    </linearGradient>
+    <linearGradient id="goldActive" x1="0" y1="0" x2="0" y2="44" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#F7DC84"/>
+      <stop offset="1" stop-color="#EEC463"/>
+    </linearGradient>
+    <filter id="shadowXL" x="-20%" y="-20%" width="150%" height="170%">
+      <feDropShadow dx="0" dy="18" stdDeviation="28" flood-color="#7D5B31" flood-opacity="0.18"/>
+    </filter>
+    <filter id="shadowLG" x="-20%" y="-20%" width="150%" height="170%">
+      <feDropShadow dx="0" dy="12" stdDeviation="18" flood-color="#7D5B31" flood-opacity="0.14"/>
+    </filter>
+    <filter id="shadowMD" x="-20%" y="-20%" width="150%" height="170%">
+      <feDropShadow dx="0" dy="8" stdDeviation="10" flood-color="#7D5B31" flood-opacity="0.12"/>
+    </filter>
+    <filter id="blurGlow" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="24"/>
+    </filter>
+  </defs>
+
+  <rect width="1600" height="1000" fill="url(#pageBg)"/>
+  <circle cx="210" cy="170" r="120" fill="white" fill-opacity="0.48" filter="url(#blurGlow)"/>
+  <circle cx="1340" cy="200" r="150" fill="#BCE0FF" fill-opacity="0.34" filter="url(#blurGlow)"/>
+  <circle cx="1370" cy="820" r="190" fill="#FFF0D6" fill-opacity="0.64" filter="url(#blurGlow)"/>
+
+  <g filter="url(#shadowXL)">
+    <rect x="0" y="0" width="1600" height="1000" fill="#FFFDF9"/>
+  </g>
+
+  <g opacity="0.96">
+    <rect x="0" y="0" width="1600" height="82" fill="url(#canvasShine)"/>
+  </g>
+
+  <g filter="url(#shadowLG)">
+    <rect x="26" y="22" width="250" height="68" rx="30" fill="url(#glass)" stroke="white" stroke-opacity="0.76"/>
+    <rect x="1318" y="22" width="256" height="68" rx="30" fill="url(#glass)" stroke="white" stroke-opacity="0.76"/>
+    <rect x="28" y="116" width="86" height="426" rx="34" fill="url(#glass)" stroke="white" stroke-opacity="0.76"/>
+    <rect x="1302" y="108" width="274" height="718" rx="30" fill="url(#glass)" stroke="white" stroke-opacity="0.76"/>
+    <rect x="142" y="878" width="1136" height="104" rx="36" fill="url(#glass)" stroke="white" stroke-opacity="0.76"/>
+  </g>
+
+  <g filter="url(#shadowXL)">
+    <rect x="140" y="96" width="1138" height="760" rx="34" fill="#FFFDFC"/>
+  </g>
+  <rect x="140" y="96" width="1138" height="760" rx="34" fill="url(#canvasShine)"/>
+  <rect x="140" y="96" width="1138" height="760" rx="34" stroke="#F1E8DF" stroke-width="2"/>
+
+  <g font-family="SF Pro Rounded, Avenir Next, Segoe UI, sans-serif">
+    <text x="92" y="65" fill="#263445" font-size="28" font-weight="700">KidCanvas</text>
+
+    <rect x="196" y="32" width="52" height="48" rx="18" fill="url(#goldActive)" filter="url(#shadowMD)"/>
+    <rect x="260" y="32" width="52" height="48" rx="18" fill="white" fill-opacity="0.84" filter="url(#shadowMD)"/>
+    <rect x="324" y="32" width="52" height="48" rx="18" fill="white" fill-opacity="0.84" filter="url(#shadowMD)"/>
+
+    <rect x="1338" y="32" width="52" height="48" rx="18" fill="white" fill-opacity="0.84" filter="url(#shadowMD)"/>
+    <rect x="1402" y="32" width="52" height="48" rx="18" fill="white" fill-opacity="0.84" filter="url(#shadowMD)"/>
+    <rect x="1466" y="32" width="52" height="48" rx="18" fill="white" fill-opacity="0.84" filter="url(#shadowMD)"/>
+    <rect x="1530" y="32" width="52" height="48" rx="18" fill="url(#saveBlue)" filter="url(#shadowMD)"/>
+  </g>
+
+  <g>
+    <rect x="210" y="46" width="16" height="16" rx="8" fill="#EF9D69"/>
+    <rect x="230" y="46" width="16" height="16" rx="8" fill="#84C2FB"/>
+    <rect x="220" y="58" width="16" height="16" rx="8" fill="#9BD9AA"/>
+
+    <path d="M279 56H293" stroke="#334357" stroke-width="3.2" stroke-linecap="round"/>
+    <path d="M286 49V63" stroke="#334357" stroke-width="3.2" stroke-linecap="round"/>
+
+    <path d="M349 63C340 60 337 50 344 44" stroke="#334357" stroke-width="3" stroke-linecap="round"/>
+    <path d="M343 45L352 45" stroke="#334357" stroke-width="3" stroke-linecap="round"/>
+    <path d="M349 63C355 61 359 57 361 50" stroke="#334357" stroke-width="0"/>
+
+    <path d="M415 63C424 60 427 50 420 44" stroke="#334357" stroke-width="3" stroke-linecap="round"/>
+    <path d="M421 45L412 45" stroke="#334357" stroke-width="3" stroke-linecap="round"/>
+
+    <circle cx="1364" cy="56" r="14" stroke="#334357" stroke-width="3"/>
+    <path d="M1364 48V56L1371 62" stroke="#334357" stroke-width="3" stroke-linecap="round"/>
+
+    <rect x="1418" y="44" width="20" height="16" rx="6" stroke="#334357" stroke-width="2"/>
+    <path d="M1423 58C1427 54 1430 52 1435 49" stroke="#334357" stroke-width="2" stroke-linecap="round"/>
+
+    <rect x="1482" y="44" width="22" height="16" rx="6" fill="url(#mintActive)"/>
+    <circle cx="1491" cy="51" r="4" fill="white"/>
+    <path d="M1495 58L1504 48" stroke="white" stroke-width="2" stroke-linecap="round"/>
+
+    <rect x="1545" y="44" width="20" height="20" rx="5" fill="white"/>
+    <rect x="1549" y="60" width="12" height="6" rx="2" fill="#77BAF8"/>
+  </g>
+
+  <g font-family="SF Pro Rounded, Avenir Next, Segoe UI, sans-serif">
+    <rect x="40" y="132" width="62" height="62" rx="23" fill="url(#mintActive)" filter="url(#shadowMD)"/>
+    <rect x="40" y="204" width="62" height="62" rx="23" fill="white" fill-opacity="0.84" filter="url(#shadowMD)"/>
+    <rect x="40" y="276" width="62" height="62" rx="23" fill="white" fill-opacity="0.84" filter="url(#shadowMD)"/>
+    <rect x="40" y="348" width="62" height="62" rx="23" fill="white" fill-opacity="0.84" filter="url(#shadowMD)"/>
+    <rect x="40" y="426" width="62" height="40" rx="18" fill="url(#goldActive)" filter="url(#shadowMD)"/>
+  </g>
+
+  <g>
+    <rect x="53" y="159" width="18" height="12" rx="6" fill="#EF9D69"/>
+    <path d="M71 153L88 165L71 177V153Z" fill="#EFC868"/>
+
+    <rect x="52" y="224" width="34" height="24" rx="12" fill="#F4F7FB" stroke="#DDE5EF"/>
+    <rect x="63" y="232" width="12" height="8" rx="4" fill="white"/>
+
+    <path d="M52 307H76L70 320H46L52 307Z" fill="#F1C867"/>
+    <rect x="76" y="306" width="8" height="18" rx="4" fill="#8B6236"/>
+
+    <rect x="54" y="372" width="14" height="14" rx="6" fill="#F39FB8"/>
+    <rect x="70" y="367" width="14" height="14" rx="6" fill="#84C2FB"/>
+    <rect x="82" y="379" width="14" height="14" rx="6" fill="#9BD9AA"/>
+
+    <circle cx="62" cy="446" r="9" fill="white" stroke="#DCE3EE"/>
+    <circle cx="74" cy="438" r="5" fill="#8287EF"/>
+    <circle cx="66" cy="446" r="5" fill="#8287EF"/>
+  </g>
+
+  <g font-family="SF Pro Rounded, Avenir Next, Segoe UI, sans-serif">
+    <rect x="232" y="132" width="108" height="38" rx="19" fill="white" fill-opacity="0.9"/>
+    <rect x="1042" y="132" width="130" height="38" rx="19" fill="white" fill-opacity="0.9"/>
+    <text x="286" y="157" text-anchor="middle" fill="#6E7A8A" font-size="15" font-weight="700">Canvas</text>
+    <text x="1107" y="157" text-anchor="middle" fill="#6E7A8A" font-size="15" font-weight="700">Line Art</text>
+  </g>
+
+  <g>
+    <rect x="176" y="138" width="1066" height="676" rx="28" fill="#FFFDF9"/>
+    <rect x="176" y="138" width="1066" height="676" rx="28" fill="url(#canvasShine)" opacity="0.54"/>
+
+    <ellipse cx="362" cy="252" rx="88" ry="52" fill="#FFFFFF" fill-opacity="0.86"/>
+    <ellipse cx="402" cy="236" rx="94" ry="66" fill="#FFFFFF" fill-opacity="0.92"/>
+    <ellipse cx="474" cy="258" rx="102" ry="58" fill="#FFFFFF" fill-opacity="0.88"/>
+
+    <ellipse cx="926" cy="286" rx="74" ry="44" fill="#FFFFFF" fill-opacity="0.86"/>
+    <ellipse cx="974" cy="268" rx="84" ry="58" fill="#FFFFFF" fill-opacity="0.92"/>
+    <ellipse cx="1046" cy="288" rx="90" ry="48" fill="#FFFFFF" fill-opacity="0.88"/>
+
+    <path d="M332 694C420 620 560 596 674 626C736 642 804 644 886 618C988 586 1080 600 1180 676V812H242C251 776 274 742 332 694Z" fill="#D9F2C6"/>
+
+    <path d="M430 578C500 458 650 404 792 448" stroke="#F06D73" stroke-width="18" stroke-linecap="round"/>
+    <path d="M454 584C525 482 656 438 774 474" stroke="#F39A5E" stroke-width="18" stroke-linecap="round"/>
+    <path d="M480 592C550 516 660 474 756 504" stroke="#F0C765" stroke-width="18" stroke-linecap="round"/>
+    <path d="M504 602C568 545 665 508 738 532" stroke="#9BD9AA" stroke-width="18" stroke-linecap="round"/>
+    <path d="M528 614C592 576 668 550 720 564" stroke="#84C2FB" stroke-width="18" stroke-linecap="round"/>
+    <path d="M552 626C612 602 670 592 702 596" stroke="#8387EF" stroke-width="18" stroke-linecap="round"/>
+
+    <circle cx="1026" cy="226" r="42" fill="#F1C867"/>
+    <path d="M1026 158V180M1026 272V294M958 226H936M1116 226H1094M980 180L964 164M1072 180L1088 164M980 272L964 288M1072 272L1088 288" stroke="#F0C765" stroke-width="6" stroke-linecap="round"/>
+
+    <g fill="#FF9FB8">
+      <ellipse cx="332" cy="692" rx="12" ry="12"/>
+      <ellipse cx="356" cy="680" rx="12" ry="12"/>
+      <ellipse cx="380" cy="692" rx="12" ry="12"/>
+      <ellipse cx="368" cy="716" rx="12" ry="12"/>
+      <ellipse cx="344" cy="716" rx="12" ry="12"/>
+    </g>
+    <circle cx="356" cy="702" r="10" fill="#F0C765"/>
+    <path d="M356 714V752" stroke="#84C87C" stroke-width="4" stroke-linecap="round"/>
+
+    <g fill="#84C2FB">
+      <ellipse cx="896" cy="708" rx="12" ry="12"/>
+      <ellipse cx="920" cy="696" rx="12" ry="12"/>
+      <ellipse cx="944" cy="708" rx="12" ry="12"/>
+      <ellipse cx="932" cy="732" rx="12" ry="12"/>
+      <ellipse cx="908" cy="732" rx="12" ry="12"/>
+    </g>
+    <circle cx="920" cy="718" r="10" fill="#F0C765"/>
+    <path d="M920 730V768" stroke="#84C87C" stroke-width="4" stroke-linecap="round"/>
+
+    <path d="M684 664C696 646 716 644 730 662C746 644 764 646 778 664C762 676 750 692 730 726C710 692 698 676 684 664Z" fill="none" stroke="#6E627C" stroke-width="4"/>
+    <path d="M730 640V722" stroke="#6E627C" stroke-width="4" stroke-linecap="round"/>
+    <path d="M724 640C722 630 716 624 708 620" stroke="#6E627C" stroke-width="3" stroke-linecap="round"/>
+    <path d="M736 640C739 630 745 624 752 620" stroke="#6E627C" stroke-width="3" stroke-linecap="round"/>
+  </g>
+
+  <g font-family="SF Pro Rounded, Avenir Next, Segoe UI, sans-serif">
+    <rect x="1318" y="126" width="242" height="192" rx="30" fill="url(#glass)" stroke="white" stroke-opacity="0.76"/>
+    <text x="1340" y="156" fill="#263445" font-size="15" font-weight="700" opacity="0.78">Colors</text>
+    <text x="1530" y="156" text-anchor="end" fill="#6E7A8A" font-size="12" font-weight="700" opacity="0.72">24 / 36</text>
+    <rect x="1338" y="170" width="150" height="42" rx="21" fill="white" fill-opacity="0.84"/>
+    <rect x="1344" y="175" width="68" height="32" rx="16" fill="url(#goldActive)"/>
+    <text x="1378" y="196" text-anchor="middle" fill="#664700" font-size="13" font-weight="700">24</text>
+    <text x="1453" y="196" text-anchor="middle" fill="#6E7A8A" font-size="13" font-weight="700">36</text>
+
+    <g>
+      <rect x="1338" y="224" width="26" height="26" rx="10" fill="#F06D73" stroke="white" stroke-width="3"/>
+      <rect x="1374" y="224" width="26" height="26" rx="10" fill="#F39A5E" stroke="white" stroke-width="3"/>
+      <rect x="1410" y="224" width="26" height="26" rx="10" fill="#F0C765" stroke="white" stroke-width="3"/>
+      <rect x="1446" y="224" width="26" height="26" rx="10" fill="#EFE07B" stroke="white" stroke-width="3"/>
+      <rect x="1482" y="224" width="26" height="26" rx="10" fill="#B8D86D" stroke="white" stroke-width="3"/>
+      <rect x="1518" y="224" width="26" height="26" rx="10" fill="#8FD4A1" stroke="white" stroke-width="3"/>
+
+      <rect x="1338" y="260" width="26" height="26" rx="10" fill="#78D0BF" stroke="white" stroke-width="3"/>
+      <rect x="1374" y="260" width="26" height="26" rx="10" fill="#84C2FB" stroke="white" stroke-width="3"/>
+      <rect x="1410" y="260" width="26" height="26" rx="10" fill="#8387EF" stroke="white" stroke-width="3"/>
+      <rect x="1446" y="260" width="26" height="26" rx="10" fill="#A178EF" stroke="white" stroke-width="3"/>
+      <rect x="1482" y="260" width="26" height="26" rx="10" fill="#F39FB8" stroke="white" stroke-width="3"/>
+      <rect x="1518" y="260" width="26" height="26" rx="10" fill="#D6558C" stroke="white" stroke-width="3"/>
+      <rect x="1337" y="223" width="28" height="28" rx="11" stroke="#263445" stroke-opacity="0.12" stroke-width="2"/>
+    </g>
+  </g>
+
+  <g font-family="SF Pro Rounded, Avenir Next, Segoe UI, sans-serif">
+    <rect x="1318" y="334" width="242" height="250" rx="30" fill="url(#glass)" stroke="white" stroke-opacity="0.76"/>
+    <text x="1340" y="364" fill="#263445" font-size="15" font-weight="700" opacity="0.78">Brush / Sticker</text>
+    <text x="1530" y="364" text-anchor="end" fill="#6E7A8A" font-size="12" font-weight="700" opacity="0.72">Size</text>
+
+    <rect x="1338" y="378" width="202" height="96" rx="24" fill="white" fill-opacity="0.64"/>
+    <rect x="1352" y="398" width="174" height="12" rx="6" fill="#EEC463"/>
+    <circle cx="1470" cy="404" r="13" fill="white" stroke="#E2E8F0"/>
+    <circle cx="1374" cy="438" r="4" fill="#E8A269"/>
+    <circle cx="1412" cy="436" r="7" fill="#E8A269"/>
+    <circle cx="1460" cy="432" r="10" fill="#E8A269"/>
+    <circle cx="1514" cy="428" r="14" fill="#E8A269"/>
+
+    <text x="1340" y="502" fill="#6E7A8A" font-size="12" font-weight="700">Stickers</text>
+    <rect x="1338" y="514" width="40" height="32" rx="15" fill="url(#goldActive)"/>
+    <rect x="1386" y="514" width="40" height="32" rx="15" fill="white" fill-opacity="0.62"/>
+    <rect x="1434" y="514" width="40" height="32" rx="15" fill="white" fill-opacity="0.62"/>
+    <rect x="1482" y="514" width="40" height="32" rx="15" fill="white" fill-opacity="0.62"/>
+
+    <rect x="1338" y="554" width="44" height="44" rx="18" fill="#DFF0FF"/>
+    <rect x="1392" y="554" width="44" height="44" rx="18" fill="white" fill-opacity="0.82"/>
+    <rect x="1446" y="554" width="44" height="44" rx="18" fill="white" fill-opacity="0.82"/>
+    <rect x="1500" y="554" width="44" height="44" rx="18" fill="white" fill-opacity="0.82"/>
+  </g>
+
+  <g>
+    <circle cx="1359" cy="576" r="7" fill="#EF9D69"/>
+    <circle cx="1368" cy="570" r="4" fill="#EF9D69"/>
+    <circle cx="1351" cy="569" r="4" fill="#EF9D69"/>
+    <circle cx="1360" cy="563" r="4" fill="#EF9D69"/>
+
+    <path d="M1414 566C1418 560 1426 560 1430 566C1426 570 1422 578 1414 588C1408 578 1406 572 1404 568C1408 560 1412 560 1414 566Z" fill="#84C2FB"/>
+    <path d="M1428 566C1432 560 1440 560 1444 566C1440 570 1436 578 1428 588C1422 578 1420 572 1418 568C1422 560 1426 560 1428 566Z" fill="#F39FB8"/>
+
+    <ellipse cx="1468" cy="576" rx="11" ry="8" fill="#9BD9AA"/>
+    <circle cx="1479" cy="576" r="4" fill="#9BD9AA"/>
+    <circle cx="1459" cy="579" r="4" fill="#9BD9AA"/>
+
+    <circle cx="1522" cy="576" r="9" fill="#EEF2F7"/>
+    <rect x="1515" y="565" width="4" height="10" rx="2" fill="#EEF2F7"/>
+    <rect x="1525" y="565" width="4" height="10" rx="2" fill="#EEF2F7"/>
+  </g>
+
+  <g font-family="SF Pro Rounded, Avenir Next, Segoe UI, sans-serif">
+    <rect x="1318" y="600" width="242" height="226" rx="30" fill="url(#glass)" stroke="white" stroke-opacity="0.76"/>
+    <text x="1340" y="630" fill="#263445" font-size="15" font-weight="700" opacity="0.78">History</text>
+    <text x="1530" y="630" text-anchor="end" fill="#6E7A8A" font-size="12" font-weight="700" opacity="0.72">Draft + Saved</text>
+    <text x="1340" y="656" fill="#6E7A8A" font-size="12" font-weight="700">Draft</text>
+
+    <rect x="1338" y="668" width="202" height="84" rx="22" fill="#FFFDF8" stroke="rgba(41,56,74,0.09)"/>
+    <rect x="1348" y="678" width="182" height="64" rx="16" fill="white" fill-opacity="0.7"/>
+    <circle cx="1380" cy="700" r="14" fill="#84C2FB"/>
+    <circle cx="1414" cy="720" r="15" fill="#EF9D69"/>
+    <circle cx="1454" cy="692" r="12" fill="#F1C867"/>
+    <rect x="1350" y="720" width="40" height="22" rx="11" fill="white" fill-opacity="0.9"/>
+    <text x="1370" y="736" text-anchor="middle" fill="#6E7A8A" font-size="11" font-weight="700">Now</text>
+
+    <text x="1340" y="774" fill="#6E7A8A" font-size="12" font-weight="700">Saved</text>
+    <rect x="1338" y="784" width="94" height="84" rx="22" fill="#FFFDF8" stroke="#EEE5DA"/>
+    <rect x="1446" y="784" width="94" height="84" rx="22" fill="#FFFDF8" stroke="#EEE5DA"/>
+    <circle cx="1370" cy="812" r="12" fill="#F1C867"/>
+    <circle cx="1398" cy="836" r="14" fill="#F39FB8"/>
+    <circle cx="1410" cy="804" r="10" fill="#9BD9AA"/>
+    <circle cx="1478" cy="812" r="12" fill="#84C2FB"/>
+    <circle cx="1506" cy="836" r="14" fill="#9BD9AA"/>
+    <circle cx="1518" cy="804" r="10" fill="#EF9D69"/>
+
+    <rect x="1338" y="880" width="60" height="38" rx="18" fill="white" fill-opacity="0.84"/>
+    <rect x="1410" y="880" width="60" height="38" rx="18" fill="url(#goldActive)"/>
+    <rect x="1482" y="880" width="60" height="38" rx="18" fill="white" fill-opacity="0.84"/>
+    <text x="1368" y="905" text-anchor="middle" fill="#3A4758" font-size="13" font-weight="700">Open</text>
+    <text x="1440" y="905" text-anchor="middle" fill="#664700" font-size="13" font-weight="700">Import</text>
+    <text x="1512" y="905" text-anchor="middle" fill="#3A4758" font-size="13" font-weight="700">Delete</text>
+  </g>
+
+  <g font-family="SF Pro Rounded, Avenir Next, Segoe UI, sans-serif">
+    <text x="178" y="939" fill="#5A6676" font-size="15" font-weight="700" opacity="0.72">Brushes</text>
+
+    <rect x="274" y="904" width="126" height="72" rx="28" fill="url(#mintActive)" filter="url(#shadowMD)"/>
+    <rect x="414" y="904" width="126" height="72" rx="28" fill="white" fill-opacity="0.86" filter="url(#shadowMD)"/>
+    <rect x="554" y="904" width="126" height="72" rx="28" fill="white" fill-opacity="0.86" filter="url(#shadowMD)"/>
+    <rect x="694" y="904" width="126" height="72" rx="28" fill="white" fill-opacity="0.86" filter="url(#shadowMD)"/>
+    <rect x="834" y="904" width="126" height="72" rx="28" fill="white" fill-opacity="0.86" filter="url(#shadowMD)"/>
+    <rect x="974" y="904" width="126" height="72" rx="28" fill="white" fill-opacity="0.86" filter="url(#shadowMD)"/>
+    <rect x="1114" y="904" width="126" height="72" rx="28" fill="white" fill-opacity="0.86" filter="url(#shadowMD)"/>
+
+    <text x="346" y="946" text-anchor="middle" fill="#2A3748" font-size="14" font-weight="700">Pencil</text>
+    <text x="486" y="946" text-anchor="middle" fill="#2A3748" font-size="14" font-weight="700">Pen</text>
+    <text x="626" y="946" text-anchor="middle" fill="#2A3748" font-size="14" font-weight="700">Crayon</text>
+    <text x="766" y="946" text-anchor="middle" fill="#2A3748" font-size="14" font-weight="700">Eraser</text>
+    <text x="906" y="946" text-anchor="middle" fill="#2A3748" font-size="14" font-weight="700">Fill</text>
+    <text x="1046" y="946" text-anchor="middle" fill="#2A3748" font-size="14" font-weight="700">Picker</text>
+    <text x="1186" y="946" text-anchor="middle" fill="#2A3748" font-size="14" font-weight="700">Sticker</text>
+  </g>
+
+  <g>
+    <rect x="292" y="931" width="18" height="12" rx="6" fill="#F06D73"/>
+    <path d="M310 925L326 937L310 949V925Z" fill="#EFC76E"/>
+
+    <rect x="432" y="924" width="15" height="24" rx="8" fill="#5B6473"/>
+    <path d="M447 924L460 936L447 948V924Z" fill="#84C2FB"/>
+
+    <rect x="572" y="928" width="26" height="20" rx="10" fill="#EF9D69"/>
+    <path d="M598 928L609 938L598 948V928Z" fill="#F1C867"/>
+
+    <rect x="714" y="925" width="30" height="22" rx="11" fill="#F4F7FB" stroke="#DDE5EF"/>
+    <rect x="724" y="933" width="10" height="6" rx="3" fill="white"/>
+
+    <path d="M850 935H874L868 948H844L850 935Z" fill="#F1C867"/>
+    <rect x="874" y="934" width="8" height="18" rx="4" fill="#8B6236"/>
+
+    <circle cx="1010" cy="937" r="9" fill="white" stroke="#DCE3EE"/>
+    <circle cx="1022" cy="929" r="5" fill="#8287EF"/>
+    <circle cx="1014" cy="937" r="5" fill="#8287EF"/>
+
+    <rect x="1134" y="928" width="14" height="14" rx="6" fill="#F39FB8"/>
+    <rect x="1150" y="923" width="14" height="14" rx="6" fill="#84C2FB"/>
+    <rect x="1162" y="935" width="14" height="14" rx="6" fill="#9BD9AA"/>
+  </g>
+</svg>

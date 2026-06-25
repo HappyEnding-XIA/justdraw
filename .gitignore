@@ -1,0 +1,15 @@
+# macOS
+.DS_Store
+._*
+
+# Xcode user state
+xcuserdata/
+*.xcuserstate
+*.xcscmblueprint
+
+# Swift Package Manager build output
+.build/
+Packages/**/.build/
+
+# Local AI coordination workspace
+ai-docs/

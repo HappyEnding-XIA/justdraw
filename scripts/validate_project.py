@@ -193,7 +193,22 @@ def forbid_text(text, needle, message):
     return ok(message)
 
 
-def app_feature_checks(main_text, canvas_text, store_text, session_text, scene_text, header_text, store_header_text, plist, pbx_text):
+def app_feature_checks(
+    main_text,
+    canvas_text,
+    store_text,
+    session_text,
+    scene_text,
+    header_text,
+    store_header_text,
+    drawing_bridge_text,
+    bitmap_buffer_text,
+    flood_fill_text,
+    color_sampler_text,
+    pressure_model_text,
+    plist,
+    pbx_text,
+):
     checks = []
     expected_bundle_keys = {
         "CFBundleDevelopmentRegion": "$(DEVELOPMENT_LANGUAGE)",
@@ -237,9 +252,14 @@ def app_feature_checks(main_text, canvas_text, store_text, session_text, scene_t
     checks.append(require_regex(main_text, r"UIScrollView \*recentScrollView[\s\S]*recentScrollView\.showsHorizontalScrollIndicator = NO;[\s\S]*\[recentScrollView addSubview:recentRow\];", "Recent colors are presented in a horizontal scroll row"))
     checks.append(require_text(main_text, "while (self.recentColors.count > 8)", "Recent colors keep up to eight colors"))
     checks.append(require_text(canvas_text, "KDToolModePicker", "Eyedropper tool mode exists"))
-    checks.append(require_regex(canvas_text, r"colorAtPoint:[\s\S]*\[image drawInRect:drawRect\]", "Eyedropper samples pixels via aligned image drawing"))
-    checks.append(require_regex(canvas_text, r"colorAtPoint:[\s\S]*UIGraphicsPushContext\(context\);[\s\S]*CGRect drawRect = CGRectMake\(-point\.x, -point\.y, imageSize\.width, imageSize\.height\);[\s\S]*UIGraphicsPopContext\(\);", "Eyedropper renders into its 1x1 sampling context using point coordinates"))
+    checks.append(require_text(canvas_text, "sampleColorFromImage:imageRef", "Eyedropper delegates pixel sampling to Swift"))
+    checks.append(require_text(drawing_bridge_text, "BitmapBuffer(cgImage: image)", "Eyedropper bridge rasterizes the snapshot image"))
+    checks.append(require_text(drawing_bridge_text, "ColorSampler.sample(buffer: buffer, x: x, y: y)", "Eyedropper bridge samples using the Swift sampler"))
     checks.append(forbid_text(canvas_text, "CGContextTranslateCTM(context, -pixelPoint.x", "Eyedropper avoids fragile manual context flipping"))
+    checks.append(require_text(canvas_text, "#import \"KCDrawingEngineBridge.h\"", "Drawing canvas imports the Swift drawing bridge"))
+    checks.append(require_text(canvas_text, "[KCDrawingEngineBridge normalizedPressureWithForce:", "Pressure normalization is bridged to Swift"))
+    checks.append(require_text(canvas_text, "[KCDrawingEngineBridge floodFillImage:", "Flood fill is bridged to Swift"))
+    checks.append(require_text(canvas_text, "[KCDrawingEngineBridge sampleColorFromImage:", "Color sampling is bridged to Swift"))
     checks.append(require_text(header_text, "KDBrushStylePencil", "Pencil brush style exists"))
     checks.append(require_text(header_text, "KDBrushStylePen", "Pen brush style exists"))
     checks.append(require_text(header_text, "KDBrushStyleCrayon", "Crayon brush style exists"))
@@ -252,18 +272,25 @@ def app_feature_checks(main_text, canvas_text, store_text, session_text, scene_t
     checks.append(require_text(header_text, "KDEraserShapeCircle", "Circle eraser shape exists"))
     checks.append(require_text(header_text, "KDEraserShapeCloud", "Cloud eraser shape exists"))
     checks.append(require_text(header_text, "KDEraserShapeStar", "Star eraser shape exists"))
-    checks.append(require_text(canvas_text, "performFloodFillAtPoint", "Flood fill implementation exists"))
-    checks.append(require_text(canvas_text, "#import <stdint.h>", "Flood fill has fixed-width integer support"))
-    checks.append(require_text(canvas_text, "#import <limits.h>", "Flood fill has size limit constants available"))
-    checks.append(require_text(canvas_text, "pixelCount > UINT32_MAX", "Flood fill rejects unsupported oversized bitmaps"))
-    checks.append(require_text(canvas_text, "width > SIZE_MAX / height", "Flood fill guards pixel-count multiplication overflow"))
-    checks.append(require_text(canvas_text, "pixelCount > SIZE_MAX / bytesPerPixel", "Flood fill guards byte-count multiplication overflow"))
-    checks.append(require_regex(canvas_text, r"size_t pixelCount = width \* height;[\s\S]*unsigned char \*rawData = calloc", "Flood fill validates pixel count before raw bitmap allocation"))
-    checks.append(require_text(canvas_text, "uint32_t *queue", "Flood fill queue uses compact 32-bit indices"))
-    checks.append(forbid_text(canvas_text, "NSUInteger *queue", "Flood fill avoids pointer-width queue indices"))
-    checks.append(require_regex(canvas_text, r"performFloodFillAtPoint:[\s\S]*UIGraphicsPushContext\(context\);[\s\S]*\[baseImage drawInRect:CGRectMake\(0, 0, width, height\)\]", "Flood fill draws bitmap using UIKit-aligned pixel dimensions"))
-    checks.append(forbid_text(canvas_text, "[baseImage drawInRect:CGRectMake(0, 0, baseImage.size.width, baseImage.size.height)]", "Flood fill avoids point-sized draw rect in pixel bitmap context"))
-    checks.append(forbid_text(canvas_text, "CGContextDrawImage(context, CGRectMake(0, 0, width, height), sourceImageRef)", "Flood fill avoids direct Core Graphics image drawing flip"))
+    checks.append(require_text(canvas_text, "performFloodFillAtPoint", "Flood fill entry point remains in the UIKit canvas"))
+    checks.append(require_text(canvas_text, "KCDrawingEngineBridge floodFillImage", "Flood fill delegates to the Swift bridge"))
+    checks.append(require_text(canvas_text, "KCDrawingEngineBridge normalizedPressureWithForce", "Pressure normalization delegates to the Swift bridge"))
+    checks.append(require_text(canvas_text, "KCDrawingEngineBridge sampleColorFromImage", "Color sampling delegates to the Swift bridge"))
+    checks.append(require_text(canvas_text, "KCDrawingEngineBridge.h", "Manual Objective-C bridge header is present"))
+    checks.append(require_text(drawing_bridge_text, "BitmapBuffer(cgImage:", "Flood fill bridge uses Swift bitmap buffer"))
+    checks.append(require_text(drawing_bridge_text, "FloodFillEngine.fill(", "Flood fill bridge calls the Swift engine"))
+    checks.append(require_text(drawing_bridge_text, "ColorSampler.sample(", "Color sampling bridge calls the Swift sampler"))
+    checks.append(require_text(drawing_bridge_text, "PressureModel.normalized(", "Pressure bridge calls the Swift model"))
+    checks.append(require_text(drawing_bridge_text, "guard let buffer = BitmapBuffer(cgImage:", "Swift bridge validates CGImage input before fill"))
+    checks.append(require_text(drawing_bridge_text, "guard let buffer = BitmapBuffer(cgImage: image),", "Swift bridge validates CGImage input before sampling"))
+    checks.append(require_text(drawing_bridge_text, "return UIColor(", "Swift bridge returns UIKit color objects"))
+    checks.append(require_text(bitmap_buffer_text, "public init?(cgImage: CGImage)", "Swift bitmap buffer can decode CGImage input"))
+    checks.append(require_text(flood_fill_text, "public enum FloodFillEngine", "Flood fill engine is implemented in Swift"))
+    checks.append(require_text(flood_fill_text, "guard width <= Int.max / height", "Swift flood fill guards pixel-count multiplication overflow"))
+    checks.append(require_text(flood_fill_text, "var visited = [Bool]", "Swift flood fill tracks visited pixels"))
+    checks.append(require_text(flood_fill_text, "var queue = [Int]()", "Swift flood fill uses an indexed queue"))
+    checks.append(require_text(color_sampler_text, "public enum ColorSampler", "Color sampler is implemented in Swift"))
+    checks.append(require_text(pressure_model_text, "public enum PressureModel", "Pressure model is implemented in Swift"))
     checks.append(require_count_at_least(main_text, r"itemWithTitle:@\"", 8, "Built-in line-art templates exist"))
     checks.append(require_count_at_least(main_text, r"@\"[a-z0-9.]+\.fill\"|@\"rainbow\"|@\"camera\.macro\"", 12, "Built-in sticker symbols exist"))
     checks.append(require_text(main_text, "@property (nonatomic, strong) NSDictionary<NSString *, NSArray<NSString *> *> *stickerSymbolsByCategory;", "Built-in stickers are organized by category"))
@@ -296,12 +323,12 @@ def app_feature_checks(main_text, canvas_text, store_text, session_text, scene_t
     checks.append(require_regex(store_text, r"previousArtworkData[\s\S]*previousThumbnailData[\s\S]*restoreFileAtURL:artworkURL[\s\S]*restoreFileAtURL:thumbnailURL", "Failed session saves restore previous artwork files"))
     checks.append(require_regex(store_text, r"- \(UIImage \*\)thumbnailImageFromImage:[\s\S]*if \(!\[self isValidImage:image\]\)[\s\S]*return nil;", "Thumbnail generation rejects invalid images"))
     checks.append(require_text(store_text, "[NSDate distantPast]", "History sorting tolerates missing modified dates"))
-    checks.append(require_text(main_text, "deleteSession:", "History delete flow exists"))
-    checks.append(require_text(main_text, "@property (nonatomic, strong) KDArtworkSession *selectedHistorySession;", "History thumbnails track the selected saved item"))
-    checks.append(require_regex(main_text, r"- \(void\)didTapHistoryThumb:\(UIButton \*\)button \{[\s\S]*KDArtworkSession \*session = self\.sessions\[index\];[\s\S]*self\.selectedHistorySession = session;[\s\S]*\[self openSession:session\];", "Tapping a saved thumbnail selects and opens that session"))
-    checks.append(require_regex(main_text, r"- \(KDArtworkSession \*\)currentSelectedHistorySession \{[\s\S]*self\.selectedHistorySession\.sessionIdentifier[\s\S]*return session;[\s\S]*self\.selectedHistorySession = nil;", "Selected history sessions are validated against current saved sessions"))
-    checks.append(require_regex(main_text, r"- \(void\)didTapDeleteLatestSession \{[\s\S]*KDArtworkSession \*selectedSession = \[self currentSelectedHistorySession\];[\s\S]*KDArtworkSession \*session = shouldDeleteDraft \? nil : \(selectedSession \?: \(self\.activeSession \?: self\.sessions\.firstObject\)\);[\s\S]*\[self\.sessionStore deleteSession:session\];", "Delete action prioritizes the selected saved thumbnail before falling back to current/latest"))
-    checks.append(require_regex(main_text, r"BOOL deletingActiveSession = \[self\.activeSession\.sessionIdentifier isEqualToString:session\.sessionIdentifier\];[\s\S]*if \(deletingActiveSession\) \{[\s\S]*self\.suppressNextDraftSave = YES;[\s\S]*\[self\.canvasView startBlankCanvas\];[\s\S]*\[self\.sessionStore clearDraftImage\];[\s\S]*\}", "Deleting the open saved session clears the canvas without creating a draft"))
+    checks.append(require_text(main_text, "deleteSessionWithId:", "History delete flow exists"))
+    checks.append(require_text(main_text, "@property (nonatomic, strong) NSDictionary *selectedHistorySession;", "History thumbnails track the selected saved item"))
+    checks.append(require_regex(main_text, r"- \(void\)didTapHistoryThumb:\(UIButton \*\)button \{[\s\S]*NSDictionary \*session = self\.sessions\[index\];[\s\S]*self\.selectedHistorySession = session;[\s\S]*\[self openSession:session\];", "Tapping a saved thumbnail selects and opens that session"))
+    checks.append(require_regex(main_text, r"- \(NSDictionary \*\)currentSelectedHistorySession \{[\s\S]*self\.selectedHistorySession\[\@\"id\"\][\s\S]*return session;[\s\S]*self\.selectedHistorySession = nil;", "Selected history sessions are validated against current saved sessions"))
+    checks.append(require_regex(main_text, r"- \(void\)didTapDeleteLatestSession \{[\s\S]*NSDictionary \*selectedSession = \[self currentSelectedHistorySession\];[\s\S]*NSDictionary \*session = shouldDeleteDraft \? nil : \(selectedSession \?: \(self\.activeSession \?: self\.sessions\.firstObject\)\);[\s\S]*\[self\.sessionStore deleteSessionWithId:session\[\@\"id\"\]\];", "Delete action prioritizes the selected saved thumbnail before falling back to current/latest"))
+    checks.append(require_regex(main_text, r"BOOL deletingActiveSession = \[self\.activeSession\[\@\"id\"\] isEqualToString:session\[\@\"id\"\]\];[\s\S]*if \(deletingActiveSession\) \{[\s\S]*self\.suppressNextDraftSave = YES;[\s\S]*\[self\.canvasView startBlankCanvas\];[\s\S]*\[self\.sessionStore clearDraft\];[\s\S]*\}", "Deleting the open saved session clears the canvas without creating a draft"))
     checks.append(require_text(canvas_text, "coalescedTouchesForTouch", "Coalesced touch drawing exists"))
     checks.append(require_text(canvas_text, "UITouchTypePencil", "Apple Pencil pressure handling exists"))
     checks.append(require_text(canvas_text, "undoLastAction", "Undo implementation exists"))
@@ -314,7 +341,7 @@ def app_feature_checks(main_text, canvas_text, store_text, session_text, scene_t
     checks.append(require_regex(canvas_text, r"- \(void\)replaceCanvasWithImage:\(UIImage \*\)image \{[\s\S]*?\[self resetCanvasContents\];[\s\S]*?\[self clearHistoryStacks\];[\s\S]*?\}", "Imported photos start a clean canvas session"))
     checks.append(require_regex(canvas_text, r"- \(void\)loadLineArtImage:\(UIImage \*\)image \{[\s\S]*?\[self resetCanvasContents\];[\s\S]*?\[self clearHistoryStacks\];[\s\S]*?\}", "Line-art templates start a clean canvas session"))
     checks.append(require_regex(canvas_text, r"- \(void\)clearHistoryStacks \{[\s\S]*?\[self\.undoStates removeAllObjects\];[\s\S]*?\[self\.redoStates removeAllObjects\];[\s\S]*?\}", "Canvas history stacks can be fully cleared"))
-    checks.append(require_regex(main_text, r"- \(void\)openSession:\(KDArtworkSession \*\)session \{(?:(?!replaceCanvasWithImage).)*\[self\.canvasView restoreCanvasWithImage:image\];", "Opening saved history restores a clean canvas session", re.S))
+    checks.append(require_regex(main_text, r"- \(void\)openSession:\(NSDictionary \*\)session \{(?:(?!replaceCanvasWithImage).)*\[self\.canvasView restoreCanvasWithImage:image\];", "Opening saved history restores a clean canvas session", re.S))
     checks.append(require_text(main_text, "@property (nonatomic, assign) BOOL suppressNextDraftSave;", "Programmatic restore can suppress one draft save"))
     checks.append(require_text(main_text, "@property (nonatomic, assign) BOOL activeSessionHasUnsavedChanges;", "Saved sessions track unsaved edits"))
     checks.append(require_regex(main_text, r"self\.suppressNextDraftSave = YES;\s*\[self\.canvasView restoreCanvasWithImage:image\]", "Opening saved history suppresses the restore-triggered draft save"))
@@ -323,14 +350,14 @@ def app_feature_checks(main_text, canvas_text, store_text, session_text, scene_t
     checks.append(require_regex(main_text, r"self\.activeSession = session;\s*self\.selectedHistorySession = session;\s*self\.activeSessionHasUnsavedChanges = NO;[\s\S]*self\.suppressNextDraftSave = YES;", "Opening a saved session starts clean until the next user edit"))
     checks.append(require_regex(main_text, r"self\.activeSession = savedSession;\s*self\.selectedHistorySession = savedSession;\s*self\.activeSessionHasUnsavedChanges = NO;", "Saving clears saved-session dirty state"))
     checks.append(require_regex(main_text, r"BOOL isDirtyActiveSession = isActiveSession && self\.activeSessionHasUnsavedChanges;[\s\S]*Unsaved Saved Thumbnail[\s\S]*button\.layer\.borderWidth = isDirtyActiveSession \? 3\.0 : 2\.0;", "History thumbnails show unsaved edits on active saved sessions"))
-    checks.append(require_regex(main_text, r"- \(void\)openSession:\(KDArtworkSession \*\)session \{[\s\S]*BOOL preservedDraft = \[self preserveUnsavedActiveSessionDraftIfNeeded\];[\s\S]*if \(!preservedDraft\) \{[\s\S]*\[self\.sessionStore clearDraftImage\];[\s\S]*\}", "Opening another history item preserves dirty edits without clearing their draft"))
+    checks.append(require_regex(main_text, r"- \(void\)openSession:\(NSDictionary \*\)session \{[\s\S]*BOOL preservedDraft = \[self preserveUnsavedActiveSessionDraftIfNeeded\];[\s\S]*if \(!preservedDraft\) \{[\s\S]*\[self\.sessionStore clearDraft\];[\s\S]*\}", "Opening another history item preserves dirty edits without clearing their draft"))
     checks.append(require_regex(main_text, r"- \(BOOL\)preserveUnsavedActiveSessionDraftIfNeeded \{[\s\S]*self\.activeSession == nil \|\| !self\.activeSessionHasUnsavedChanges \|\| !\[self\.canvasView hasVisibleContent\][\s\S]*return NO;[\s\S]*\[self\.draftSaveTimer invalidate\];[\s\S]*\[self\.sessionStore saveDraftImage:snapshot\];[\s\S]*return YES;[\s\S]*\}", "Dirty active saved sessions can be synchronously preserved as draft"))
     checks.append(require_regex(main_text, r"didTapNewCanvas[\s\S]*self\.suppressNextDraftSave = YES;[\s\S]*\[self\.canvasView startBlankCanvas\];", "New canvas starts a clean blank session without creating a draft"))
     checks.append(require_regex(main_text, r"didTapDeleteLatestSession[\s\S]*shouldDeleteDraft[\s\S]*self\.suppressNextDraftSave = YES;[\s\S]*\[self\.canvasView startBlankCanvas\];", "Deleting the active draft starts a clean blank session"))
     checks.append(require_regex(main_text, r"- \(void\)saveDraftIfNeeded \{[\s\S]*if \(self\.activeSession != nil && !self\.activeSessionHasUnsavedChanges\) \{[\s\S]*return;[\s\S]*if \(!\[self\.canvasView hasVisibleContent\]\)", "Draft autosave skips only unchanged saved sessions"))
     checks.append(require_text(main_text, "line-art.picker", "Line-art picker has an automation identifier"))
     checks.append(require_text(main_text, "[self.draftSaveTimer invalidate];", "Draft save timer is invalidated during destructive state changes"))
-    checks.append(require_regex(main_text, r"- \(void\)loadLineArtItem:[\s\S]*BOOL preservedDraft = \[self preserveUnsavedActiveSessionDraftIfNeeded\];[\s\S]*if \(!preservedDraft\) \{[\s\S]*\[self\.sessionStore clearDraftImage\];[\s\S]*\}[\s\S]*\[self\.canvasView loadLineArtImage:lineArt\]", "Line-art loading preserves dirty edits before replacing the canvas", re.S))
+    checks.append(require_regex(main_text, r"- \(void\)loadLineArtItem:[\s\S]*BOOL preservedDraft = \[self preserveUnsavedActiveSessionDraftIfNeeded\];[\s\S]*if \(!preservedDraft\) \{[\s\S]*\[self\.sessionStore clearDraft\];[\s\S]*\}[\s\S]*\[self\.canvasView loadLineArtImage:lineArt\]", "Line-art loading preserves dirty edits before replacing the canvas", re.S))
     checks.append(require_text(session_text, "_modifiedAt = [NSDate date];", "Artwork sessions get a default modified date"))
     checks.append(require_text(canvas_text, "KDStickerMinimumScale", "Sticker minimum scale is enforced"))
     checks.append(require_text(canvas_text, "KDStickerMaximumScale", "Sticker maximum scale is enforced"))
@@ -388,7 +415,10 @@ def main():
         ROOT / "KidCanvas" / "main.m",
     ]
     for path in objc_files:
-        checks.append(balanced_text(path, [("braces", "{", "}"), ("parentheses", "(", ")")]))
+        if path.exists():
+            checks.append(balanced_text(path, [("braces", "{", "}"), ("parentheses", "(", ")")]))
+        else:
+            checks.append(fail(f"{path.relative_to(ROOT)} is missing"))
 
     main_text = (ROOT / "KidCanvas" / "KDMainViewController.m").read_text(encoding="utf-8")
     canvas_text = (ROOT / "KidCanvas" / "KDDrawingCanvasView.m").read_text(encoding="utf-8")
@@ -397,8 +427,28 @@ def main():
     session_text = (ROOT / "KidCanvas" / "KDArtworkSession.m").read_text(encoding="utf-8")
     scene_text = (ROOT / "KidCanvas" / "KDSceneDelegate.m").read_text(encoding="utf-8")
     header_text = (ROOT / "KidCanvas" / "KDDrawingCanvasView.h").read_text(encoding="utf-8")
+    drawing_bridge_text = (ROOT / "KidCanvas" / "KCDrawingEngineBridge.swift").read_text(encoding="utf-8")
+    bitmap_buffer_text = (ROOT / "Packages" / "KidCanvasModules" / "Sources" / "KCDrawingEngine" / "BitmapBuffer.swift").read_text(encoding="utf-8")
+    flood_fill_text = (ROOT / "Packages" / "KidCanvasModules" / "Sources" / "KCDrawingEngine" / "FloodFillEngine.swift").read_text(encoding="utf-8")
+    color_sampler_text = (ROOT / "Packages" / "KidCanvasModules" / "Sources" / "KCDrawingEngine" / "ColorSampler.swift").read_text(encoding="utf-8")
+    pressure_model_text = (ROOT / "Packages" / "KidCanvasModules" / "Sources" / "KCDrawingEngine" / "PressureModel.swift").read_text(encoding="utf-8")
     preview_text = (ROOT / "docs" / "product" / "mockups" / "ui-preview.html").read_text(encoding="utf-8")
-    checks.extend(app_feature_checks(main_text, canvas_text, store_text, session_text, scene_text, header_text, store_header_text, plist, pbx_text))
+    checks.extend(app_feature_checks(
+        main_text,
+        canvas_text,
+        store_text,
+        session_text,
+        scene_text,
+        header_text,
+        store_header_text,
+        drawing_bridge_text,
+        bitmap_buffer_text,
+        flood_fill_text,
+        color_sampler_text,
+        pressure_model_text,
+        plist,
+        pbx_text,
+    ))
     checks.extend(preview_checks(preview_text))
 
     checks.append(no_chinese_text([

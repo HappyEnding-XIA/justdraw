@@ -15,6 +15,9 @@
 		A10000010000000000000006 /* KDArtworkSession.m in Sources */ = {isa = PBXBuildFile; fileRef = A1000011000000000000000D /* KDArtworkSession.m */; };
 		A10000010000000000000007 /* KDSessionStore.m in Sources */ = {isa = PBXBuildFile; fileRef = A1000011000000000000000F /* KDSessionStore.m */; };
 		A10000010000000000000008 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A10000110000000000000010 /* Assets.xcassets */; };
+		A10000010000000000000009 /* KCContentBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000110000000000000011 /* KCContentBridge.swift */; };
+		A1000001000000000000000A /* KCDrawingEngineBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000110000000000000012 /* KCDrawingEngineBridge.swift */; };
+		A1000001000000000000000B /* SessionStoreBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000110000000000000014 /* SessionStoreBridge.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -34,6 +37,11 @@
 		A1000011000000000000000E /* KDSessionStore.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = KDSessionStore.h; sourceTree = "<group>"; };
 		A1000011000000000000000F /* KDSessionStore.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = KDSessionStore.m; sourceTree = "<group>"; };
 		A10000110000000000000010 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		A10000110000000000000011 /* KCContentBridge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KCContentBridge.swift; sourceTree = "<group>"; };
+		A10000110000000000000012 /* KCDrawingEngineBridge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KCDrawingEngineBridge.swift; sourceTree = "<group>"; };
+		A10000110000000000000013 /* KCDrawingEngineBridge.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = KCDrawingEngineBridge.h; sourceTree = "<group>"; };
+		A10000110000000000000014 /* SessionStoreBridge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionStoreBridge.swift; sourceTree = "<group>"; };
+		A10000110000000000000015 /* SessionStoreBridge.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = SessionStoreBridge.h; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -72,6 +80,11 @@
 				A1000011000000000000000E /* KDSessionStore.h */,
 				A1000011000000000000000F /* KDSessionStore.m */,
 				A10000110000000000000010 /* Assets.xcassets */,
+				A10000110000000000000011 /* KCContentBridge.swift */,
+				A10000110000000000000012 /* KCDrawingEngineBridge.swift */,
+				A10000110000000000000013 /* KCDrawingEngineBridge.h */,
+				A10000110000000000000014 /* SessionStoreBridge.swift */,
+				A10000110000000000000015 /* SessionStoreBridge.h */,
 				A1000011000000000000000A /* Info.plist */,
 			);
 			path = KidCanvas;
@@ -99,6 +112,13 @@
 			buildRules = (
 			);
 			dependencies = (
+			);
+			packageProductDependencies = (
+				A100000A0000000000000001 /* KCCommon */,
+				A100000A0000000000000002 /* KCDomain */,
+				A100000A0000000000000003 /* KCContentCatalog */,
+				A100000A0000000000000004 /* KCDrawingEngine */,
+				A100000A0000000000000005 /* KCSessionPersistence */,
 			);
 			name = KidCanvas;
 			productName = KidCanvas;
@@ -134,6 +154,9 @@
 			targets = (
 				A10000410000000000000001 /* KidCanvas */,
 			);
+			packageReferences = (
+				A10000090000000000000001 /* XCLocalSwiftPackageReference "Packages/KidCanvasModules" */,
+			);
 		};
 /* End PBXProject section */
 
@@ -160,6 +183,9 @@
 				A10000010000000000000005 /* KDDrawingCanvasView.m in Sources */,
 				A10000010000000000000006 /* KDArtworkSession.m in Sources */,
 				A10000010000000000000007 /* KDSessionStore.m in Sources */,
+				A10000010000000000000009 /* KCContentBridge.swift in Sources */,
+				A1000001000000000000000A /* KCDrawingEngineBridge.swift in Sources */,
+				A1000001000000000000000B /* SessionStoreBridge.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -232,7 +258,11 @@
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
 				SUPPORTS_MACCATALYST = NO;
 				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
+				DEFINES_MODULE = YES;
+				ONLY_ACTIVE_ARCH = YES;
 				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_ENABLE_EXPLICIT_MODULES = NO;
+				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = Debug;
@@ -256,7 +286,10 @@
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
 				SUPPORTS_MACCATALYST = NO;
 				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
+				DEFINES_MODULE = YES;
 				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_ENABLE_EXPLICIT_MODULES = NO;
+				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = Release;
@@ -283,6 +316,41 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCLocalSwiftPackageReference section */
+		A10000090000000000000001 /* XCLocalSwiftPackageReference "Packages/KidCanvasModules" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = "Packages/KidCanvasModules";
+		};
+/* End XCLocalSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		A100000A0000000000000001 /* KCCommon */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = A10000090000000000000001 /* XCLocalSwiftPackageReference "Packages/KidCanvasModules" */;
+			productName = KCCommon;
+		};
+		A100000A0000000000000002 /* KCDomain */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = A10000090000000000000001 /* XCLocalSwiftPackageReference "Packages/KidCanvasModules" */;
+			productName = KCDomain;
+		};
+		A100000A0000000000000003 /* KCContentCatalog */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = A10000090000000000000001 /* XCLocalSwiftPackageReference "Packages/KidCanvasModules" */;
+			productName = KCContentCatalog;
+		};
+		A100000A0000000000000004 /* KCDrawingEngine */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = A10000090000000000000001 /* XCLocalSwiftPackageReference "Packages/KidCanvasModules" */;
+			productName = KCDrawingEngine;
+		};
+		A100000A0000000000000005 /* KCSessionPersistence */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = A10000090000000000000001 /* XCLocalSwiftPackageReference "Packages/KidCanvasModules" */;
+			productName = KCSessionPersistence;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = A10000710000000000000001 /* Project object */;
 }

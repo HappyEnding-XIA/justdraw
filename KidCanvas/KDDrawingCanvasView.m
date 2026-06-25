@@ -1,4 +1,5 @@
 #import "KDDrawingCanvasView.h"
+#import "KCDrawingEngineBridge.h"
 
 #import <stdint.h>
 #import <limits.h>
@@ -139,25 +140,13 @@ static const CGFloat KDStickerMaximumScale = 2.6;
 
 - (void)drawStroke:(KDStroke *)stroke {
     UIColor *strokeColor = stroke.toolMode == KDToolModeEraser ? [UIColor whiteColor] : stroke.color;
-    CGFloat alpha = 1.0;
-    CGFloat renderedLineWidth = stroke.lineWidth;
     CGFloat pressure = stroke.toolMode == KDToolModeEraser ? 1.0 : [stroke averagePressure];
-
-    switch (stroke.brushStyle) {
-        case KDBrushStylePencil:
-            alpha = MIN(0.92, 0.62 + pressure * 0.18);
-            renderedLineWidth = stroke.lineWidth * 0.9 * pressure;
-            break;
-        case KDBrushStylePen:
-            alpha = 1.0;
-            renderedLineWidth = stroke.lineWidth * 0.72 * MIN(1.18, MAX(0.88, pressure));
-            break;
-        case KDBrushStyleCrayon:
-            alpha = MIN(0.92, 0.58 + pressure * 0.20);
-            renderedLineWidth = stroke.lineWidth * 1.12 * pressure;
-            break;
-    }
-    renderedLineWidth = MAX(1.0, renderedLineWidth);
+    CGFloat renderedLineWidth = [KCDrawingEngineBridge renderedStrokeLineWidthWithBrushStyle:stroke.brushStyle
+                                                                               lineWidth:stroke.lineWidth
+                                                                        averagePressure:pressure];
+    CGFloat alpha = [KCDrawingEngineBridge renderedStrokeAlphaWithBrushStyle:stroke.brushStyle
+                                                                lineWidth:stroke.lineWidth
+                                                         averagePressure:pressure];
 
     if (stroke.toolMode == KDToolModeEraser && stroke.eraserShape != KDEraserShapeCircle) {
         [self drawStampedEraserStroke:stroke color:strokeColor];
@@ -356,16 +345,9 @@ static const CGFloat KDStickerMaximumScale = 2.6;
 }
 
 - (CGFloat)normalizedPressureForTouch:(UITouch *)touch {
-    if (touch.maximumPossibleForce <= 0.0) {
-        return 1.0;
-    }
-
-    CGFloat normalizedForce = touch.force / touch.maximumPossibleForce;
-    if (touch.type == UITouchTypePencil) {
-        return MIN(1.45, MAX(0.65, 0.72 + normalizedForce * 0.95));
-    }
-
-    return MIN(1.18, MAX(0.92, 0.96 + normalizedForce * 0.28));
+    return [KCDrawingEngineBridge normalizedPressureWithForce:touch.force
+                                     maximumPossibleForce:touch.maximumPossibleForce
+                                                 isPencil:(touch.type == UITouchTypePencil)];
 }
 
 - (void)undoLastAction {
@@ -659,160 +641,19 @@ static const CGFloat KDStickerMaximumScale = 2.6;
         return NO;
     }
 
-    NSUInteger bytesPerPixel = 4;
-    size_t pixelCount = width * height;
-    if (width > SIZE_MAX / height || pixelCount > UINT32_MAX || pixelCount > SIZE_MAX / bytesPerPixel) {
+    NSInteger startX = (NSInteger)MIN(MAX(point.x * baseImage.scale, 0), (CGFloat)(width - 1));
+    NSInteger startY = (NSInteger)MIN(MAX(point.y * baseImage.scale, 0), (CGFloat)(height - 1));
+
+    CGImageRef filledImage = [KCDrawingEngineBridge floodFillImage:sourceImageRef
+                                                           startX:startX
+                                                           startY:startY
+                                                        fillColor:fillColor
+                                                       tolerance:self.fillTolerance];
+    if (!filledImage) {
         return NO;
     }
 
-    NSUInteger bytesPerRow = bytesPerPixel * width;
-    NSUInteger bitsPerComponent = 8;
-    unsigned char *rawData = calloc(pixelCount * bytesPerPixel, sizeof(unsigned char));
-    if (!rawData) {
-        return NO;
-    }
-
-    CGColorSpaceRef colorSpace = CGColorSpaceCreateDeviceRGB();
-    CGContextRef context = CGBitmapContextCreate(rawData,
-                                                 width,
-                                                 height,
-                                                 bitsPerComponent,
-                                                 bytesPerRow,
-                                                 colorSpace,
-                                                 kCGImageAlphaPremultipliedLast | kCGBitmapByteOrder32Big);
-    CGColorSpaceRelease(colorSpace);
-    if (!context) {
-        free(rawData);
-        return NO;
-    }
-
-    UIGraphicsPushContext(context);
-    [baseImage drawInRect:CGRectMake(0, 0, width, height)];
-    UIGraphicsPopContext();
-
-    CGPoint pixelPoint = CGPointMake(MIN(MAX(point.x * baseImage.scale, 0), width - 1),
-                                     MIN(MAX(point.y * baseImage.scale, 0), height - 1));
-    NSInteger startX = (NSInteger)pixelPoint.x;
-    NSInteger startY = (NSInteger)pixelPoint.y;
-    NSUInteger startIndex = (bytesPerRow * startY) + startX * bytesPerPixel;
-    unsigned char startR = rawData[startIndex];
-    unsigned char startG = rawData[startIndex + 1];
-    unsigned char startB = rawData[startIndex + 2];
-    unsigned char startA = rawData[startIndex + 3];
-
-    CGFloat red = 0.0;
-    CGFloat green = 0.0;
-    CGFloat blue = 0.0;
-    CGFloat alpha = 0.0;
-    [fillColor getRed:&red green:&green blue:&blue alpha:&alpha];
-
-    unsigned char fillR = (unsigned char)lrint(red * 255.0);
-    unsigned char fillG = (unsigned char)lrint(green * 255.0);
-    unsigned char fillB = (unsigned char)lrint(blue * 255.0);
-    unsigned char fillA = (unsigned char)lrint(alpha * 255.0);
-
-    BOOL *visited = calloc(pixelCount, sizeof(BOOL));
-    if (!visited) {
-        CGContextRelease(context);
-        free(rawData);
-        return NO;
-    }
-
-    uint32_t *queue = calloc(pixelCount, sizeof(uint32_t));
-    if (!queue) {
-        CGContextRelease(context);
-        free(rawData);
-        free(visited);
-        return NO;
-    }
-
-    size_t head = 0;
-    size_t tail = 0;
-    NSUInteger changedPixels = 0;
-    uint32_t startVisitIndex = (uint32_t)((NSUInteger)startY * width + (NSUInteger)startX);
-    visited[startVisitIndex] = YES;
-    queue[tail++] = startVisitIndex;
-    while (head < tail) {
-        uint32_t visitIndex = queue[head++];
-        NSInteger x = (NSInteger)(visitIndex % width);
-        NSInteger y = (NSInteger)(visitIndex / width);
-        NSUInteger pixelIndex = (bytesPerRow * y) + x * bytesPerPixel;
-        unsigned char currentR = rawData[pixelIndex];
-        unsigned char currentG = rawData[pixelIndex + 1];
-        unsigned char currentB = rawData[pixelIndex + 2];
-        unsigned char currentA = rawData[pixelIndex + 3];
-
-        CGFloat delta = fabs((CGFloat)currentR - startR) +
-                        fabs((CGFloat)currentG - startG) +
-                        fabs((CGFloat)currentB - startB) +
-                        fabs((CGFloat)currentA - startA);
-        if (delta > self.fillTolerance * 4.0) {
-            continue;
-        }
-
-        if (currentR != fillR || currentG != fillG || currentB != fillB || currentA != fillA) {
-            rawData[pixelIndex] = fillR;
-            rawData[pixelIndex + 1] = fillG;
-            rawData[pixelIndex + 2] = fillB;
-            rawData[pixelIndex + 3] = fillA;
-            changedPixels += 1;
-        }
-
-        uint32_t nextIndex = 0;
-        if (x + 1 < (NSInteger)width) {
-            nextIndex = visitIndex + 1;
-            if (!visited[nextIndex]) {
-                visited[nextIndex] = YES;
-                queue[tail++] = nextIndex;
-            }
-        }
-        if (x > 0) {
-            nextIndex = visitIndex - 1;
-            if (!visited[nextIndex]) {
-                visited[nextIndex] = YES;
-                queue[tail++] = nextIndex;
-            }
-        }
-        if (y + 1 < (NSInteger)height) {
-            nextIndex = visitIndex + (uint32_t)width;
-            if (!visited[nextIndex]) {
-                visited[nextIndex] = YES;
-                queue[tail++] = nextIndex;
-            }
-        }
-        if (y > 0) {
-            nextIndex = visitIndex - (uint32_t)width;
-            if (!visited[nextIndex]) {
-                visited[nextIndex] = YES;
-                queue[tail++] = nextIndex;
-            }
-        }
-    }
-
-    if (changedPixels == 0) {
-        CGContextRelease(context);
-        free(rawData);
-        free(visited);
-        free(queue);
-        return NO;
-    }
-
-    CGImageRef outputImageRef = CGBitmapContextCreateImage(context);
-    if (!outputImageRef) {
-        CGContextRelease(context);
-        free(rawData);
-        free(visited);
-        free(queue);
-        return NO;
-    }
-    UIImage *outputImage = [UIImage imageWithCGImage:outputImageRef scale:baseImage.scale orientation:UIImageOrientationUp];
-    CGImageRelease(outputImageRef);
-    CGContextRelease(context);
-    free(rawData);
-    free(visited);
-    free(queue);
-
-    self.backgroundImage = outputImage;
+    self.backgroundImage = [UIImage imageWithCGImage:filledImage scale:baseImage.scale orientation:UIImageOrientationUp];
     [self.strokes removeAllObjects];
     [self setNeedsDisplay];
     [self notifyContentChanged];
@@ -835,24 +676,9 @@ static const CGFloat KDStickerMaximumScale = 2.6;
         return nil;
     }
 
-    unsigned char pixel[4] = {0};
-    CGColorSpaceRef colorSpace = CGColorSpaceCreateDeviceRGB();
-    CGContextRef context = CGBitmapContextCreate(pixel, 1, 1, 8, 4, colorSpace, kCGImageAlphaPremultipliedLast | kCGBitmapByteOrder32Big);
-    CGColorSpaceRelease(colorSpace);
-    if (!context) {
-        return nil;
-    }
-
-    UIGraphicsPushContext(context);
-    CGRect drawRect = CGRectMake(-point.x, -point.y, imageSize.width, imageSize.height);
-    [image drawInRect:drawRect];
-    UIGraphicsPopContext();
-    CGContextRelease(context);
-
-    return [UIColor colorWithRed:pixel[0] / 255.0
-                           green:pixel[1] / 255.0
-                            blue:pixel[2] / 255.0
-                           alpha:pixel[3] / 255.0];
+    return [KCDrawingEngineBridge sampleColorFromImage:imageRef
+                                                    x:(NSInteger)(point.x * image.scale)
+                                                    y:(NSInteger)(point.y * image.scale)];
 }
 
 - (KDStickerView *)makeStickerViewWithSymbol:(NSString *)symbol color:(UIColor *)color {
@@ -1134,35 +960,7 @@ static const CGFloat KDStickerMaximumScale = 2.6;
 }
 
 - (UIBezierPath *)eraserShapePathForShape:(KDEraserShape)shape center:(CGPoint)center size:(CGFloat)size {
-    CGFloat radius = MAX(10.0, size * 0.55);
-    if (shape == KDEraserShapeCircle) {
-        return [UIBezierPath bezierPathWithOvalInRect:CGRectMake(center.x - radius, center.y - radius, radius * 2.0, radius * 2.0)];
-    }
-
-    if (shape == KDEraserShapeCloud) {
-        UIBezierPath *path = [UIBezierPath bezierPath];
-        [path appendPath:[UIBezierPath bezierPathWithOvalInRect:CGRectMake(center.x - radius * 1.1, center.y - radius * 0.45, radius * 0.95, radius * 0.78)]];
-        [path appendPath:[UIBezierPath bezierPathWithOvalInRect:CGRectMake(center.x - radius * 0.42, center.y - radius * 0.8, radius * 1.0, radius * 0.95)]];
-        [path appendPath:[UIBezierPath bezierPathWithOvalInRect:CGRectMake(center.x + radius * 0.16, center.y - radius * 0.38, radius * 0.92, radius * 0.72)]];
-        return path;
-    }
-
-    UIBezierPath *star = [UIBezierPath bezierPath];
-    NSInteger points = 5;
-    CGFloat outerRadius = radius;
-    CGFloat innerRadius = radius * 0.45;
-    for (NSInteger i = 0; i < points * 2; i++) {
-        CGFloat angle = (-M_PI_2) + i * (M_PI / points);
-        CGFloat currentRadius = (i % 2 == 0) ? outerRadius : innerRadius;
-        CGPoint point = CGPointMake(center.x + currentRadius * cos(angle), center.y + currentRadius * sin(angle));
-        if (i == 0) {
-            [star moveToPoint:point];
-        } else {
-            [star addLineToPoint:point];
-        }
-    }
-    [star closePath];
-    return star;
+    return [KCDrawingEngineBridge eraserStampPathWithShape:shape center:center size:size];
 }
 
 static void KDCollectPathPoints(void *info, const CGPathElement *element) {

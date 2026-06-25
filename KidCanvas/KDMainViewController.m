@@ -3,6 +3,7 @@
 #import "KDArtworkSession.h"
 #import "KDDrawingCanvasView.h"
 #import "KDSessionStore.h"
+#import "SessionStoreBridge.h"
 #import <math.h>
 #import <QuartzCore/QuartzCore.h>
 #import <objc/runtime.h>
@@ -93,10 +94,10 @@ static const void *KDPressBaseAlphaKey = &KDPressBaseAlphaKey;
 @property (nonatomic, strong) UIButton *deleteStickerButton;
 @property (nonatomic, strong) UIButton *frontStickerButton;
 @property (nonatomic, strong) UIStackView *stickerRowStack;
-@property (nonatomic, strong) KDSessionStore *sessionStore;
-@property (nonatomic, strong) NSArray<KDArtworkSession *> *sessions;
-@property (nonatomic, strong) KDArtworkSession *activeSession;
-@property (nonatomic, strong) KDArtworkSession *selectedHistorySession;
+@property (nonatomic, strong) SessionStoreBridge *sessionStore;
+@property (nonatomic, strong) NSArray<NSDictionary *> *sessions;
+@property (nonatomic, strong) NSDictionary *activeSession;
+@property (nonatomic, strong) NSDictionary *selectedHistorySession;
 @property (nonatomic, assign) BOOL showing36Palette;
 @property (nonatomic, assign) NSInteger historyPageIndex;
 @property (nonatomic, strong) NSTimer *draftSaveTimer;
@@ -134,8 +135,8 @@ static const void *KDPressBaseAlphaKey = &KDPressBaseAlphaKey;
     self.historyThumbButtons = [NSMutableArray array];
     self.stickerButtons = [NSMutableArray array];
     self.stickerCategoryButtons = [NSMutableArray array];
-    self.sessionStore = [[KDSessionStore alloc] init];
-    self.sessions = [self.sessionStore loadSessions];
+    self.sessionStore = [SessionStoreBridge shared];
+    self.sessions = [self.sessionStore loadSessionDictionaries];
     [self loadBrushWidthPreferences];
 
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(sceneWillResignActiveNotification:) name:UISceneWillDeactivateNotification object:nil];
@@ -1810,7 +1811,7 @@ static const void *KDPressBaseAlphaKey = &KDPressBaseAlphaKey;
 }
 
 - (void)refreshHistoryUI {
-    self.sessions = [self.sessionStore loadSessions];
+    self.sessions = [self.sessionStore loadSessionDictionaries];
     NSInteger maxPageIndex = [self maxHistoryPageIndex];
     self.historyPageIndex = MIN(MAX(0, self.historyPageIndex), maxPageIndex);
     self.previousHistoryButton.enabled = self.historyPageIndex > 0;
@@ -1819,7 +1820,7 @@ static const void *KDPressBaseAlphaKey = &KDPressBaseAlphaKey;
     self.nextHistoryButton.alpha = self.nextHistoryButton.enabled ? 1.0 : 0.45;
 
     UIImage *draftImage = [self.sessionStore loadDraftImage];
-    KDArtworkSession *selectedSession = [self currentSelectedHistorySession];
+    NSDictionary *selectedSession = [self currentSelectedHistorySession];
     BOOL canDeleteHistoryItem = selectedSession != nil || self.sessions.count > 0 || draftImage != nil;
     self.deleteHistoryButton.enabled = canDeleteHistoryItem;
     self.deleteHistoryButton.alpha = canDeleteHistoryItem ? 1.0 : 0.55;
@@ -1844,16 +1845,16 @@ static const void *KDPressBaseAlphaKey = &KDPressBaseAlphaKey;
         UIButton *button = self.historyThumbButtons[index];
         NSInteger sessionIndex = [self sessionIndexForHistoryThumbIndex:index];
         if (sessionIndex < self.sessions.count) {
-            KDArtworkSession *session = self.sessions[sessionIndex];
-            UIImage *image = [self.sessionStore thumbnailImageForSession:session];
+            NSDictionary *session = self.sessions[sessionIndex];
+            UIImage *image = [self.sessionStore thumbnailImageForSessionId:session[@"id"]];
             [button setBackgroundImage:image forState:UIControlStateNormal];
             button.imageView.hidden = image != nil;
             button.enabled = YES;
             button.accessibilityLabel = [NSString stringWithFormat:@"Saved Thumbnail %ld", (long)sessionIndex + 1];
             BOOL isActiveSession = self.activeSession != nil &&
-                [self.activeSession.sessionIdentifier isEqualToString:session.sessionIdentifier];
+                [self.activeSession[@"id"] isEqualToString:session[@"id"]];
             BOOL isSelectedSession = selectedSession != nil &&
-                [selectedSession.sessionIdentifier isEqualToString:session.sessionIdentifier];
+                [selectedSession[@"id"] isEqualToString:session[@"id"]];
             BOOL isDirtyActiveSession = isActiveSession && self.activeSessionHasUnsavedChanges;
             if (isDirtyActiveSession) {
                 button.accessibilityLabel = [NSString stringWithFormat:@"Unsaved Saved Thumbnail %ld", (long)sessionIndex + 1];
@@ -1901,13 +1902,13 @@ static const void *KDPressBaseAlphaKey = &KDPressBaseAlphaKey;
     return self.historyPageIndex * [self historyPageSize] + thumbIndex;
 }
 
-- (KDArtworkSession *)currentSelectedHistorySession {
-    if (!self.selectedHistorySession.sessionIdentifier.length) {
+- (NSDictionary *)currentSelectedHistorySession {
+    if (![self.selectedHistorySession[@"id"] length]) {
         return nil;
     }
 
-    for (KDArtworkSession *session in self.sessions) {
-        if ([session.sessionIdentifier isEqualToString:self.selectedHistorySession.sessionIdentifier]) {
+    for (NSDictionary *session in self.sessions) {
+        if ([session[@"id"] isEqualToString:self.selectedHistorySession[@"id"]]) {
             return session;
         }
     }
@@ -2182,7 +2183,7 @@ static const void *KDPressBaseAlphaKey = &KDPressBaseAlphaKey;
         self.draftSaveTimer = nil;
         self.suppressNextDraftSave = YES;
         [self.canvasView startBlankCanvas];
-        [self.sessionStore clearDraftImage];
+        [self.sessionStore clearDraft];
         [self refreshHistoryUI];
         [self refreshActionButtons];
     }]];
@@ -2234,7 +2235,7 @@ static const void *KDPressBaseAlphaKey = &KDPressBaseAlphaKey;
     }
 
     UIImage *snapshot = [self.canvasView snapshotImage];
-    KDArtworkSession *savedSession = [self.sessionStore saveImage:snapshot existingSession:self.activeSession];
+    NSDictionary *savedSession = [self.sessionStore saveImage:snapshot existingSessionId:self.activeSession[@"id"]];
     if (!savedSession) {
         [self showSaveToastWithSuccess:NO];
         return;
@@ -2245,7 +2246,7 @@ static const void *KDPressBaseAlphaKey = &KDPressBaseAlphaKey;
     self.activeSessionHasUnsavedChanges = NO;
     [self.draftSaveTimer invalidate];
     self.draftSaveTimer = nil;
-    [self.sessionStore clearDraftImage];
+    [self.sessionStore clearDraft];
     self.historyPageIndex = 0;
     [self refreshHistoryUI];
     [self refreshActionButtons];
@@ -2265,13 +2266,13 @@ static const void *KDPressBaseAlphaKey = &KDPressBaseAlphaKey;
 
 - (void)didTapDeleteLatestSession {
     UIImage *draftImage = [self.sessionStore loadDraftImage];
-    KDArtworkSession *selectedSession = [self currentSelectedHistorySession];
+    NSDictionary *selectedSession = [self currentSelectedHistorySession];
     BOOL shouldDeleteDraft = selectedSession == nil && self.activeSession == nil && draftImage != nil;
     if (self.sessions.count == 0 && !shouldDeleteDraft) {
         return;
     }
 
-    KDArtworkSession *session = shouldDeleteDraft ? nil : (selectedSession ?: (self.activeSession ?: self.sessions.firstObject));
+    NSDictionary *session = shouldDeleteDraft ? nil : (selectedSession ?: (self.activeSession ?: self.sessions.firstObject));
     NSString *title = shouldDeleteDraft ? @"Delete Draft" : @"Delete Session";
     NSString *message = shouldDeleteDraft ? @"Remove this draft artwork?" : @"Remove this saved artwork?";
     UIAlertController *alert = [UIAlertController alertControllerWithTitle:title message:message preferredStyle:UIAlertControllerStyleAlert];
@@ -2280,15 +2281,15 @@ static const void *KDPressBaseAlphaKey = &KDPressBaseAlphaKey;
         if (shouldDeleteDraft) {
             [self.draftSaveTimer invalidate];
             self.draftSaveTimer = nil;
-            [self.sessionStore clearDraftImage];
+            [self.sessionStore clearDraft];
             if (self.activeSession == nil) {
                 self.suppressNextDraftSave = YES;
                 [self.canvasView startBlankCanvas];
-                [self.sessionStore clearDraftImage];
+                [self.sessionStore clearDraft];
             }
         } else {
-            BOOL deletingActiveSession = [self.activeSession.sessionIdentifier isEqualToString:session.sessionIdentifier];
-            [self.sessionStore deleteSession:session];
+            BOOL deletingActiveSession = [self.activeSession[@"id"] isEqualToString:session[@"id"]];
+            [self.sessionStore deleteSessionWithId:session[@"id"]];
             if (deletingActiveSession) {
                 self.activeSession = nil;
                 self.selectedHistorySession = nil;
@@ -2297,9 +2298,9 @@ static const void *KDPressBaseAlphaKey = &KDPressBaseAlphaKey;
                 self.draftSaveTimer = nil;
                 self.suppressNextDraftSave = YES;
                 [self.canvasView startBlankCanvas];
-                [self.sessionStore clearDraftImage];
+                [self.sessionStore clearDraft];
             }
-            if ([self.selectedHistorySession.sessionIdentifier isEqualToString:session.sessionIdentifier]) {
+            if ([self.selectedHistorySession[@"id"] isEqualToString:session[@"id"]]) {
                 self.selectedHistorySession = nil;
             }
         }
@@ -2507,7 +2508,7 @@ static const void *KDPressBaseAlphaKey = &KDPressBaseAlphaKey;
     [self.draftSaveTimer invalidate];
     self.draftSaveTimer = nil;
     if (!preservedDraft) {
-        [self.sessionStore clearDraftImage];
+        [self.sessionStore clearDraft];
     }
     [self.canvasView loadLineArtImage:lineArt];
     [self selectToolMode:KDToolModeFill];
@@ -2565,7 +2566,7 @@ static const void *KDPressBaseAlphaKey = &KDPressBaseAlphaKey;
 - (void)didTapHistoryThumb:(UIButton *)button {
     NSInteger index = [self sessionIndexForHistoryThumbIndex:button.tag];
     if (index < self.sessions.count) {
-        KDArtworkSession *session = self.sessions[index];
+        NSDictionary *session = self.sessions[index];
         self.selectedHistorySession = session;
         [self openSession:session];
     }
@@ -2614,8 +2615,8 @@ static const void *KDPressBaseAlphaKey = &KDPressBaseAlphaKey;
     [self refreshSizePreview];
 }
 
-- (void)openSession:(KDArtworkSession *)session {
-    UIImage *image = [self.sessionStore artworkImageForSession:session];
+- (void)openSession:(NSDictionary *)session {
+    UIImage *image = [self.sessionStore artworkImageForSessionId:session[@"id"]];
     if (!image) {
         return;
     }
@@ -2628,7 +2629,7 @@ static const void *KDPressBaseAlphaKey = &KDPressBaseAlphaKey;
     self.suppressNextDraftSave = YES;
     [self.canvasView restoreCanvasWithImage:image];
     if (!preservedDraft) {
-        [self.sessionStore clearDraftImage];
+        [self.sessionStore clearDraft];
     }
     [self updateHistoryPageForActiveSession];
     [self refreshHistoryUI];
@@ -2648,12 +2649,12 @@ static const void *KDPressBaseAlphaKey = &KDPressBaseAlphaKey;
 }
 
 - (void)updateHistoryPageForActiveSession {
-    if (!self.activeSession.sessionIdentifier.length) {
+    if (!self.activeSession[@"id"]) {
         return;
     }
 
-    NSUInteger index = [self.sessions indexOfObjectPassingTest:^BOOL(KDArtworkSession *candidate, NSUInteger idx, BOOL *stop) {
-        return [candidate.sessionIdentifier isEqualToString:self.activeSession.sessionIdentifier];
+    NSUInteger index = [self.sessions indexOfObjectPassingTest:^BOOL(NSDictionary *candidate, NSUInteger idx, BOOL *stop) {
+        return [candidate[@"id"] isEqualToString:self.activeSession[@"id"]];
     }];
     if (index != NSNotFound) {
         self.historyPageIndex = index / MAX(1, [self historyPageSize]);
@@ -2693,7 +2694,7 @@ static const void *KDPressBaseAlphaKey = &KDPressBaseAlphaKey;
         [self.draftSaveTimer invalidate];
         self.draftSaveTimer = nil;
         if (!preservedDraft) {
-            [self.sessionStore clearDraftImage];
+            [self.sessionStore clearDraft];
         }
         [self.canvasView replaceCanvasWithImage:normalizedImage];
         [self refreshHistoryUI];
@@ -2933,7 +2934,7 @@ static const void *KDPressBaseAlphaKey = &KDPressBaseAlphaKey;
     }
 
     if (![self.canvasView hasVisibleContent]) {
-        [self.sessionStore clearDraftImage];
+        [self.sessionStore clearDraft];
         [self refreshHistoryUI];
         return;
     }

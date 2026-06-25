@@ -1,48 +1,67 @@
 # KidCanvas
 
-UIKit / Objective-C drawing app prototype for iPad. The first version is landscape-only and uses a full-screen canvas with floating tool panels.
+KidCanvas 是一个面向儿童的 iPhone / iPad 绘画应用项目。当前仓库包含已有原型、产品文档、架构设计文档，以及后续向 `Swift-first + SPM 模块化` 演进的方案。
 
-## Run
+English version: [README.en.md](/Volumes/xiaoda_SSD/KidCanvas/justdraw/README.en.md)
 
-1. Open `KidCanvas.xcodeproj` in Xcode on macOS.
-2. Select an iPad simulator, for example iPad Pro 11-inch.
-3. Build and run the `KidCanvas` scheme.
-4. Rotate the simulator to landscape if needed.
+## 当前状态
 
-This repository was prepared from Windows, so `xcodebuild` has not been run locally in this workspace.
-On macOS, the shared scheme is `KidCanvas`, so command-line verification can use `xcodebuild -project KidCanvas.xcodeproj -scheme KidCanvas -destination 'platform=iOS Simulator,name=iPad Pro 11-inch (M4)' build` after confirming the simulator name on that Mac.
+- 当前工程仍保留可参考的原型实现。
+- 架构方向已经明确为：`Swift-first`、`SPM modularization`、`UIKit/Core Graphics canvas core`、`SwiftUI panels where appropriate`。
+- 正式文档已归档到 `docs/`。
+- AI 协作材料位于 `ai-docs/`，默认不进入版本库。
 
-## Validate
+## 文档导航
 
-Run the lightweight local checks before opening Xcode:
+- 产品需求 / Product requirements:
+  [docs/product/prd.md](/Volumes/xiaoda_SSD/KidCanvas/justdraw/docs/product/prd.md)
+- 技术架构 / Technical architecture:
+  [docs/architecture/TECHNICAL_ARCHITECTURE.md](/Volumes/xiaoda_SSD/KidCanvas/justdraw/docs/architecture/TECHNICAL_ARCHITECTURE.md)
+- 模块化架构 / Modular architecture:
+  [docs/architecture/MODULAR_ARCHITECTURE_DESIGN.md](/Volumes/xiaoda_SSD/KidCanvas/justdraw/docs/architecture/MODULAR_ARCHITECTURE_DESIGN.md)
+- 代码规范 / Coding standards:
+  [docs/architecture/CODING_STANDARDS.md](/Volumes/xiaoda_SSD/KidCanvas/justdraw/docs/architecture/CODING_STANDARDS.md)
+- 模块解耦 / Module decoupling:
+  [docs/architecture/MODULE_DECOUPLING_GUIDELINES.md](/Volumes/xiaoda_SSD/KidCanvas/justdraw/docs/architecture/MODULE_DECOUPLING_GUIDELINES.md)
+- 版本记录 / Release notes:
+  [docs/release/CHANGELOG.md](/Volumes/xiaoda_SSD/KidCanvas/justdraw/docs/release/CHANGELOG.md)
+- AI 协作区 / AI collaboration workspace:
+  `ai-docs/`
+
+## 快速开始
+
+1. 在 macOS 上用 Xcode 打开 `KidCanvas.xcodeproj`。
+2. 选择一个 iPhone 或 iPad 模拟器运行 `KidCanvas` scheme。
+3. 如果需要命令行构建，先确认本机可用的 simulator 名称，再执行：
 
 ```bash
-python scripts/validate_project.py
+xcodebuild -project KidCanvas.xcodeproj -scheme KidCanvas -destination 'platform=iOS Simulator,name=KidCanvas iPad Pro 11 M4' build
 ```
 
-This verifies plist/json parsing, project references, Objective-C source structure, iPad landscape settings, the no-Chinese-UI rule, and source-level coverage for the requested drawing, color, fill, sticker, line-art, history, import, and save features.
+## 本地校验
 
-## Scope
+如需运行当前仓库附带的轻量校验脚本，请使用：
 
-- iPad only.
-- Landscape only.
-- Single canvas-first screen.
-- Floating controls with no Chinese UI text.
-- 24/36 color palettes, custom color picker, and eyedropper.
-- Pencil, pen, crayon, fill, eraser, sticker, undo, redo, import, save.
-- Eraser size slider plus circle, cloud, and star shapes.
-- Built-in line art templates for fill mode.
-- Built-in stickers. Sticker import is intentionally out of v1.
-- Saved history with thumbnails, draft restore, photo import, and delete.
+```bash
+python3 scripts/validate_project.py
+```
 
-## Simulator Checklist
+该脚本主要校验：
 
-- Draw with pencil, pen, and crayon; verify width slider changes stroke size.
-- Tap once with brush and eraser; verify a dot/stamp appears.
-- Switch 24/36 palettes, custom color, and eyedropper.
-- Use fill on a closed line art region.
-- Add, move, pinch, rotate, bring forward, and delete stickers.
-- Save artwork; verify it appears in History and Photos permission flow behaves correctly.
-- Relaunch after drawing; verify draft thumbnail and restore.
-- Import a photo from the library, then save/delete the session.
-- Use undo/redo across draw, fill, import, line art, sticker insert, and sticker transform.
+- plist / json 可解析
+- Xcode 工程引用完整
+- iPhone / iPad 横屏配置正确
+- 原型能力覆盖到绘制、填色、贴纸、历史、导入导出等核心范围
+
+## 仓库说明
+
+- `KidCanvas/`：当前应用工程源码
+- `docs/`：正式文档
+- `ai-docs/`：本地 AI 协作文档
+- `scripts/`：辅助脚本
+
+## 维护原则
+
+- 中文优先，必要处支持英文术语。
+- 正式设计和规范优先写入 `docs/`。
+- 新增架构与代码应遵循模块化、分层、解耦原则。
