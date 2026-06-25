@@ -45,6 +45,12 @@ App -> Feature -> Core/Infra -> Domain -> Common
 - Feature 互相直接引用实现细节
 - App 层直接操作底层文件和图像算法
 
+允许边界：
+
+- `KCDomain` / `KCCommon` 可以使用 CoreGraphics 的基础几何类型，例如 `CGPoint`、`CGSize`、`CGRect`、`CGAffineTransform`
+- `CGImage`、位图 buffer、颜色采样、渲染上下文等图像处理类型应放在 `KCDrawingEngine` 或明确的 Infra/Core 模块中
+- `UIColor`、`UIImage`、`UIView`、`UIViewController` 不得进入 `KCDomain` / `KCCommon`
+
 ### 2.4 可测试优先
 
 可抽离为纯 Swift 逻辑的部分，应优先从 UIKit / SwiftUI 中抽离，方便单元测试。
@@ -53,18 +59,20 @@ App -> Feature -> Core/Infra -> Domain -> Common
 
 ### 3.1 模块命名
 
-SPM target 统一采用前缀 `KC`：
+SPM target 统一采用前缀 `KC`。模块列表必须区分当前已实现模块和规划中模块。
 
-- `KCCommon`
-- `KCDomain`
-- `KCDesignSystem`
-- `KCDrawingEngine`
-- `KCSessionPersistence`
-- `KCPhotoLibrary`
-- `KCContentCatalog`
-- `KCEditorPanelsFeature`
-- `KCHistoryFeature`
-- `KCCanvasFeature`
+| 模块 | 状态 | 说明 |
+|:---|:---|:---|
+| `KCCommon` | 已实现 | 公共工具、错误、日志等基础能力 |
+| `KCDomain` | 已实现 | 业务模型、状态、协议 |
+| `KCDrawingEngine` | 已实现 | 画布算法、位图处理、笔刷计算 |
+| `KCSessionPersistence` | 已实现 | 会话、草稿、缩略图持久化 |
+| `KCContentCatalog` | 已实现 | 贴纸、线稿、调色板目录 |
+| `KCDesignSystem` | 规划中 | 设计系统与通用 UI 样式 |
+| `KCPhotoLibrary` | 规划中 | 相册导入导出与权限适配 |
+| `KCEditorPanelsFeature` | 规划中 | 工具、颜色、贴纸、线稿等编辑面板 |
+| `KCHistoryFeature` | 规划中 | 历史作品与草稿入口 |
+| `KCCanvasFeature` | 规划中 | 主画布业务编排 |
 
 App 壳层保留业务名：
 
@@ -152,17 +160,22 @@ KCSessionPersistence/
 
 - 类型名使用 PascalCase
 - 名称应表达职责，而不是技术细节
+- `Packages/KidCanvasModules` 内的跨模块 `public` / `open` 类型必须使用 `KC` 前缀
+- 一个文件如果以某个跨模块主类型为中心，文件名必须与该主类型一致，也必须使用 `KC` 前缀
 
 推荐：
+
+- `KCDrawingCanvasView`
+- `KCSessionStore`
+- `KCPhotoLibraryService`
+- `KCEditorToolState`
+- `KCLineArtCatalog`
+
+避免：
 
 - `DrawingCanvasView`
 - `SessionStore`
 - `PhotoLibraryService`
-- `EditorToolState`
-- `LineArtCatalog`
-
-避免：
-
 - `Manager`
 - `Helper`
 - `Util`
@@ -170,18 +183,40 @@ KCSessionPersistence/
 
 除非职责真的非常清晰，否则不要使用含糊大词。
 
+### 5.1.1 SPM 模块内文件命名
+
+`Packages/KidCanvasModules` 是项目正式模块化承载，命名要体现项目归属。
+
+强制规则：
+
+- `Sources/` 下的主源码文件必须使用 `KC` 前缀
+- 文件名应与文件内主类型一致，例如 `KCSessionStore.swift` 内定义 `KCSessionStore`
+- `public` / `open` 的 struct、class、enum、protocol、actor 必须使用 `KC` 前缀
+- 测试文件应跟随被测类型，例如 `KCSessionStoreTests.swift`
+- 新增 bridge、facade、repository、service、engine、catalog 类型时同样必须使用 `KC` 前缀
+
+允许例外：
+
+- `Package.swift`
+- Swift 标准入口或系统约定文件
+- 仅在单文件内部使用的 `private` / `fileprivate` helper
+- Apple 协议扩展、系统类型 extension，例如 `extension UIColor`
+
+当前已经存在的非 `KC` 文件和类型，应作为命名收敛任务处理，不要在功能迁移中顺手零散改名。
+
 ### 5.2 协议命名
 
 协议名优先表达能力，而不是机械加 `Protocol`。
 
 推荐：
 
-- `SessionRepository`
-- `PhotoImporting`
-- `CanvasSnapshotProviding`
+- `KCSessionRepository`
+- `KCPhotoImporting`
+- `KCCanvasSnapshotProviding`
 
 不推荐：
 
+- `SessionRepository`
 - `SessionRepositoryProtocol`
 - `PhotoServiceProtocol`
 
@@ -261,16 +296,96 @@ KCSessionPersistence/
 width = value
 ```
 
-### 6.4 错误处理
+### 6.4 文件头规范
+
+AI 或人工新建源码文件时，必须在文件顶部保留 Xcode 风格文件头。
+
+适用范围：
+
+- Swift 源文件：`.swift`
+- Objective-C 头文件：`.h`
+- Objective-C 实现文件：`.m`
+- 后续新增的同类源码文件
+
+文件头必须包含：
+
+- 文件名
+- 所属 target、package 或工程名
+- 创建人：`小大`
+- 创建日期：使用 `YYYY/MM/DD` 零填充格式
+
+Swift 文件示例：
+
+```swift
+//
+//  SessionStoreBridge.swift
+//  KidCanvas
+//
+//  Created by 小大 on 2026/06/25.
+//
+```
+
+Objective-C 文件示例：
+
+```objc
+//
+//  KDMainViewController.m
+//  KidCanvas
+//
+//  Created by 小大 on 2026/06/25.
+//
+```
+
+约束：
+
+- Codex、Claude 或其他 AI 新建文件时必须主动补齐文件头
+- 迁移 Objective-C 到 Swift 时，新 Swift 文件也必须补齐文件头
+- 修改旧文件时，如文件头缺失，且本次修改涉及该文件，应顺手补齐
+- 文件头只记录基础归属信息，不写任务说明、迁移说明或实现细节
+
+### 6.5 错误处理
 
 - 预期失败使用 `throws` 或显式 `Result`
 - 不要静默吞错误
 - 用户可见失败要映射成明确的 UI 反馈
+- 产品主逻辑不得用 `try?` 隐藏失败原因
+- 临时桥接层、适配层允许使用 `try?` 做降级，但必须在方法注释或方法命名中说明降级行为，并在上层提供可恢复路径
 
 禁止：
 
 - 大量 `try?` 直接忽略错误
 - 无说明地 `catch {}` 空处理
+
+### 6.6 Swift / Objective-C 桥接规范
+
+迁移期允许保留薄桥接层，但桥接层只能做语言边界转换，不承载业务规则。
+
+命名规则：
+
+- Swift bridge 使用 `KCXxxBridge.swift`
+- Objective-C 手写头使用 `KCXxxBridge.h`
+- App target 内临时 bridge 也必须遵守文件头规范
+
+边界规则：
+
+- SPM 模块内优先保持纯 Swift API
+- Objective-C 兼容逻辑放在 App target bridge 中
+- bridge 可以引用 UIKit 做 `UIImage` / `UIColor` / `UIBezierPath` 转换，但不得把 UIKit 类型下沉到 `KCDomain` / `KCCommon`
+- bridge 方法应尽量薄，只做参数转换、结果包装、错误降级和向 Swift 模块转发
+- 长期不应使用 `[String: Any]` 作为跨语言数据模型；迁移稳定后应收敛为明确的 `@objc NSObject` DTO 或 Swift typed model
+
+头文件规则：
+
+- 当前工程迁移期不要依赖自动生成的 `KidCanvas-Swift.h`
+- 如 `KidCanvas-Swift.h` 生成为空或不稳定，必须手写 Objective-C bridge header
+- 手写 header 的 selector 必须与 Swift `@objc` 暴露的方法一致
+- 更新 bridge 后，应通过构建产物或编译验证确认 selector 可用，例如使用 `strings` / `nm` 检查 `.o` 或最终二进制
+
+禁止：
+
+- 在 bridge 中实现画布算法、存储算法或 UI 编排逻辑
+- 为了 Objective-C 调用方便扩大 SPM 模块 public API
+- 在多个 bridge 中重复包装同一能力
 
 ## 7. SwiftUI 规范
 
@@ -392,6 +507,18 @@ SwiftUI 页面拆分标准：
 - package resources
 - asset catalog
 
+迁移中间态：
+
+- 允许 `KCContentCatalog` 暂时保留已模块化、可测试的硬编码内容数据
+- 迁移中间态必须集中在 Catalog 模块内，不得散落到 ViewController、Feature 或 App 层
+- 硬编码内容文件必须标注后续迁移意图：
+
+```swift
+// TODO(content): move to JSON/package resource.
+```
+
+- 迁移稳定后，贴纸、线稿、调色板等内容应统一迁移到 JSON、package resources 或 asset catalog
+
 ### 10.3 资源命名
 
 统一使用语义化名称：
@@ -419,11 +546,13 @@ SwiftUI 页面拆分标准：
 
 ### 11.2 测试命名
 
-测试方法应描述行为和结果：
+测试方法使用 XCTest 常见 camelCase 风格，并描述行为和结果：
 
-- `test_saveSession_writesMetadataAndThumbnail()`
-- `test_floodFill_rejectsOversizedBitmap()`
-- `test_restoreDraft_returnsNilWhenMissingFile()`
+- `testSaveSessionWritesMetadataAndThumbnail()`
+- `testFloodFillRejectsOversizedBitmap()`
+- `testRestoreDraftReturnsNilWhenMissingFile()`
+
+每迁移一个 Objective-C 算法到 Swift，都必须同步补行为锚点测试，避免只移动代码、不建立回归保护。
 
 ### 11.3 回归关注点
 
@@ -514,4 +643,3 @@ AI 协作文档放在：
 5. 最后收缩 App 壳层
 
 在迁移过程中，这份规范优先级高于临时个人习惯。
-

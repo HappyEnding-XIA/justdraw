@@ -70,6 +70,13 @@ NS_ASSUME_NONNULL_BEGIN
                                              center:(CGPoint)center
                                                size:(CGFloat)size;
 
+// MARK: - Eraser stamp interpolation
+
+/// Returns interpolated stamp center positions along `path`, spaced by
+/// `max(6, lineWidth * 0.38)`. Returns NSValue-wrapped CGPoint array.
++ (NSArray<NSValue *> *)eraserStampPointsAlongPath:(CGPathRef)path
+                                         lineWidth:(CGFloat)lineWidth;
+
 @end
 
 NS_ASSUME_NONNULL_END

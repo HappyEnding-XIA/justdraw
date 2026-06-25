@@ -1,6 +1,13 @@
+//
+//  KCArtworkSession.swift
+//  KCDomain
+//
+//  Created by 小大 on 2026/06/25.
+//
+
 import Foundation
 
-public struct ArtworkSession: Codable, Equatable, Identifiable, Sendable {
+public struct KCArtworkSession: Codable, Equatable, Identifiable, Sendable {
     public let id: String
     public var title: String
     public var artworkFileName: String

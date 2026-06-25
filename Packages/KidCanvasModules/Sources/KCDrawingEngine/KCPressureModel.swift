@@ -1,3 +1,10 @@
+//
+//  KCPressureModel.swift
+//  KCDrawingEngine
+//
+//  Created by 小大 on 2026/06/25.
+//
+
 import Foundation
 import KCDomain
 
@@ -6,7 +13,7 @@ import KCDomain
 ///
 /// Splitting the math out of the touch handler makes it unit-testable and lets
 /// the eventual UIKit canvas view stay a thin adapter over this model.
-public enum PressureModel {
+public enum KCPressureModel {
     /// Finger (non-Pencil) normalization:
     /// `min(1.18, max(0.92, 0.96 + normalizedForce * 0.28))`.
     public static func finger(normalizedForce: Double) -> Double {

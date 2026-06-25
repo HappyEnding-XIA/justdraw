@@ -1,3 +1,10 @@
+//
+//  KCSessionStore.swift
+//  KCSessionPersistence
+//
+//  Created by 小大 on 2026/06/25.
+//
+
 import Foundation
 import KCDomain
 import KCCommon
@@ -8,13 +15,13 @@ import KCCommon
 ///
 /// The app supplies a concrete migrator at startup; this package defines the seam
 /// and keeps the on-disk layout compatible.
-public protocol LegacySessionMigrator: Sendable {
+public protocol KCLegacySessionMigrator: Sendable {
     /// Returns sessions read from the legacy `sessions.archive`, or `nil` if the
     /// archive cannot be decoded by this migrator.
-    func decode(legacyArchiveAt url: URL) -> [ArtworkSession]?
+    func decode(legacyArchiveAt url: URL) -> [KCArtworkSession]?
 }
 
-/// File-backed session persistence implementing `SessionRepository`.
+/// File-backed session persistence implementing `KCSessionRepository`.
 ///
 /// On-disk layout matches the Objective-C `KDSessionStore`:
 /// - `<uuid>.png` full artwork
@@ -24,7 +31,7 @@ public protocol LegacySessionMigrator: Sendable {
 ///
 /// A save that fails partway rolls back image files to their previous state, so
 /// the metadata index never references missing artwork.
-public final class SessionStore: SessionRepository, @unchecked Sendable {
+public final class KCSessionStore: KCSessionRepository, @unchecked Sendable {
     public static let defaultDirectoryName = "KidCanvasSessions"
     public static let metadataFileName = "sessions.json"
     public static let legacyMetadataFileName = "sessions.archive"
@@ -34,14 +41,14 @@ public final class SessionStore: SessionRepository, @unchecked Sendable {
     private let metadataURL: URL
     private let legacyMetadataURL: URL
     private let draftURL: URL
-    private let legacyMigrator: LegacySessionMigrator?
+    private let legacyMigrator: KCLegacySessionMigrator?
     private let now: () -> Date
     private let makeID: () -> String
     private let fileManager: FileManager
     private let lock = NSLock()
 
     /// Creates a store rooted at `Documents/KidCanvasSessions/`.
-    public convenience init(legacyMigrator: LegacySessionMigrator? = nil) {
+    public convenience init(legacyMigrator: KCLegacySessionMigrator? = nil) {
         let documents = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first
             ?? URL(fileURLWithPath: NSTemporaryDirectory())
         self.init(
@@ -53,7 +60,7 @@ public final class SessionStore: SessionRepository, @unchecked Sendable {
     /// Creates a store rooted at an explicit directory (used for tests).
     public init(
         directoryURL: URL,
-        legacyMigrator: LegacySessionMigrator? = nil,
+        legacyMigrator: KCLegacySessionMigrator? = nil,
         now: @escaping () -> Date = Date.init,
         makeID: @escaping () -> String = { UUID().uuidString },
         fileManager: FileManager = .default
@@ -68,9 +75,9 @@ public final class SessionStore: SessionRepository, @unchecked Sendable {
         self.fileManager = fileManager
     }
 
-    // MARK: - SessionRepository
+    // MARK: - KCSessionRepository
 
-    public func loadSessions() throws -> [ArtworkSession] {
+    public func loadSessions() throws -> [KCArtworkSession] {
         lock.lock(); defer { lock.unlock() }
         try ensureDirectoryExists()
 
@@ -82,7 +89,7 @@ public final class SessionStore: SessionRepository, @unchecked Sendable {
         if let migrator = legacyMigrator,
            fileManager.fileExists(atPath: legacyMetadataURL.path),
            let migrated = migrator.decode(legacyArchiveAt: legacyMetadataURL) {
-            let document = SessionMetadataDocument(schemaVersion: Self.schemaVersion, sessions: migrated)
+            let document = KCSessionMetadataDocument(schemaVersion: Self.schemaVersion, sessions: migrated)
             try? writeMetadataDocument(document)
             return migrated.sorted { $0.modifiedAt > $1.modifiedAt }
         }
@@ -93,8 +100,8 @@ public final class SessionStore: SessionRepository, @unchecked Sendable {
     public func saveArtwork(
         pngData: Data,
         thumbnailJPEGData: Data,
-        existing: ArtworkSession?
-    ) throws -> ArtworkSession? {
+        existing: KCArtworkSession?
+    ) throws -> KCArtworkSession? {
         guard !pngData.isEmpty, !thumbnailJPEGData.isEmpty else { return nil }
 
         lock.lock(); defer { lock.unlock() }
@@ -102,7 +109,7 @@ public final class SessionStore: SessionRepository, @unchecked Sendable {
 
         var sessions = (readMetadataDocument()?.sessions) ?? []
 
-        // Resolve identity first so `ArtworkSession.id` (a `let`) is never mutated.
+        // Resolve identity first so `KCArtworkSession.id` (a `let`) is never mutated.
         let id: String
         let artworkFileName: String
         let thumbnailFileName: String
@@ -123,7 +130,7 @@ public final class SessionStore: SessionRepository, @unchecked Sendable {
         let title = inheritedTitle.isEmpty
             ? "Artwork \(Self.titleFormatter.string(from: modifiedAt))"
             : inheritedTitle
-        let session = ArtworkSession(
+        let session = KCArtworkSession(
             id: id,
             title: title,
             artworkFileName: artworkFileName,
@@ -158,7 +165,7 @@ public final class SessionStore: SessionRepository, @unchecked Sendable {
         }
 
         do {
-            try writeMetadataDocument(SessionMetadataDocument(
+            try writeMetadataDocument(KCSessionMetadataDocument(
                 schemaVersion: Self.schemaVersion,
                 sessions: sessions
             ))
@@ -171,17 +178,17 @@ public final class SessionStore: SessionRepository, @unchecked Sendable {
         return session
     }
 
-    public func artworkData(for session: ArtworkSession) -> Data? {
+    public func artworkData(for session: KCArtworkSession) -> Data? {
         guard !session.artworkFileName.isEmpty else { return nil }
         return try? Data(contentsOf: directoryURL.appendingPathComponent(session.artworkFileName))
     }
 
-    public func thumbnailData(for session: ArtworkSession) -> Data? {
+    public func thumbnailData(for session: KCArtworkSession) -> Data? {
         guard !session.thumbnailFileName.isEmpty else { return nil }
         return try? Data(contentsOf: directoryURL.appendingPathComponent(session.thumbnailFileName))
     }
 
-    public func delete(_ session: ArtworkSession) throws {
+    public func delete(_ session: KCArtworkSession) throws {
         guard !session.id.isEmpty else { return }
         lock.lock(); defer { lock.unlock() }
 
@@ -198,7 +205,7 @@ public final class SessionStore: SessionRepository, @unchecked Sendable {
         for index in indexes.sorted(by: >) {
             sessions.remove(at: index)
         }
-        try writeMetadataDocument(SessionMetadataDocument(
+        try writeMetadataDocument(KCSessionMetadataDocument(
             schemaVersion: Self.schemaVersion,
             sessions: sessions
         ))
@@ -241,15 +248,15 @@ public final class SessionStore: SessionRepository, @unchecked Sendable {
         try fileManager.createDirectory(at: directoryURL, withIntermediateDirectories: true)
     }
 
-    private func readMetadataDocument() -> SessionMetadataDocument? {
+    private func readMetadataDocument() -> KCSessionMetadataDocument? {
         guard fileManager.fileExists(atPath: metadataURL.path),
               let data = try? Data(contentsOf: metadataURL) else {
             return nil
         }
-        return try? Self.makeDecoder().decode(SessionMetadataDocument.self, from: data)
+        return try? Self.makeDecoder().decode(KCSessionMetadataDocument.self, from: data)
     }
 
-    private func writeMetadataDocument(_ document: SessionMetadataDocument) throws {
+    private func writeMetadataDocument(_ document: KCSessionMetadataDocument) throws {
         let data = try Self.makeEncoder().encode(document)
         try data.write(to: metadataURL, options: .atomic)
     }
@@ -279,7 +286,7 @@ public final class SessionStore: SessionRepository, @unchecked Sendable {
 }
 
 /// Codable envelope for the JSON metadata file, carrying a schema version.
-struct SessionMetadataDocument: Codable {
+struct KCSessionMetadataDocument: Codable {
     var schemaVersion: Int
-    var sessions: [ArtworkSession]
+    var sessions: [KCArtworkSession]
 }

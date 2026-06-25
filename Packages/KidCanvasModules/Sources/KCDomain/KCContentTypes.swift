@@ -1,13 +1,20 @@
+//
+//  KCContentTypes.swift
+//  KCDomain
+//
+//  Created by 小大 on 2026/06/25.
+//
+
 import Foundation
 import KCCommon
 
 /// A named color palette (e.g. the built-in 24- and 36-color sets).
-public struct ContentPalette: Codable, Equatable, Sendable, Identifiable {
+public struct KCContentPalette: Codable, Equatable, Sendable, Identifiable {
     public let id: String
     public var title: String
-    public var colors: [HexColor]
+    public var colors: [KCHexColor]
 
-    public init(id: String, title: String, colors: [HexColor]) {
+    public init(id: String, title: String, colors: [KCHexColor]) {
         self.id = id
         self.title = title
         self.colors = colors
@@ -15,7 +22,7 @@ public struct ContentPalette: Codable, Equatable, Sendable, Identifiable {
 }
 
 /// A grouped set of sticker SF Symbol identifiers sharing a category.
-public struct StickerGroup: Codable, Equatable, Sendable, Identifiable {
+public struct KCStickerGroup: Codable, Equatable, Sendable, Identifiable {
     public let id: String
     public var title: String
     public var symbols: [String]
@@ -29,7 +36,7 @@ public struct StickerGroup: Codable, Equatable, Sendable, Identifiable {
 
 /// Metadata for a built-in line-art template. The procedural drawing itself is
 /// produced by the drawing engine; this type only describes the catalog entry.
-public struct LineArtTemplate: Codable, Equatable, Sendable, Identifiable {
+public struct KCLineArtTemplate: Codable, Equatable, Sendable, Identifiable {
     public let id: String
     public var title: String
     public var category: String

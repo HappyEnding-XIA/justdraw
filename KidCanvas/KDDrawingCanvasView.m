@@ -1,3 +1,10 @@
+//
+//  KDDrawingCanvasView.m
+//  KidCanvas
+//
+//  Created by 小大 on 2026/6/25.
+//
+
 #import "KDDrawingCanvasView.h"
 #import "KCDrawingEngineBridge.h"
 
@@ -5,7 +12,6 @@
 #import <limits.h>
 #import <math.h>
 
-static void KDCollectPathPoints(void *info, const CGPathElement *element);
 static const NSUInteger KDMaximumHistoryStates = 48;
 static const CGFloat KDStickerMinimumScale = 0.48;
 static const CGFloat KDStickerMaximumScale = 2.6;
@@ -714,45 +720,16 @@ static const CGFloat KDStickerMaximumScale = 2.6;
 - (void)drawStampedEraserStroke:(KDStroke *)stroke color:(UIColor *)strokeColor {
     [[strokeColor colorWithAlphaComponent:1.0] setFill];
     if (stroke.dotStroke) {
-        [self fillEraserStampForStroke:stroke atPoint:stroke.startPoint];
+        UIBezierPath *stamp = [KCDrawingEngineBridge eraserStampPathWithShape:stroke.eraserShape center:stroke.startPoint size:stroke.lineWidth];
+        [stamp fill];
         return;
     }
 
-    CGPathRef pathRef = stroke.path.CGPath;
-    NSMutableArray<NSValue *> *points = [NSMutableArray array];
-    CGPathApply(pathRef, (__bridge void *)points, KDCollectPathPoints);
-
-    CGFloat spacing = MAX(6.0, stroke.lineWidth * 0.38);
-    CGPoint previousPoint = CGPointZero;
-    BOOL hasPreviousPoint = NO;
-
-    for (NSValue *value in points) {
-        CGPoint point = value.CGPointValue;
-        if (!hasPreviousPoint) {
-            [self fillEraserStampForStroke:stroke atPoint:point];
-            previousPoint = point;
-            hasPreviousPoint = YES;
-            continue;
-        }
-
-        CGFloat dx = point.x - previousPoint.x;
-        CGFloat dy = point.y - previousPoint.y;
-        CGFloat distance = hypot(dx, dy);
-        NSInteger steps = MAX(1, (NSInteger)ceil(distance / spacing));
-        for (NSInteger step = 1; step <= steps; step++) {
-            CGFloat progress = (CGFloat)step / (CGFloat)steps;
-            CGPoint interpolatedPoint = CGPointMake(previousPoint.x + dx * progress,
-                                                    previousPoint.y + dy * progress);
-            [self fillEraserStampForStroke:stroke atPoint:interpolatedPoint];
-        }
-
-        previousPoint = point;
+    NSArray<NSValue *> *stampPoints = [KCDrawingEngineBridge eraserStampPointsAlongPath:stroke.path.CGPath lineWidth:stroke.lineWidth];
+    for (NSValue *value in stampPoints) {
+        UIBezierPath *stamp = [KCDrawingEngineBridge eraserStampPathWithShape:stroke.eraserShape center:value.CGPointValue size:stroke.lineWidth];
+        [stamp fill];
     }
-}
-
-- (void)fillEraserStampForStroke:(KDStroke *)stroke atPoint:(CGPoint)point {
-    UIBezierPath *stamp = [self eraserShapePathForShape:stroke.eraserShape center:point size:stroke.lineWidth];
-    [stamp fill];
 }
 
 - (void)handleStickerTap:(UITapGestureRecognizer *)recognizer {
@@ -961,29 +938,6 @@ static const CGFloat KDStickerMaximumScale = 2.6;
 
 - (UIBezierPath *)eraserShapePathForShape:(KDEraserShape)shape center:(CGPoint)center size:(CGFloat)size {
     return [KCDrawingEngineBridge eraserStampPathWithShape:shape center:center size:size];
-}
-
-static void KDCollectPathPoints(void *info, const CGPathElement *element) {
-    NSMutableArray<NSValue *> *points = (__bridge NSMutableArray<NSValue *> *)info;
-    CGPoint point = CGPointZero;
-    switch (element->type) {
-        case kCGPathElementMoveToPoint:
-        case kCGPathElementAddLineToPoint:
-            point = element->points[0];
-            [points addObject:[NSValue valueWithCGPoint:point]];
-            break;
-        case kCGPathElementAddQuadCurveToPoint:
-            [points addObject:[NSValue valueWithCGPoint:element->points[0]]];
-            [points addObject:[NSValue valueWithCGPoint:element->points[1]]];
-            break;
-        case kCGPathElementAddCurveToPoint:
-            [points addObject:[NSValue valueWithCGPoint:element->points[0]]];
-            [points addObject:[NSValue valueWithCGPoint:element->points[1]]];
-            [points addObject:[NSValue valueWithCGPoint:element->points[2]]];
-            break;
-        case kCGPathElementCloseSubpath:
-            break;
-    }
 }
 
 @end

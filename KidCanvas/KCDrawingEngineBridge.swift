@@ -1,3 +1,10 @@
+//
+//  KCDrawingEngineBridge.swift
+//  KidCanvas
+//
+//  Created by 小大 on 2026/06/25.
+//
+
 import Foundation
 import UIKit
 import KCCommon
@@ -8,7 +15,7 @@ import KCDrawingEngine
 ///
 /// Each method is a thin adapter that converts between UIKit/CoreGraphics types
 /// (UIColor, CGImage, UITouch forces) and the engine's pure-Swift types
-/// (RGBA8, BitmapBuffer, FloodFillEngine, ColorSampler, PressureModel).
+/// (KCRGBA8, KCBitmapBuffer, KCFloodFillEngine, KCColorSampler, KCPressureModel).
 ///
 /// The Objective-C `KDDrawingCanvasView` calls these methods and handles all
 /// canvas state management (backgroundImage, strokes, setNeedsDisplay, undo).
@@ -31,16 +38,16 @@ final class KCDrawingEngineBridge: NSObject {
         fillColor: UIColor,
         tolerance: Double
     ) -> CGImage? {
-        guard let buffer = BitmapBuffer(cgImage: image) else { return nil }
+        guard let buffer = KCBitmapBuffer(cgImage: image) else { return nil }
         var r: CGFloat = 0, g: CGFloat = 0, b: CGFloat = 0, a: CGFloat = 0
         fillColor.getRed(&r, green: &g, blue: &b, alpha: &a)
-        let rgba = RGBA8(
+        let rgba = KCRGBA8(
             red: UInt8(max(0, min(255, lrint(r * 255)))),
             green: UInt8(max(0, min(255, lrint(g * 255)))),
             blue: UInt8(max(0, min(255, lrint(b * 255)))),
             alpha: UInt8(max(0, min(255, lrint(a * 255))))
         )
-        let changed = FloodFillEngine.fill(
+        let changed = KCFloodFillEngine.fill(
             buffer: buffer, startX: startX, startY: startY,
             fillColor: rgba, tolerance: tolerance
         )
@@ -50,14 +57,14 @@ final class KCDrawingEngineBridge: NSObject {
 
     /// Samples a single pixel color from `image` at pixel coordinates
     /// (`x`, `y`) using the same 1×1 bitmap-context trick as the prototype's
-    /// `colorAtPoint:` — no full BitmapBuffer allocation needed.
+    /// `colorAtPoint:` — no full KCBitmapBuffer allocation needed.
     @objc static func sampleColorFromImage(
         _ image: CGImage,
         x: Int,
         y: Int
     ) -> UIColor? {
-        guard let buffer = BitmapBuffer(cgImage: image),
-              let pixel = ColorSampler.sample(buffer: buffer, x: x, y: y) else {
+        guard let buffer = KCBitmapBuffer(cgImage: image),
+              let pixel = KCColorSampler.sample(buffer: buffer, x: x, y: y) else {
             return nil
         }
         return UIColor(
@@ -78,14 +85,14 @@ final class KCDrawingEngineBridge: NSObject {
         maximumPossibleForce: Double,
         isPencil: Bool
     ) -> Double {
-        PressureModel.normalized(
+        KCPressureModel.normalized(
             force: force,
             maximumPossibleForce: maximumPossibleForce,
             isPencil: isPencil
         )
     }
 
-    // MARK: - Stroke rendering metrics
+    // MARK: - KCStroke rendering metrics
 
     /// Returns the rendered line width for the given brush configuration.
     /// The caller (OC `drawStroke:`) handles the eraser pressure override
@@ -98,7 +105,7 @@ final class KCDrawingEngineBridge: NSObject {
         averagePressure: Double
     ) -> Double {
         guard let style = brushStyleFromOC(brushStyle) else { return lineWidth }
-        return StrokeRenderMath.renderedMetrics(
+        return KCStrokeRenderMath.renderedMetrics(
             brushStyle: style, lineWidth: lineWidth, pressure: averagePressure
         ).renderedLineWidth
     }
@@ -110,7 +117,7 @@ final class KCDrawingEngineBridge: NSObject {
         averagePressure: Double
     ) -> Double {
         guard let style = brushStyleFromOC(brushStyle) else { return 1.0 }
-        return StrokeRenderMath.renderedMetrics(
+        return KCStrokeRenderMath.renderedMetrics(
             brushStyle: style, lineWidth: lineWidth, pressure: averagePressure
         ).alpha
     }
@@ -118,7 +125,7 @@ final class KCDrawingEngineBridge: NSObject {
     // MARK: - Eraser stamp path
 
     /// Returns a `UIBezierPath` for the given eraser shape at `center` and
-    /// `size`, wrapped from the CoreGraphics `EraserStampPath` engine.
+    /// `size`, wrapped from the CoreGraphics `KCEraserStampPath` engine.
     /// `shape` matches the OC `KDEraserShape` raw value:
     /// 0 = circle, 1 = cloud, 2 = star.
     @objc static func eraserStampPath(
@@ -127,15 +134,29 @@ final class KCDrawingEngineBridge: NSObject {
         size: CGFloat
     ) -> UIBezierPath? {
         guard let eraserShape = eraserShapeFromOC(shape) else { return nil }
-        let cgPath = EraserStampPath.path(for: eraserShape, center: center, size: size)
+        let cgPath = KCEraserStampPath.path(for: eraserShape, center: center, size: size)
         return UIBezierPath(cgPath: cgPath)
+    }
+
+    // MARK: - Eraser stamp interpolation
+
+    /// Returns interpolated stamp center positions along `path`, spaced by
+    /// `max(6, lineWidth × 0.38)`. OC code iterates these points and fills
+    /// the eraser stamp shape at each position.
+    /// Returns `NSValue`-wrapped `CGPoint` arrays for ObjC consumption.
+    @objc static func eraserStampPointsAlongPath(
+        _ path: CGPath,
+        lineWidth: CGFloat
+    ) -> [NSValue] {
+        KCEraserStampPath.interpolatedStampPoints(along: path, lineWidth: lineWidth)
+            .map { NSValue(cgPoint: $0) }
     }
 
     // MARK: - Private enum mapping (OC Int → Swift String enum)
 
     /// Maps OC `KDBrushStyle` integer (0=pencil, 1=pen, 2=crayon) to the Swift
-    /// `BrushStyle` enum. Returns `nil` for out-of-range values.
-    private static func brushStyleFromOC(_ value: Int) -> BrushStyle? {
+    /// `KCBrushStyle` enum. Returns `nil` for out-of-range values.
+    private static func brushStyleFromOC(_ value: Int) -> KCBrushStyle? {
         switch value {
         case 0: return .pencil
         case 1: return .pen
@@ -145,8 +166,8 @@ final class KCDrawingEngineBridge: NSObject {
     }
 
     /// Maps OC `KDEraserShape` integer (0=circle, 1=cloud, 2=star) to the Swift
-    /// `EraserShape` enum. Returns `nil` for out-of-range values.
-    private static func eraserShapeFromOC(_ value: Int) -> EraserShape? {
+    /// `KCEraserShape` enum. Returns `nil` for out-of-range values.
+    private static func eraserShapeFromOC(_ value: Int) -> KCEraserShape? {
         switch value {
         case 0: return .circle
         case 1: return .cloud

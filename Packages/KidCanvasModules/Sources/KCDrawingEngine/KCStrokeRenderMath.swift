@@ -1,3 +1,10 @@
+//
+//  KCStrokeRenderMath.swift
+//  KCDrawingEngine
+//
+//  Created by 小大 on 2026/06/25.
+//
+
 import Foundation
 import KCDomain
 
@@ -8,7 +15,7 @@ import KCDomain
 /// rendering deterministic and unit-testable, decoupled from the eventual UIKit
 /// drawing surface. (The pencil soft-outline and crayon grain texture are
 /// applied on top during rasterization and remain a follow-up.)
-public enum StrokeRenderMath {
+public enum KCStrokeRenderMath {
     /// Resolved rendering parameters for a stroke.
     public struct Metrics: Equatable, Sendable {
         public var renderedLineWidth: Double
@@ -21,7 +28,7 @@ public enum StrokeRenderMath {
     /// Eraser strokes render fully opaque (alpha 1.0) at pressure 1.0 regardless
     /// of accumulated samples. The caller typically overrides pressure for eraser
     /// in the drawing code, so this method reads `stroke.averagePressure` directly.
-    public static func metrics(for stroke: Stroke) -> Metrics {
+    public static func metrics(for stroke: KCStroke) -> Metrics {
         let isEraser = stroke.toolMode == .eraser
         let pressure = isEraser ? 1.0 : stroke.averagePressure
         return renderedMetrics(
@@ -32,7 +39,7 @@ public enum StrokeRenderMath {
     }
 
     /// Primitive brush metrics from raw values — the core formula, decoupled
-    /// from the `Stroke` model. Use this from the ObjC bridge where the caller
+    /// from the `KCStroke` model. Use this from the ObjC bridge where the caller
     /// has already resolved eraser pressure in the drawing code.
     ///
     /// The prototype's per-brush formulas:
@@ -44,7 +51,7 @@ public enum StrokeRenderMath {
     ///
     /// Returned width is floored at 1.0, matching the prototype's `MAX(1.0, …)`.
     public static func renderedMetrics(
-        brushStyle: BrushStyle,
+        brushStyle: KCBrushStyle,
         lineWidth: Double,
         pressure: Double
     ) -> Metrics {

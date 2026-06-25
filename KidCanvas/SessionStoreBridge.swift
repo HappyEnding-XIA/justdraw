@@ -1,18 +1,30 @@
+//
+//  SessionStoreBridge.swift
+//  KidCanvas
+//
+//  Created by 小大 on 2026/06/25.
+//
+
 import Foundation
 import UIKit
 import KCCommon
 import KCDomain
 import KCSessionPersistence
 
-/// ObjC bridge over the Swift `SessionStore`, covering all operations
+/// ObjC bridge over the Swift `KCSessionStore`, covering all operations
 /// that the OC `KDSessionStore` provides. OC code can use this bridge
 /// as a drop-in replacement; session metadata is returned as NSDictionary
-/// arrays (avoiding direct dependence on the Swift `ArtworkSession` type).
+/// arrays (avoiding direct dependence on the Swift `KCArtworkSession` type).
+///
+/// **Error handling**: Storage errors are silently degraded via `try?`
+/// (returning nil/empty/false) rather than propagated to the OC caller,
+/// matching the prototype's `KDSessionStore` behavior which also swallowed
+/// errors. Once the app is fully Swift, replace these with proper `throws`.
 @objc(SessionStoreBridge)
 final class SessionStoreBridge: NSObject {
     @objc static let shared = SessionStoreBridge()
 
-    private let store = SessionStore()
+    private let store = KCSessionStore(legacyMigrator: LegacyArchiveMigrator())
     private static let thumbnailSize = CGSize(width: 240, height: 180)
 
     // MARK: - Session queries
@@ -56,7 +68,7 @@ final class SessionStoreBridge: NSObject {
         thumbnailJPEGData: Data,
         existingSessionId: String?
     ) -> [String: Any]? {
-        let existing: ArtworkSession? = existingSessionId.flatMap { id in
+        let existing: KCArtworkSession? = existingSessionId.flatMap { id in
             (try? store.loadSessions())?.first { $0.id == id }
         }
         guard let session = try? store.saveArtwork(
@@ -127,11 +139,11 @@ final class SessionStoreBridge: NSObject {
 
     // MARK: - Private helpers
 
-    private func findSession(id: String) -> ArtworkSession? {
+    private func findSession(id: String) -> KCArtworkSession? {
         try? store.loadSessions().first { $0.id == id }
     }
 
-    private func sessionToDictionary(_ session: ArtworkSession) -> [String: Any] {
+    private func sessionToDictionary(_ session: KCArtworkSession) -> [String: Any] {
         [
             "id": session.id,
             "title": session.title,

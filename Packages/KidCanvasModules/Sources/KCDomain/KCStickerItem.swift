@@ -1,3 +1,10 @@
+//
+//  KCStickerItem.swift
+//  KCDomain
+//
+//  Created by 小大 on 2026/06/25.
+//
+
 import Foundation
 import CoreGraphics
 import KCCommon
@@ -5,7 +12,7 @@ import KCCommon
 /// An affine transform stored as its six Core Graphics matrix components, so
 /// sticker state stays `Codable` and `UIKit`-free while remaining convertible
 /// to/from `CGAffineTransform`.
-public struct StickerTransform: Codable, Equatable, Sendable {
+public struct KCStickerTransform: Codable, Equatable, Sendable {
     public var a: Double
     public var b: Double
     public var c: Double
@@ -23,7 +30,7 @@ public struct StickerTransform: Codable, Equatable, Sendable {
     }
 
     /// The identity transform.
-    public static let identity = StickerTransform(a: 1, b: 0, c: 0, d: 1, tx: 0, ty: 0)
+    public static let identity = KCStickerTransform(a: 1, b: 0, c: 0, d: 1, tx: 0, ty: 0)
 
     public init(cgAffineTransform transform: CGAffineTransform) {
         self.init(
@@ -48,15 +55,15 @@ public struct StickerTransform: Codable, Equatable, Sendable {
     }
 
     /// Returns a copy scaled by `factor` (applied like `CGAffineTransformScale`).
-    public func scaled(by factor: Double) -> StickerTransform {
+    public func scaled(by factor: Double) -> KCStickerTransform {
         let scaled = cgAffineTransform.scaledBy(x: factor, y: factor)
-        return StickerTransform(cgAffineTransform: scaled)
+        return KCStickerTransform(cgAffineTransform: scaled)
     }
 
     /// Returns a copy rotated by `angle` radians.
-    public func rotated(by angle: Double) -> StickerTransform {
+    public func rotated(by angle: Double) -> KCStickerTransform {
         let rotated = cgAffineTransform.rotated(by: angle)
-        return StickerTransform(cgAffineTransform: rotated)
+        return KCStickerTransform(cgAffineTransform: rotated)
     }
 }
 
@@ -65,19 +72,19 @@ public struct StickerTransform: Codable, Equatable, Sendable {
 /// Position is the absolute `center` in canvas coordinates plus a full affine
 /// `transform` (carrying scale and rotation). The SF Symbol identifier and tint
 /// color define the sticker's appearance.
-public struct StickerItem: Codable, Equatable, Sendable, Identifiable {
+public struct KCStickerItem: Codable, Equatable, Sendable, Identifiable {
     public let id: UUID
     public var symbolName: String
-    public var color: HexColor
+    public var color: KCHexColor
     public var center: CGPoint
-    public var transform: StickerTransform
+    public var transform: KCStickerTransform
 
     public init(
         id: UUID = UUID(),
         symbolName: String,
-        color: HexColor,
+        color: KCHexColor,
         center: CGPoint = .zero,
-        transform: StickerTransform = .identity
+        transform: KCStickerTransform = .identity
     ) {
         self.id = id
         self.symbolName = symbolName

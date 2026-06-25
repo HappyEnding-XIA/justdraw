@@ -1,3 +1,10 @@
+//
+//  KCError.swift
+//  KCCommon
+//
+//  Created by 小大 on 2026/06/25.
+//
+
 import Foundation
 
 /// Shared error type for KidCanvas modules.

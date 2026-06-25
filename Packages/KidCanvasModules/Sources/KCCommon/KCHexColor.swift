@@ -1,13 +1,20 @@
+//
+//  KCHexColor.swift
+//  KCCommon
+//
+//  Created by 小大 on 2026/06/25.
+//
+
 import Foundation
 import CoreGraphics
 
 /// A UIKit-free, Codable color value stored as normalized 0...1 RGBA components.
 ///
-/// `HexColor` keeps the domain and engine layers decoupled from `UIKit/UIColor`.
+/// `KCHexColor` keeps the domain and engine layers decoupled from `UIKit/UIColor`.
 /// It round-trips through a hex string (`#RRGGBB` or `#RRGGBBAA`) for storage,
 /// matching the hex representation already used by the Objective-C prototype's
 /// strokes and stickers.
-public struct HexColor: Equatable, Hashable, Sendable {
+public struct KCHexColor: Equatable, Hashable, Sendable {
     /// Red component in `0...1`.
     public var red: Double
     /// Green component in `0...1`.
@@ -25,11 +32,11 @@ public struct HexColor: Equatable, Hashable, Sendable {
     }
 
     /// Black (`#000000`).
-    public static let black = HexColor(red: 0, green: 0, blue: 0)
+    public static let black = KCHexColor(red: 0, green: 0, blue: 0)
     /// White (`#FFFFFF`).
-    public static let white = HexColor(red: 1, green: 1, blue: 1)
+    public static let white = KCHexColor(red: 1, green: 1, blue: 1)
     /// Fully transparent.
-    public static let clear = HexColor(red: 0, green: 0, blue: 0, alpha: 0)
+    public static let clear = KCHexColor(red: 0, green: 0, blue: 0, alpha: 0)
 
     /// 8-bit per channel components, computed the same way the prototype rasterizes
     /// colors (`lrint(component * 255)`), so flood-fill and sampling stay faithful.
@@ -89,7 +96,7 @@ public struct HexColor: Equatable, Hashable, Sendable {
     }
 }
 
-extension HexColor: Codable {
+extension KCHexColor: Codable {
     private enum CodingKeys: String, CodingKey {
         case hex
     }
@@ -97,7 +104,7 @@ extension HexColor: Codable {
     public init(from decoder: Decoder) throws {
         let container = try decoder.singleValueContainer()
         let hexString = try container.decode(String.self)
-        guard let parsed = HexColor(hex: hexString) else {
+        guard let parsed = KCHexColor(hex: hexString) else {
             throw DecodingError.dataCorruptedError(
                 in: container,
                 debugDescription: "Invalid hex color: \(hexString)"

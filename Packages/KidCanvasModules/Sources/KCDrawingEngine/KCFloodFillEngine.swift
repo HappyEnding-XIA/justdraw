@@ -1,3 +1,10 @@
+//
+//  KCFloodFillEngine.swift
+//  KCDrawingEngine
+//
+//  Created by 小大 on 2026/06/25.
+//
+
 import Foundation
 
 /// Flood fill, ported faithfully from `-[KDDrawingCanvasView performFloodFillAtPoint:color:]`.
@@ -7,7 +14,7 @@ import Foundation
 /// seed pixel is `<= tolerance * 4` (the boundary is `delta > tolerance * 4`).
 /// Expansion is 4-connected BFS with a visited bitmap, so each pixel is visited
 /// at most once.
-public enum FloodFillEngine {
+public enum KCFloodFillEngine {
     /// Fills the region seeded at `(startX, startY)` with `fillColor`.
     ///
     /// - Parameters:
@@ -20,10 +27,10 @@ public enum FloodFillEngine {
     ///   matched the fill color or the seed was out of bounds).
     @discardableResult
     public static func fill(
-        buffer: BitmapBuffer,
+        buffer: KCBitmapBuffer,
         startX: Int,
         startY: Int,
-        fillColor: RGBA8,
+        fillColor: KCRGBA8,
         tolerance: Double = 28.0
     ) -> Int {
         let width = buffer.width

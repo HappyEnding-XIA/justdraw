@@ -1,3 +1,10 @@
+//
+//  SessionStoreTests.swift
+//  KCSessionPersistenceTests
+//
+//  Created by 小大 on 2026/06/25.
+//
+
 import XCTest
 @testable import KCSessionPersistence
 import KCDomain
@@ -5,13 +12,13 @@ import KCDomain
 final class SessionStoreTests: XCTestCase {
     private func makeStore(
         directory: URL? = nil,
-        legacyMigrator: LegacySessionMigrator? = nil,
+        legacyMigrator: KCLegacySessionMigrator? = nil,
         now: @escaping () -> Date = { Date(timeIntervalSince1970: 1_700_000_000) },
         makeID: @escaping () -> String = { "fixed-id" }
-    ) -> (SessionStore, URL) {
+    ) -> (KCSessionStore, URL) {
         let dir = directory ?? URL(fileURLWithPath: NSTemporaryDirectory())
             .appendingPathComponent(UUID().uuidString, isDirectory: true)
-        let store = SessionStore(
+        let store = KCSessionStore(
             directoryURL: dir,
             legacyMigrator: legacyMigrator,
             now: now,
@@ -115,10 +122,10 @@ final class SessionStoreTests: XCTestCase {
     func testMetadataFileRoundTripsAcrossInstances() throws {
         let (_, dir) = makeStore()
         // First instance writes.
-        let writer = SessionStore(directoryURL: dir, now: { Date(timeIntervalSince1970: 5) }, makeID: { "abc" })
+        let writer = KCSessionStore(directoryURL: dir, now: { Date(timeIntervalSince1970: 5) }, makeID: { "abc" })
         _ = try writer.saveArtwork(pngData: Data([1]), thumbnailJPEGData: Data([2]), existing: nil)
         // Fresh instance reads the same on-disk metadata.
-        let reader = SessionStore(directoryURL: dir)
+        let reader = KCSessionStore(directoryURL: dir)
         XCTAssertEqual(try reader.loadSessions().first?.id, "abc")
     }
 }
@@ -135,10 +142,10 @@ final class LegacyMigrationTests: XCTestCase {
 
         let spy = MigratorSpy()
         spy.result = [
-            ArtworkSession(id: "legacy-1", title: "Old", artworkFileName: "legacy-1.png",
+            KCArtworkSession(id: "legacy-1", title: "Old", artworkFileName: "legacy-1.png",
                            thumbnailFileName: "legacy-1-thumb.jpg", modifiedAt: Date(timeIntervalSince1970: 100))
         ]
-        let store = SessionStore(directoryURL: dir, legacyMigrator: spy)
+        let store = KCSessionStore(directoryURL: dir, legacyMigrator: spy)
 
         let loaded = try store.loadSessions()
         XCTAssertTrue(spy.wasAsked)
@@ -158,7 +165,7 @@ final class LegacyMigrationTests: XCTestCase {
         let archiveURL = dir.appendingPathComponent("sessions.archive")
         try Data([1]).write(to: archiveURL)
 
-        let store = SessionStore(directoryURL: dir, legacyMigrator: nil)
+        let store = KCSessionStore(directoryURL: dir, legacyMigrator: nil)
         XCTAssertTrue(try store.loadSessions().isEmpty)
     }
 }
@@ -168,10 +175,10 @@ private final class IDCounter {
     func next() -> String { value += 1; return "id-\(value)" }
 }
 
-private final class MigratorSpy: LegacySessionMigrator, @unchecked Sendable {
+private final class MigratorSpy: KCLegacySessionMigrator, @unchecked Sendable {
     var wasAsked = false
-    var result: [ArtworkSession]?
-    func decode(legacyArchiveAt url: URL) -> [ArtworkSession]? {
+    var result: [KCArtworkSession]?
+    func decode(legacyArchiveAt url: URL) -> [KCArtworkSession]? {
         wasAsked = true
         return result
     }

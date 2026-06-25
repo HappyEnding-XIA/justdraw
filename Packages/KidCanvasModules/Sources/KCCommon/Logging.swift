@@ -1,3 +1,10 @@
+//
+//  Logging.swift
+//  KCCommon
+//
+//  Created by 小大 on 2026/06/25.
+//
+
 import Foundation
 
 /// A minimal logging seam so modules can emit diagnostics without depending on
@@ -18,7 +25,7 @@ public enum KCLogLevel: String, Sendable {
 
 /// Global logging sink. Swap this out from the app shell; modules call `KCLog`.
 public enum KCLog {
-    nonisolated(unsafe) public static var sink: any KCLogging = NullLogger()
+    nonisolated(unsafe) public static var sink: any KCLogging = KCNullLogger()
 
     public static func debug(_ message: @autoclosure () -> String) {
         sink.log(.debug, message())
@@ -38,13 +45,13 @@ public enum KCLog {
 }
 
 /// Default no-op logger.
-public struct NullLogger: KCLogging {
+public struct KCNullLogger: KCLogging {
     public init() {}
     public func log(_ level: KCLogLevel, _ message: @autoclosure () -> String) {}
 }
 
 /// A logger that buffers messages in memory, useful for tests and debugging.
-public final class BufferedLogger: KCLogging, @unchecked Sendable {
+public final class KCBufferedLogger: KCLogging, @unchecked Sendable {
     public struct Entry: Equatable, Sendable {
         public let level: KCLogLevel
         public let message: String

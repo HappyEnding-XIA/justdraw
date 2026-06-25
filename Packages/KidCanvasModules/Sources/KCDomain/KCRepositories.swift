@@ -1,3 +1,10 @@
+//
+//  KCRepositories.swift
+//  KCDomain
+//
+//  Created by 小大 on 2026/06/25.
+//
+
 import Foundation
 import KCCommon
 
@@ -8,26 +15,26 @@ import KCCommon
 /// `KCSessionPersistence` and keep the same on-disk layout as the Objective-C
 /// `KDSessionStore` (`Documents/KidCanvasSessions/`, `<uuid>.png`,
 /// `<uuid>-thumb.jpg`, `draft.png`).
-public protocol SessionRepository: Sendable {
+public protocol KCSessionRepository: Sendable {
     /// Loads all sessions, newest first.
-    func loadSessions() throws -> [ArtworkSession]
+    func loadSessions() throws -> [KCArtworkSession]
 
     /// Persists an artwork plus its thumbnail, creating or updating a session.
     /// Returns the stored session, or `nil` if the image was invalid.
     func saveArtwork(
         pngData: Data,
         thumbnailJPEGData: Data,
-        existing: ArtworkSession?
-    ) throws -> ArtworkSession?
+        existing: KCArtworkSession?
+    ) throws -> KCArtworkSession?
 
     /// Loads the full-resolution artwork image data for a session.
-    func artworkData(for session: ArtworkSession) -> Data?
+    func artworkData(for session: KCArtworkSession) -> Data?
 
     /// Loads the thumbnail image data for a session.
-    func thumbnailData(for session: ArtworkSession) -> Data?
+    func thumbnailData(for session: KCArtworkSession) -> Data?
 
     /// Removes a session and its associated files.
-    func delete(_ session: ArtworkSession) throws
+    func delete(_ session: KCArtworkSession) throws
 
     /// `true` when at least one session is persisted.
     func hasSavedSessions() throws -> Bool
@@ -43,7 +50,7 @@ public protocol SessionRepository: Sendable {
 }
 
 /// A photo selected from the system picker.
-public struct ImportedPhoto: Sendable {
+public struct KCImportedPhoto: Sendable {
     public let imageData: Data
     public init(imageData: Data) { self.imageData = imageData }
 }
@@ -52,11 +59,11 @@ public struct ImportedPhoto: Sendable {
 ///
 /// Defined in the domain layer (UIKit-free) so features can depend on the
 /// abstraction; the concrete adapter lives in the app/photo module.
-public protocol PhotoLibraryServicing: Sendable {
+public protocol KCPhotoLibraryServicing: Sendable {
     /// Exports image data (PNG/JPEG) to the saved-photos album.
     @discardableResult
     func export(imageData: Data) async -> Bool
 
     /// Presents the photo picker and yields the selected photo, if any.
-    func importPhoto() async -> ImportedPhoto?
+    func importPhoto() async -> KCImportedPhoto?
 }

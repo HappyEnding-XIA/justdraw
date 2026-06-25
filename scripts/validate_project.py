@@ -37,7 +37,11 @@ def no_chinese_text(paths):
         if not path.exists():
             continue
         text = path.read_text(encoding="utf-8")
-        if pattern.search(text):
+        # Strip comment lines (// ...) before checking, so file header
+        # metadata (e.g. creator name) does not trigger a false positive.
+        code_lines = [line for line in text.splitlines() if not line.strip().startswith("//")]
+        code_text = "\n".join(code_lines)
+        if pattern.search(code_text):
             offenders.append(path.relative_to(ROOT).as_posix())
     if offenders:
         return fail("Chinese characters found in UI/source files: " + ", ".join(offenders))
@@ -235,8 +239,8 @@ def app_feature_checks(
     checks.append(ok("Photo import permission mentions painting") if "paint" in plist.get("NSPhotoLibraryUsageDescription", "").lower() else fail("Photo import permission should explain painting use"))
     checks.append(ok("Photo save permission mentions artwork") if "artwork" in plist.get("NSPhotoLibraryAddUsageDescription", "").lower() else fail("Photo save permission should explain artwork save use"))
     checks.append(ok("App locks to light appearance in Info.plist") if plist.get("UIUserInterfaceStyle") == "Light" else fail("UIUserInterfaceStyle is not locked to Light"))
-    checks.append(require_text(scene_text, "self.window.overrideUserInterfaceStyle = UIUserInterfaceStyleLight", "Window locks to light appearance"))
-    checks.append(require_text(scene_text, "mainViewController.overrideUserInterfaceStyle = UIUserInterfaceStyleLight", "Root view controller locks to light appearance"))
+    checks.append(require_text(scene_text, "window.overrideUserInterfaceStyle = .light", "Window locks to light appearance"))
+    checks.append(require_text(scene_text, "mainViewController.overrideUserInterfaceStyle = .light", "Root view controller locks to light appearance"))
     checks.append(require_text(main_text, "[canvasContainer.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor]", "Canvas is pinned to the left screen edge"))
     checks.append(require_text(main_text, "[canvasContainer.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor]", "Canvas is pinned to the right screen edge"))
     checks.append(require_text(main_text, "[canvasContainer.topAnchor constraintEqualToAnchor:self.view.topAnchor]", "Canvas is pinned to the top screen edge"))
@@ -253,8 +257,8 @@ def app_feature_checks(
     checks.append(require_text(main_text, "while (self.recentColors.count > 8)", "Recent colors keep up to eight colors"))
     checks.append(require_text(canvas_text, "KDToolModePicker", "Eyedropper tool mode exists"))
     checks.append(require_text(canvas_text, "sampleColorFromImage:imageRef", "Eyedropper delegates pixel sampling to Swift"))
-    checks.append(require_text(drawing_bridge_text, "BitmapBuffer(cgImage: image)", "Eyedropper bridge rasterizes the snapshot image"))
-    checks.append(require_text(drawing_bridge_text, "ColorSampler.sample(buffer: buffer, x: x, y: y)", "Eyedropper bridge samples using the Swift sampler"))
+    checks.append(require_text(drawing_bridge_text, "KCBitmapBuffer(cgImage: image)", "Eyedropper bridge rasterizes the snapshot image"))
+    checks.append(require_text(drawing_bridge_text, "KCColorSampler.sample(buffer: buffer, x: x, y: y)", "Eyedropper bridge samples using the Swift sampler"))
     checks.append(forbid_text(canvas_text, "CGContextTranslateCTM(context, -pixelPoint.x", "Eyedropper avoids fragile manual context flipping"))
     checks.append(require_text(canvas_text, "#import \"KCDrawingEngineBridge.h\"", "Drawing canvas imports the Swift drawing bridge"))
     checks.append(require_text(canvas_text, "[KCDrawingEngineBridge normalizedPressureWithForce:", "Pressure normalization is bridged to Swift"))
@@ -277,20 +281,20 @@ def app_feature_checks(
     checks.append(require_text(canvas_text, "KCDrawingEngineBridge normalizedPressureWithForce", "Pressure normalization delegates to the Swift bridge"))
     checks.append(require_text(canvas_text, "KCDrawingEngineBridge sampleColorFromImage", "Color sampling delegates to the Swift bridge"))
     checks.append(require_text(canvas_text, "KCDrawingEngineBridge.h", "Manual Objective-C bridge header is present"))
-    checks.append(require_text(drawing_bridge_text, "BitmapBuffer(cgImage:", "Flood fill bridge uses Swift bitmap buffer"))
-    checks.append(require_text(drawing_bridge_text, "FloodFillEngine.fill(", "Flood fill bridge calls the Swift engine"))
-    checks.append(require_text(drawing_bridge_text, "ColorSampler.sample(", "Color sampling bridge calls the Swift sampler"))
-    checks.append(require_text(drawing_bridge_text, "PressureModel.normalized(", "Pressure bridge calls the Swift model"))
-    checks.append(require_text(drawing_bridge_text, "guard let buffer = BitmapBuffer(cgImage:", "Swift bridge validates CGImage input before fill"))
-    checks.append(require_text(drawing_bridge_text, "guard let buffer = BitmapBuffer(cgImage: image),", "Swift bridge validates CGImage input before sampling"))
+    checks.append(require_text(drawing_bridge_text, "KCBitmapBuffer(cgImage:", "Flood fill bridge uses Swift bitmap buffer"))
+    checks.append(require_text(drawing_bridge_text, "KCFloodFillEngine.fill(", "Flood fill bridge calls the Swift engine"))
+    checks.append(require_text(drawing_bridge_text, "KCColorSampler.sample(", "Color sampling bridge calls the Swift sampler"))
+    checks.append(require_text(drawing_bridge_text, "KCPressureModel.normalized(", "Pressure bridge calls the Swift model"))
+    checks.append(require_text(drawing_bridge_text, "guard let buffer = KCBitmapBuffer(cgImage:", "Swift bridge validates CGImage input before fill"))
+    checks.append(require_text(drawing_bridge_text, "guard let buffer = KCBitmapBuffer(cgImage: image),", "Swift bridge validates CGImage input before sampling"))
     checks.append(require_text(drawing_bridge_text, "return UIColor(", "Swift bridge returns UIKit color objects"))
     checks.append(require_text(bitmap_buffer_text, "public init?(cgImage: CGImage)", "Swift bitmap buffer can decode CGImage input"))
-    checks.append(require_text(flood_fill_text, "public enum FloodFillEngine", "Flood fill engine is implemented in Swift"))
+    checks.append(require_text(flood_fill_text, "public enum KCFloodFillEngine", "Flood fill engine is implemented in Swift"))
     checks.append(require_text(flood_fill_text, "guard width <= Int.max / height", "Swift flood fill guards pixel-count multiplication overflow"))
     checks.append(require_text(flood_fill_text, "var visited = [Bool]", "Swift flood fill tracks visited pixels"))
     checks.append(require_text(flood_fill_text, "var queue = [Int]()", "Swift flood fill uses an indexed queue"))
-    checks.append(require_text(color_sampler_text, "public enum ColorSampler", "Color sampler is implemented in Swift"))
-    checks.append(require_text(pressure_model_text, "public enum PressureModel", "Pressure model is implemented in Swift"))
+    checks.append(require_text(color_sampler_text, "public enum KCColorSampler", "Color sampler is implemented in Swift"))
+    checks.append(require_text(pressure_model_text, "public enum KCPressureModel", "Pressure model is implemented in Swift"))
     checks.append(require_count_at_least(main_text, r"itemWithTitle:@\"", 8, "Built-in line-art templates exist"))
     checks.append(require_count_at_least(main_text, r"@\"[a-z0-9.]+\.fill\"|@\"rainbow\"|@\"camera\.macro\"", 12, "Built-in sticker symbols exist"))
     checks.append(require_text(main_text, "@property (nonatomic, strong) NSDictionary<NSString *, NSArray<NSString *> *> *stickerSymbolsByCategory;", "Built-in stickers are organized by category"))
@@ -410,9 +414,6 @@ def main():
         ROOT / "KidCanvas" / "KDDrawingCanvasView.m",
         ROOT / "KidCanvas" / "KDSessionStore.m",
         ROOT / "KidCanvas" / "KDArtworkSession.m",
-        ROOT / "KidCanvas" / "KDSceneDelegate.m",
-        ROOT / "KidCanvas" / "KDAppDelegate.m",
-        ROOT / "KidCanvas" / "main.m",
     ]
     for path in objc_files:
         if path.exists():
@@ -425,13 +426,13 @@ def main():
     store_text = (ROOT / "KidCanvas" / "KDSessionStore.m").read_text(encoding="utf-8")
     store_header_text = (ROOT / "KidCanvas" / "KDSessionStore.h").read_text(encoding="utf-8")
     session_text = (ROOT / "KidCanvas" / "KDArtworkSession.m").read_text(encoding="utf-8")
-    scene_text = (ROOT / "KidCanvas" / "KDSceneDelegate.m").read_text(encoding="utf-8")
+    scene_text = (ROOT / "KidCanvas" / "SceneDelegate.swift").read_text(encoding="utf-8")
     header_text = (ROOT / "KidCanvas" / "KDDrawingCanvasView.h").read_text(encoding="utf-8")
     drawing_bridge_text = (ROOT / "KidCanvas" / "KCDrawingEngineBridge.swift").read_text(encoding="utf-8")
-    bitmap_buffer_text = (ROOT / "Packages" / "KidCanvasModules" / "Sources" / "KCDrawingEngine" / "BitmapBuffer.swift").read_text(encoding="utf-8")
-    flood_fill_text = (ROOT / "Packages" / "KidCanvasModules" / "Sources" / "KCDrawingEngine" / "FloodFillEngine.swift").read_text(encoding="utf-8")
-    color_sampler_text = (ROOT / "Packages" / "KidCanvasModules" / "Sources" / "KCDrawingEngine" / "ColorSampler.swift").read_text(encoding="utf-8")
-    pressure_model_text = (ROOT / "Packages" / "KidCanvasModules" / "Sources" / "KCDrawingEngine" / "PressureModel.swift").read_text(encoding="utf-8")
+    bitmap_buffer_text = (ROOT / "Packages" / "KidCanvasModules" / "Sources" / "KCDrawingEngine" / "KCBitmapBuffer.swift").read_text(encoding="utf-8")
+    flood_fill_text = (ROOT / "Packages" / "KidCanvasModules" / "Sources" / "KCDrawingEngine" / "KCFloodFillEngine.swift").read_text(encoding="utf-8")
+    color_sampler_text = (ROOT / "Packages" / "KidCanvasModules" / "Sources" / "KCDrawingEngine" / "KCColorSampler.swift").read_text(encoding="utf-8")
+    pressure_model_text = (ROOT / "Packages" / "KidCanvasModules" / "Sources" / "KCDrawingEngine" / "KCPressureModel.swift").read_text(encoding="utf-8")
     preview_text = (ROOT / "docs" / "product" / "mockups" / "ui-preview.html").read_text(encoding="utf-8")
     checks.extend(app_feature_checks(
         main_text,

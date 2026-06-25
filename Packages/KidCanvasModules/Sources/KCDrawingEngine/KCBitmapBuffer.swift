@@ -1,21 +1,28 @@
+//
+//  KCBitmapBuffer.swift
+//  KCDrawingEngine
+//
+//  Created by 小大 on 2026/06/25.
+//
+
 import Foundation
 import CoreGraphics
 
-/// A mutable RGBA8 bitmap, the bridge between `CGImage` raster data and the
+/// A mutable KCRGBA8 bitmap, the bridge between `CGImage` raster data and the
 /// pure-logic engines (flood fill, sampling).
 ///
 /// Storage is `[UInt8]` in RGBA order, four bytes per pixel, `width * height`
 /// pixels row-major. Interop with `CGImage` uses the same bitmap info as the
 /// Objective-C prototype (`premultipliedLast | byteOrder32Big`) so that pixel
 /// values round-trip identically.
-public final class BitmapBuffer {
+public final class KCBitmapBuffer {
     public let width: Int
     public let height: Int
     public private(set) var pixels: [UInt8]
 
     /// Creates a buffer filled with a single color.
-    public init(width: Int, height: Int, fill: RGBA8 = .white) {
-        precondition(width >= 0 && height >= 0, "BitmapBuffer dimensions must be non-negative")
+    public init(width: Int, height: Int, fill: KCRGBA8 = .white) {
+        precondition(width >= 0 && height >= 0, "KCBitmapBuffer dimensions must be non-negative")
         self.width = width
         self.height = height
         let count = width * height * 4
@@ -77,9 +84,9 @@ public final class BitmapBuffer {
     }
 
     /// Reads the pixel at `(x, y)`. Assumes the coordinate is in bounds.
-    public func pixel(x: Int, y: Int) -> RGBA8 {
+    public func pixel(x: Int, y: Int) -> KCRGBA8 {
         let index = pixelIndex(x: x, y: y)
-        return RGBA8(
+        return KCRGBA8(
             red: pixels[index],
             green: pixels[index + 1],
             blue: pixels[index + 2],
@@ -88,7 +95,7 @@ public final class BitmapBuffer {
     }
 
     /// Writes `rgba` at `(x, y)`. Assumes the coordinate is in bounds.
-    public func setPixel(_ rgba: RGBA8, x: Int, y: Int) {
+    public func setPixel(_ rgba: KCRGBA8, x: Int, y: Int) {
         let index = pixelIndex(x: x, y: y)
         pixels[index] = rgba.red
         pixels[index + 1] = rgba.green
