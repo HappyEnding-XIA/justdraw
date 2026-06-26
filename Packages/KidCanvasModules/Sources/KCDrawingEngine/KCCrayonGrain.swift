@@ -8,16 +8,16 @@
 import Foundation
 import CoreGraphics
 
-/// One crayon-grain dash segment produced by `KCCrayonGrain.dashes(...)`.
+/// 由 `KCCrayonGrain.dashes(...)` 生成的一段蜡笔颗粒短线。
 ///
-/// A faithful Swift port of the Objective-C `drawCrayonGrainForPath:` math.
-/// The UIKit/CoreGraphics drawing (clipping, color, stroking each dash) stays
-/// on the Objective-C side; this struct only carries deterministic geometry.
+/// 忠实移植自 Objective-C `drawCrayonGrainForPath:` 的数学运算。
+/// UIKit/CoreGraphics 的绘制（裁剪、颜色、描边每段短线）仍保留在 Objective-C 侧；
+/// 此结构体仅承载确定性的几何数据。
 public struct KCCrayonGrainDash {
     public let start: CGPoint
     public let end: CGPoint
-    /// Constant across all dashes for a given line width:
-    /// `max(0.7, lineWidth * 0.045)`.
+    /// 对于给定线宽，所有短线的该值恒定：
+    /// `max(0.7, lineWidth * 0.045)`。
     public let lineWidth: CGFloat
 
     public init(start: CGPoint, end: CGPoint, lineWidth: CGFloat) {
@@ -27,23 +27,20 @@ public struct KCCrayonGrainDash {
     }
 }
 
-/// Deterministic crayon grain generation — a UIKit-free port of the prototype's
-/// `-[KDDrawingCanvasView drawCrayonGrainForPath:color:lineWidth:]` algorithm.
+/// 确定性的蜡笔颗粒生成——原型
+/// `-[KDDrawingCanvasView drawCrayonGrainForPath:color:lineWidth:]` 算法的不依赖 UIKit 移植版本。
 ///
-/// The integer seed arithmetic and all constants are lifted verbatim from the
-/// Objective-C implementation, so the produced dash points are bit-identical to
-/// the original for any given (`pathBounds`, `lineWidth`). This guarantees a
-/// pixel-level visual match: the Objective-C drawing code is unchanged and now
-/// consumes identical geometry.
+/// 整数种子运算和所有常量均逐字取自 Objective-C 实现，因此对于任意给定的
+/// （`pathBounds`，`lineWidth`），生成的短线点与原版在位级别完全一致。这保证了
+/// 像素级的视觉一致：Objective-C 绘制代码保持不变，现在消费的是相同的几何数据。
 public enum KCCrayonGrain {
 
-    /// Returns the jittered dash segments that form the crayon grain texture over
-    /// a stroke whose path bounding box is `bounds` and rendered line width is
-    /// `lineWidth`.
+    /// 返回构成蜡笔颗粒纹理的抖动短线段集合，对应的笔画路径包围盒为 `bounds`，
+    /// 渲染线宽为 `lineWidth`。
     public static func dashes(pathBounds bounds: CGRect, lineWidth: CGFloat) -> [KCCrayonGrainDash] {
         guard !bounds.isEmpty else { return [] }
 
-        // grainBounds = bounds expanded by lineWidth/2 on every side.
+        // grainBounds = bounds 在四周各向外扩展 lineWidth/2。
         let grainBounds = bounds.insetBy(dx: -lineWidth * 0.5, dy: -lineWidth * 0.5)
 
         let spacing = max(4.0, lineWidth * 0.46)

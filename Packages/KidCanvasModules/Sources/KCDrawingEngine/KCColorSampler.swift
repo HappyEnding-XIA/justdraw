@@ -8,16 +8,15 @@
 import Foundation
 import KCCommon
 
-/// Point color sampling, the engine-layer analogue of the prototype's
-/// `colorAtPoint:` eyedropper.
+/// 点颜色采样，是原型 `colorAtPoint:` 取色器在引擎层的对应实现。
 public enum KCColorSampler {
-    /// Returns the pixel color at `(x, y)`, or `nil` when the point is out of bounds.
+    /// 返回 `(x, y)` 处的像素颜色，当该点越界时返回 `nil`。
     public static func sample(buffer: KCBitmapBuffer, x: Int, y: Int) -> KCRGBA8? {
         guard x >= 0, x < buffer.width, y >= 0, y < buffer.height else { return nil }
         return buffer.pixel(x: x, y: y)
     }
 
-    /// Convenience: returns the sampled color as a `KCHexColor`.
+    /// 便捷方法：将采样到的颜色作为 `KCHexColor` 返回。
     public static func sampleHex(buffer: KCBitmapBuffer, x: Int, y: Int) -> KCHexColor? {
         guard let rgba = sample(buffer: buffer, x: x, y: y) else { return nil }
         return KCHexColor(

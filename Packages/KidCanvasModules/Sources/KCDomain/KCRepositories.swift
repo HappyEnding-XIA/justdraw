@@ -8,62 +8,61 @@
 import Foundation
 import KCCommon
 
-/// Read/write contract for persisted artwork sessions.
+/// 已保存作品会话的读写契约。
 ///
-/// Image payloads are exchanged as `Data` (PNG for artwork, JPEG for thumbnails)
-/// so the protocol stays `UIKit`-free. Implementations live in
-/// `KCSessionPersistence` and keep the same on-disk layout as the Objective-C
-/// `KDSessionStore` (`Documents/KidCanvasSessions/`, `<uuid>.png`,
-/// `<uuid>-thumb.jpg`, `draft.png`).
+/// 图像载荷以 `Data` 交换（作品为 PNG，缩略图为 JPEG），使该协议保持
+/// 不依赖 `UIKit`。实现位于 `KCSessionPersistence`，并保持与 Objective-C
+/// `KDSessionStore` 相同的磁盘布局（`Documents/KidCanvasSessions/`、
+/// `<uuid>.png`、`<uuid>-thumb.jpg`、`draft.png`）。
 public protocol KCSessionRepository: Sendable {
-    /// Loads all sessions, newest first.
+    /// 加载全部会话，最新的排在最前。
     func loadSessions() throws -> [KCArtworkSession]
 
-    /// Persists an artwork plus its thumbnail, creating or updating a session.
-    /// Returns the stored session, or `nil` if the image was invalid.
+    /// 持久化作品及其缩略图，创建或更新会话。
+    /// 返回已存储的会话；若图像无效则返回 `nil`。
     func saveArtwork(
         pngData: Data,
         thumbnailJPEGData: Data,
         existing: KCArtworkSession?
     ) throws -> KCArtworkSession?
 
-    /// Loads the full-resolution artwork image data for a session.
+    /// 加载会话的全分辨率作品图像数据。
     func artworkData(for session: KCArtworkSession) -> Data?
 
-    /// Loads the thumbnail image data for a session.
+    /// 加载会话的缩略图图像数据。
     func thumbnailData(for session: KCArtworkSession) -> Data?
 
-    /// Removes a session and its associated files.
+    /// 删除会话及其关联文件。
     func delete(_ session: KCArtworkSession) throws
 
-    /// `true` when at least one session is persisted.
+    /// 当至少保存了一个会话时为 `true`。
     func hasSavedSessions() throws -> Bool
 
-    /// Overwrites the autosave draft with the given PNG data.
+    /// 用给定的 PNG 数据覆盖自动保存的草稿。
     func saveDraft(pngData: Data) throws -> Bool
 
-    /// Loads the autosave draft PNG data, if present.
+    /// 加载自动保存草稿的 PNG 数据（若存在）。
     func loadDraft() -> Data?
 
-    /// Removes the autosave draft.
+    /// 删除自动保存的草稿。
     func clearDraft()
 }
 
-/// A photo selected from the system picker.
+/// 从系统选择器中选取的照片。
 public struct KCImportedPhoto: Sendable {
     public let imageData: Data
     public init(imageData: Data) { self.imageData = imageData }
 }
 
-/// Import/export contract for the system photo library.
+/// 系统相册的导入/导出契约。
 ///
-/// Defined in the domain layer (UIKit-free) so features can depend on the
-/// abstraction; the concrete adapter lives in the app/photo module.
+/// 定义在领域层（不依赖 UIKit），以便各 Feature 依赖该抽象；具体适配器位于
+/// App/相册模块中。
 public protocol KCPhotoLibraryServicing: Sendable {
-    /// Exports image data (PNG/JPEG) to the saved-photos album.
+    /// 将图像数据（PNG/JPEG）导出到已保存相册。
     @discardableResult
     func export(imageData: Data) async -> Bool
 
-    /// Presents the photo picker and yields the selected photo, if any.
+    /// 弹出照片选择器，并返回所选照片（若有）。
     func importPhoto() async -> KCImportedPhoto?
 }

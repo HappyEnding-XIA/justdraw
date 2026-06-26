@@ -8,7 +8,7 @@
 import Foundation
 import KCCommon
 
-/// A named color palette (e.g. the built-in 24- and 36-color sets).
+/// 具名调色板（例如内置的 24 色和 36 色集合）。
 public struct KCContentPalette: Codable, Equatable, Sendable, Identifiable {
     public let id: String
     public var title: String
@@ -21,7 +21,7 @@ public struct KCContentPalette: Codable, Equatable, Sendable, Identifiable {
     }
 }
 
-/// A grouped set of sticker SF Symbol identifiers sharing a category.
+/// 一组共享同一分类的贴纸 SF Symbol 标识符。
 public struct KCStickerGroup: Codable, Equatable, Sendable, Identifiable {
     public let id: String
     public var title: String
@@ -34,8 +34,8 @@ public struct KCStickerGroup: Codable, Equatable, Sendable, Identifiable {
     }
 }
 
-/// Metadata for a built-in line-art template. The procedural drawing itself is
-/// produced by the drawing engine; this type only describes the catalog entry.
+/// 内置线稿模板的元数据。实际的程序化绘制由绘图引擎完成；该类型仅描述
+/// 目录条目信息。
 public struct KCLineArtTemplate: Codable, Equatable, Sendable, Identifiable {
     public let id: String
     public var title: String

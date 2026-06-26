@@ -7,8 +7,8 @@
 
 import UIKit
 
-/// SceneDelegate with `@objc(KDSceneDelegate)` to match the class name
-/// referenced in Info.plist's `UIApplicationSceneManifest`.
+/// 使用 `@objc(KDSceneDelegate)` 暴露类名，与 Info.plist 中
+/// `UIApplicationSceneManifest` 引用的类名保持一致。
 @objc(KDSceneDelegate)
 class SceneDelegate: UIResponder, UIWindowSceneDelegate {
     var window: UIWindow?
@@ -20,7 +20,8 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
     ) {
         guard let windowScene = scene as? UIWindowScene else { return }
         let window = UIWindow(windowScene: windowScene)
-        let mainViewController = KCMainViewController()
+        let compositionRoot = KCAppCompositionRoot()
+        let mainViewController = compositionRoot.makeMainViewController()
         mainViewController.overrideUserInterfaceStyle = .light
         window.overrideUserInterfaceStyle = .light
         window.rootViewController = mainViewController

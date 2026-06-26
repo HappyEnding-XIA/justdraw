@@ -31,7 +31,8 @@ let package = Package(
         .target(
             name: "KCContentCatalog",
             dependencies: ["KCCommon", "KCDomain"],
-            path: "Sources/KCContentCatalog"
+            path: "Sources/KCContentCatalog",
+            resources: [.process("Resources")]
         ),
         .target(
             name: "KCSessionPersistence",

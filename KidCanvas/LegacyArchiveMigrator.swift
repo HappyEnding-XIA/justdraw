@@ -10,16 +10,16 @@ import KCCommon
 import KCDomain
 import KCSessionPersistence
 
-/// Swift replacement for the Objective-C `KDArtworkSession` model, exposed under
-/// the **same Objective-C runtime name** (`@objc(KDArtworkSession)`) so that
-/// `NSKeyedUnarchiver` resolves it against legacy `sessions.archive` files
-/// written by the old OC app.
+/// 替代原 Objective-C `KDArtworkSession` 模型的 Swift 类，使用**相同的
+/// Objective-C 运行时类名**（`@objc(KDArtworkSession)`）暴露，这样
+/// `NSKeyedUnarchiver` 在解码旧版 OC app 写入的 `sessions.archive` 时，
+/// 仍能按类名解析到本类型。
 ///
-/// The `NSSecureCoding` keys are byte-identical to the former OC
-/// `encodeWithCoder:`/`initWithCoder:` (`sessionIdentifier`, `title`,
-/// `artworkFileName`, `thumbnailFileName`, `modifiedAt`), so existing users'
-/// archives decode without any data migration. Co-located with its only consumer
-/// (`LegacyArchiveMigrator`) to avoid a separate file/project entry.
+/// `NSSecureCoding` 的 key 与原 OC 的 `encodeWithCoder:`/`initWithCoder:`
+/// 完全一致（`sessionIdentifier`、`title`、`artworkFileName`、
+/// `thumbnailFileName`、`modifiedAt`），因此老用户的 archive 无需数据迁移
+/// 即可解码。与唯一消费者（`LegacyArchiveMigrator`）共置于同一文件，避免
+/// 新增单独的文件/工程条目。
 @objc(KDArtworkSession)
 final class KCLegacyArtworkSession: NSObject, NSSecureCoding {
     @objc var sessionIdentifier: String?
@@ -53,13 +53,12 @@ final class KCLegacyArtworkSession: NSObject, NSSecureCoding {
     }
 }
 
-/// Decodes the legacy `sessions.archive` (`NSKeyedArchiver` format containing
-/// `KDArtworkSession` objects) and maps them to `KCArtworkSession` for the
-/// Swift `KCSessionStore`.
+/// 解码旧版 `sessions.archive`（`NSKeyedArchiver` 格式，内含
+/// `KDArtworkSession` 对象），并映射为 `KCArtworkSession` 供 Swift
+/// `KCSessionStore` 使用。
 ///
-/// This migrator is injected into `KCSessionStore` so that existing users'
-/// artwork history is automatically carried over to the new `sessions.json`
-/// format on first load.
+/// 本迁移器注入 `KCSessionStore`，使老用户的画作历史在首次加载时自动
+/// 迁移到新的 `sessions.json` 格式。
 final class LegacyArchiveMigrator: NSObject, KCLegacySessionMigrator {
     func decode(legacyArchiveAt url: URL) -> [KCArtworkSession]? {
         guard let data = try? Data(contentsOf: url) else { return nil }

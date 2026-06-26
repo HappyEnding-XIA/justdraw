@@ -8,38 +8,36 @@
 import Foundation
 import CoreGraphics
 
-/// UIKit-free geometry helpers that constrain a sticker's affine transform and
-/// center to the canvas — a faithful port of the Objective-C canvas's
-/// `constrainStickerScale:` and `constrainStickerCenter:`.
+/// 不依赖 UIKit 的几何工具，将贴纸的仿射变换与中心点约束在画布范围内——
+/// 忠实移植自 Objective-C 画布的 `constrainStickerScale:` 与
+/// `constrainStickerCenter:`。
 ///
-/// The live gesture handlers in `KDDrawingCanvasView` keep applying the result
-/// to the UIKit view; only the pure transform/center math lives here so it is
-/// unit-testable independent of UIKit.
+/// `KDDrawingCanvasView` 中的实时手势处理器继续将结果应用到 UIKit 视图上；
+/// 仅纯粹的变换/中心点计算放在此处，以便在不依赖 UIKit 的情况下进行单元测试。
 public enum KCStickerConstraints {
 
-    /// Minimum sticker scale (matches the prototype's `KDStickerMinimumScale`).
+    /// 贴纸最小缩放（对应原型中的 `KDStickerMinimumScale`）。
     public static let minimumScale: CGFloat = 0.48
 
-    /// Maximum sticker scale (matches the prototype's `KDStickerMaximumScale`).
+    /// 贴纸最大缩放（对应原型中的 `KDStickerMaximumScale`）。
     public static let maximumScale: CGFloat = 2.6
 
-    /// Uniform scale read from a live affine transform via `hypot(a, c)`, the
-    /// same extraction the prototype uses when clamping sticker size.
+    /// 通过 `hypot(a, c)` 从实时仿射变换中读取的均匀缩放，与原型在钳制贴纸
+    /// 尺寸时所用的提取方式相同。
     public static func scale(of transform: CGAffineTransform) -> CGFloat {
         hypot(transform.a, transform.c)
     }
 
-    /// Returns `scale` clamped to `[minimumScale, maximumScale]`.
+    /// 返回钳制到 `[minimumScale, maximumScale]` 范围内的 `scale`。
     public static func clampedScale(_ scale: CGFloat) -> CGFloat {
         min(maximumScale, max(minimumScale, scale))
     }
 
-    /// Returns `transform` with its uniform scale clamped to
-    /// `[minimumScale, maximumScale]`, matching the prototype's
-    /// `constrainStickerScale:`:
-    ///   - a degenerate (non-positive) scale resets to identity;
-    ///   - when the scale is already within `0.001` of the clamp, the transform
-    ///     is returned unchanged (no perceptible correction needed).
+    /// 返回均匀缩放被钳制到 `[minimumScale, maximumScale]` 范围内的
+    /// `transform`，对应原型中的 `constrainStickerScale:`：
+    ///   - 退化（非正）的缩放重置为恒等变换；
+    ///   - 当缩放已落在钳制值的 `0.001` 范围内时，原样返回变换
+    ///     （无需可见的修正）。
     public static func transformWithClampedScale(_ transform: CGAffineTransform) -> CGAffineTransform {
         let currentScale = scale(of: transform)
         if currentScale <= 0.0 {
@@ -53,10 +51,9 @@ public enum KCStickerConstraints {
         return transform.scaledBy(x: correction, y: correction)
     }
 
-    /// Returns `center` clamped so a sticker with the given `frame` stays
-    /// reachable inside `canvasBounds`, matching the prototype's
-    /// `constrainStickerCenter:`. Returns `center` unchanged when the canvas
-    /// bounds are empty.
+    /// 返回被钳制的 `center`，使具有给定 `frame` 的贴纸在 `canvasBounds` 内
+    /// 始终可达，对应原型中的 `constrainStickerCenter:`。当画布边界为空时，
+    /// 原样返回 `center`。
     public static func clampedCenter(
         _ center: CGPoint,
         frame: CGRect,
@@ -76,9 +73,9 @@ public enum KCStickerConstraints {
         )
     }
 
-    /// Returns `true` when `point` lies inside `rect` (same coordinate space).
-    /// A testable containment primitive backing the canvas's sticker hit testing;
-    /// the UIKit canvas still performs the transform-aware point conversion.
+    /// 当 `point` 位于 `rect`（同一坐标系）内时返回 `true`。
+    /// 一个可测试的包含判定原语，支撑画布的贴纸命中测试；
+    /// UIKit 画布仍负责进行考虑变换的点坐标转换。
     public static func contains(_ rect: CGRect, point: CGPoint) -> Bool {
         rect.contains(point)
     }

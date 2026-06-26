@@ -9,28 +9,27 @@ import Foundation
 import KCDomain
 import KCCommon
 
-/// Decodes the Objective-C `sessions.archive` (NSKeyedArchiver) into domain
-/// sessions. The archive stores custom `KDArtworkSession` objects, so decoding
-/// requires the original class — which lives in the app target, not this package.
+/// 将 Objective-C 的 `sessions.archive`（NSKeyedArchiver）解码为领域 session。
+/// 该归档存储的是自定义的 `KDArtworkSession` 对象，因此解码需要原始类——
+/// 该类位于 app target 中，而不在本 package 内。
 ///
-/// The app supplies a concrete migrator at startup; this package defines the seam
-/// and keeps the on-disk layout compatible.
+/// app 在启动时提供具体的迁移器；本 package 定义接口边界，
+/// 并保持磁盘布局兼容。
 public protocol KCLegacySessionMigrator: Sendable {
-    /// Returns sessions read from the legacy `sessions.archive`, or `nil` if the
-    /// archive cannot be decoded by this migrator.
+    /// 返回从旧版 `sessions.archive` 读取到的 session；若该迁移器无法解码此归档，则返回 `nil`。
     func decode(legacyArchiveAt url: URL) -> [KCArtworkSession]?
 }
 
-/// File-backed session persistence implementing `KCSessionRepository`.
+/// 基于文件的 session 持久化，实现 `KCSessionRepository`。
 ///
-/// On-disk layout matches the Objective-C `KDSessionStore`:
-/// - `<uuid>.png` full artwork
-/// - `<uuid>-thumb.jpg` 240×180 JPEG thumbnail
-/// - `draft.png` autosave draft
-/// - `sessions.json` metadata (Codable; supersedes the legacy `sessions.archive`)
+/// 磁盘布局与 Objective-C 的 `KDSessionStore` 一致：
+/// - `<uuid>.png` 完整画作
+/// - `<uuid>-thumb.jpg` 240×180 JPEG 缩略图
+/// - `draft.png` 自动保存草稿
+/// - `sessions.json` 元数据（Codable；取代旧版 `sessions.archive`）
 ///
-/// A save that fails partway rolls back image files to their previous state, so
-/// the metadata index never references missing artwork.
+/// 保存过程中途失败时会将图像文件回滚到之前的状态，
+/// 因此元数据索引不会指向缺失的画作。
 public final class KCSessionStore: KCSessionRepository, @unchecked Sendable {
     public static let defaultDirectoryName = "KidCanvasSessions"
     public static let metadataFileName = "sessions.json"
@@ -47,7 +46,7 @@ public final class KCSessionStore: KCSessionRepository, @unchecked Sendable {
     private let fileManager: FileManager
     private let lock = NSLock()
 
-    /// Creates a store rooted at `Documents/KidCanvasSessions/`.
+    /// 创建以 `Documents/KidCanvasSessions/` 为根目录的 store。
     public convenience init(legacyMigrator: KCLegacySessionMigrator? = nil) {
         let documents = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first
             ?? URL(fileURLWithPath: NSTemporaryDirectory())
@@ -57,7 +56,7 @@ public final class KCSessionStore: KCSessionRepository, @unchecked Sendable {
         )
     }
 
-    /// Creates a store rooted at an explicit directory (used for tests).
+    /// 创建以指定目录为根的 store（用于测试）。
     public init(
         directoryURL: URL,
         legacyMigrator: KCLegacySessionMigrator? = nil,
@@ -85,7 +84,7 @@ public final class KCSessionStore: KCSessionRepository, @unchecked Sendable {
             return document.sessions.sorted { $0.modifiedAt > $1.modifiedAt }
         }
 
-        // No JSON yet — attempt a one-time migration from the legacy archive.
+        // 尚无 JSON —— 尝试从旧版归档进行一次性迁移。
         if let migrator = legacyMigrator,
            fileManager.fileExists(atPath: legacyMetadataURL.path),
            let migrated = migrator.decode(legacyArchiveAt: legacyMetadataURL) {
@@ -109,7 +108,7 @@ public final class KCSessionStore: KCSessionRepository, @unchecked Sendable {
 
         var sessions = (readMetadataDocument()?.sessions) ?? []
 
-        // Resolve identity first so `KCArtworkSession.id` (a `let`) is never mutated.
+        // 先解析身份，确保 `KCArtworkSession.id`（`let`）绝不会被修改。
         let id: String
         let artworkFileName: String
         let thumbnailFileName: String
@@ -235,7 +234,7 @@ public final class KCSessionStore: KCSessionRepository, @unchecked Sendable {
         try? fileManager.removeItem(at: draftURL)
     }
 
-    // MARK: - Internals
+    // MARK: - 内部实现
 
     public static let schemaVersion = 1
     private static let titleFormatter: DateFormatter = {
@@ -274,8 +273,8 @@ public final class KCSessionStore: KCSessionRepository, @unchecked Sendable {
         return decoder
     }
 
-    /// Restores a file to its previous contents, or removes it if it did not
-    /// exist before — the prototype's `restoreFileAtURL:previousData:existed:`.
+    /// 将文件恢复到之前的内容；若之前不存在则移除该文件——
+    /// 对应原型的 `restoreFileAtURL:previousData:existed:`。
     private func restore(url: URL, previousData: Data?, existed: Bool) {
         if existed, let previousData {
             try? previousData.write(to: url, options: .atomic)
@@ -285,7 +284,7 @@ public final class KCSessionStore: KCSessionRepository, @unchecked Sendable {
     }
 }
 
-/// Codable envelope for the JSON metadata file, carrying a schema version.
+/// JSON 元数据文件的 Codable 外层结构，携带 schema 版本号。
 struct KCSessionMetadataDocument: Codable {
     var schemaVersion: Int
     var sessions: [KCArtworkSession]

@@ -9,9 +9,8 @@ import Foundation
 import CoreGraphics
 import KCCommon
 
-/// An 8-bit-per-channel RGBA color, the working representation for raster
-/// operations. Byte layout matches the prototype's premultiplied-last,
-/// 32-bit-big-endian bitmap context (R, G, B, A in memory order).
+/// 每通道 8 位的 RGBA 颜色，是光栅操作的内部表示。字节布局与原型的
+/// premultiplied-last、32 位大端位图上下文一致（内存顺序为 R、G、B、A）。
 public struct KCRGBA8: Equatable, Hashable, Sendable {
     public var red: UInt8
     public var green: UInt8
@@ -34,8 +33,7 @@ public struct KCRGBA8: Equatable, Hashable, Sendable {
     public static let white = KCRGBA8(red: 255, green: 255, blue: 255)
     public static let zero = KCRGBA8(red: 0, green: 0, blue: 0, alpha: 0)
 
-    /// Sum of absolute per-channel differences (Manhattan distance), the exact
-    /// metric the prototype uses to decide flood-fill boundaries.
+    /// 各通道差值绝对值之和（曼哈顿距离），即原型用于判定填充区域边界的度量方式。
     public func delta(from other: KCRGBA8) -> Int {
         abs(Int(red) - Int(other.red))
         + abs(Int(green) - Int(other.green))

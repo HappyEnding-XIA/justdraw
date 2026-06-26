@@ -8,7 +8,7 @@
 import UIKit
 import QuartzCore
 
-// MARK: - Press feedback associated-object keys
+// MARK: - 按压反馈 associated-object key
 
 private var KDPressBaseTransformKey: UInt8 = 0
 private var KDPressBaseAlphaKey: UInt8 = 0
@@ -87,7 +87,7 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
     var deleteStickerButton: UIButton!
     var frontStickerButton: UIButton!
     var stickerRowStack: UIStackView!
-    var sessionStore: SessionStoreBridge!
+    let sessionStore: KCSessionService
     var sessions: [KCSessionMetadata] = []
     var activeSession: KCSessionMetadata?
     var selectedHistorySession: KCSessionMetadata?
@@ -106,7 +106,18 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
     var brushWidthsByStyle: [Int: CGFloat] = [:]
     var eraserSliderValue: CGFloat = 0.0
 
-    // MARK: - View lifecycle
+    // MARK: - 视图生命周期
+
+    /// 通过 Composition Root 注入依赖创建。避免控制器内部直接 `KCSessionService.shared`。
+    init(sessionService: KCSessionService) {
+        self.sessionStore = sessionService
+        super.init(nibName: nil, bundle: nil)
+    }
+
+    @available(*, unavailable, message: "Use init(sessionService:) via KCAppCompositionRoot")
+    required init?(coder: NSCoder) {
+        fatalError("Use init(sessionService:)")
+    }
 
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -132,7 +143,6 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
         self.historyThumbButtons = []
         self.stickerButtons = []
         self.stickerCategoryButtons = []
-        self.sessionStore = SessionStoreBridge.shared
         self.sessions = self.sessionStore.loadAllSessions()
         self.loadBrushWidthPreferences()
 
@@ -167,7 +177,7 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
         return true
     }
 
-    // MARK: - Interface building
+    // MARK: - 界面构建
 
     func buildInterface() {
         let canvasContainer = UIView()
@@ -215,9 +225,9 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
         rightStack.addArrangedSubview(historyPanel)
         self.view.addSubview(bottomDock)
 
-        // The five floating panel groups that the collapse toggle hides together
-        // to free canvas space on small screens. (colorsPanel/sizePanel/historyPanel
-        // live inside rightScrollView, so hiding it covers all three.)
+        // 收起按钮一起隐藏的 5 组浮动面板，用于在小屏上释放画布空间。
+        //（colorsPanel/sizePanel/historyPanel 都在 rightScrollView 内，
+        // 所以隐藏它即可一并覆盖这三者。）
         self.collapsiblePanels = [topLeft, topRight, leftRail, rightScrollView, bottomDock]
 
         NSLayoutConstraint.activate([
@@ -272,13 +282,11 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
         self.buildCollapseControls()
     }
 
-    // MARK: - Toolbar collapse (small-screen canvas space)
+    // MARK: - 工具栏收起（小屏画布空间）
 
-    /// Builds the always-visible collapse toggle (bottom-trailing corner, out of the
-    /// main drawing area) plus a minimal current-tool chip shown only when the
-    /// floating panels are collapsed. Default state is expanded on both iPhone and
-    /// iPad; the toggle lets the user hide every floating panel to reclaim canvas
-    /// space — most useful on iPhone landscape.
+    /// 构建常驻可见的收起按钮（右下角，位于主绘画区之外），以及仅在浮动面板
+    /// 收起时显示的最小当前工具芯片。iPhone 与 iPad 默认都展开；该按钮可让
+    /// 用户隐藏全部浮动面板以释放画布空间——在 iPhone 横屏下最有用。
     func buildCollapseControls() {
         let toggle = UIButton(type: .system)
         toggle.translatesAutoresizingMaskIntoConstraints = false
@@ -355,10 +363,9 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
         self.applyPanelsCollapsedAnimated(true)
     }
 
-    /// Hides or shows the floating panels. Toggling only `hidden`/`alpha`/user
-    /// interaction leaves every constraint intact, so rotation, backgrounding, and
-    /// opening history cannot misplace controls, and no tool/color/eraser/sticker/
-    /// undo/save state is touched.
+    /// 隐藏或显示浮动面板。切换只改 `hidden`/`alpha`/userInteractionEnabled，
+    /// 所有约束保持不变，因此旋转、后台、打开历史都不会让控件错位，
+    /// 也不触碰任何工具/颜色/橡皮/贴纸/撤销/保存状态。
     func applyPanelsCollapsedAnimated(_ animated: Bool) {
         self.refreshToolStateChip()
 
@@ -368,9 +375,9 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
         self.collapseToggleButton.setImage(icon, for: .normal)
         self.collapseToggleButton.accessibilityLabel = self.panelsCollapsed ? "Show Tools" : "Hide Tools"
 
-        // Keep panels in the hierarchy (laid out) during the crossfade; flip hidden
-        // in completion. userInteractionEnabled is non-animatable, so it applies
-        // immediately — collapsed panels stop intercepting canvas touches at once.
+        // 渐变过程中保留面板在视图层级中（已布局），在完成回调里再切换 hidden。
+        // userInteractionEnabled 不可动画，故立即生效——收起的面板会立刻停止
+        // 拦截画布触摸。
         for panel in self.collapsiblePanels {
             panel.isHidden = false
         }
@@ -405,36 +412,27 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
         }
     }
 
-    /// Refreshes the minimal current-tool chip (color swatch + tool name) from the
-    /// canvas state. Called on collapse and on tool/brush/color changes so the chip
-    /// always reflects the active drawing tool while the panels are hidden.
+    /// 从画布状态刷新最小当前工具芯片（色块 + 工具名）。在收起时以及工具/画笔/
+    /// 颜色变化时调用，使芯片在面板隐藏期间始终反映当前绘图工具。
     func refreshToolStateChip() {
         guard self.toolStateLabel != nil else {
             return
         }
 
         var swatchColor: UIColor = self.canvasView.currentColor ?? UIColor(red: 0.94, green: 0.43, blue: 0.45, alpha: 1.0)
-        var title: String
-
         switch self.canvasView.currentToolMode {
         case .eraser:
-            title = "Eraser"
             swatchColor = UIColor(white: 1.0, alpha: 1.0)
-        case .fill:
-            title = "Fill"
-        case .picker:
-            title = "Eyedropper"
         case .sticker:
-            title = "Sticker"
             swatchColor = UIColor(red: 0.96, green: 0.85, blue: 0.48, alpha: 1.0)
-        case .brush:
-            switch self.canvasView.currentBrushStyle {
-            case .pencil: title = "Pencil"
-            case .pen: title = "Pen"
-            case .crayon: title = "Crayon"
-            }
+        default:
+            break
         }
 
+        let title = KCDrawingEngineAdapter.toolStateChipTitle(
+            toolMode: self.canvasView.currentToolMode.rawValue,
+            brushStyle: self.canvasView.currentBrushStyle.rawValue
+        )
         self.toolStateLabel.text = title
         self.toolStateSwatch.backgroundColor = swatchColor
     }
@@ -1372,7 +1370,7 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
         return UIColor(red: 0.56, green: 0.84, blue: 0.63, alpha: 1.0)
     }
 
-    // MARK: - Line art items
+    // MARK: - 线稿项
 
     func makeLineArtItems() -> [KDLineArtItem] {
         weak var weakSelf = self
@@ -1629,7 +1627,7 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
         return [bunny, car, fish, flower, house, rocket, cupcake, dino]
     }
 
-    // MARK: - Palettes
+    // MARK: - 调色板
 
     func makePalette24() -> [UIColor] {
         return [
@@ -1984,12 +1982,12 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
         self.palette36Button.layer.borderWidth = palette36 ? 1.0 : 0.0
     }
 
-    // MARK: - History
+    // MARK: - 历史
 
     func refreshHistoryUI() {
         self.sessions = self.sessionStore.loadAllSessions()
         let maxPageIndex = self.maxHistoryPageIndex()
-        self.historyPageIndex = KCDrawingEngineBridge.historyClampedPageIndex(
+        self.historyPageIndex = KCDrawingEngineAdapter.historyClampedPageIndex(
             self.historyPageIndex,
             sessionCount: self.sessions.count,
             pageSize: self.historyPageSize()
@@ -2071,14 +2069,14 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
     }
 
     func maxHistoryPageIndex() -> Int {
-        // History paging math lives in the Swift KCHistoryPaging Feature model.
-        return KCDrawingEngineBridge.historyMaxPageIndex(sessionCount: self.sessions.count,
+        // 历史分页计算在 Swift KCHistoryPaging Feature 模型中。
+        return KCDrawingEngineAdapter.historyMaxPageIndex(sessionCount: self.sessions.count,
                                                          pageSize: self.historyPageSize())
     }
 
     func sessionIndexForHistoryThumbIndex(_ thumbIndex: Int) -> Int {
-        // History paging math lives in the Swift KCHistoryPaging Feature model.
-        return KCDrawingEngineBridge.historySessionIndex(
+        // 历史分页计算在 Swift KCHistoryPaging Feature 模型中。
+        return KCDrawingEngineAdapter.historySessionIndex(
             thumbIndex: thumbIndex,
             pageIndex: self.historyPageIndex,
             pageSize: self.historyPageSize()
@@ -2100,7 +2098,7 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
         return nil
     }
 
-    // MARK: - Tool / brush / color selection
+    // MARK: - 工具 / 画笔 / 颜色选择
 
     func selectToolMode(_ mode: KDToolMode) {
         self.canvasView.currentToolMode = mode
@@ -2333,7 +2331,7 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
         }
     }
 
-    // MARK: - Button actions
+    // MARK: - 按钮动作
 
     @objc func didTapPalette24() {
         self.showing36Palette = false
@@ -2850,7 +2848,7 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
         }
     }
 
-    // MARK: - Drawing canvas delegate
+    // MARK: - 画布代理
 
     func drawingCanvasView(_ canvasView: KCDrawingCanvasView, didPickColor color: UIColor) {
         self.canvasView.currentColor = color
@@ -2874,7 +2872,7 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
         self.scheduleDraftSave()
     }
 
-    // MARK: - Image picker
+    // MARK: - 图片选择器
 
     func imagePickerController(_ picker: UIImagePickerController, didFinishPickingMediaWithInfo info: [UIImagePickerController.InfoKey: Any]) {
         let image = info[.originalImage] as? UIImage
@@ -2932,7 +2930,7 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
         }
     }
 
-    // MARK: - Refresh helpers
+    // MARK: - 刷新辅助方法
 
     func refreshEraserShapeButtons() {
         let buttons: [UIButton] = [self.circleEraserButton, self.cloudEraserButton, self.starEraserButton]
@@ -2986,7 +2984,7 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
             : UIColor(red: 0.55, green: 0.60, blue: 0.67, alpha: 0.7)
     }
 
-    // MARK: - Press feedback
+    // MARK: - 按压反馈
 
     func registerPressFeedbackForControl(_ control: UIControl) {
         control.addTarget(self, action: #selector(handleControlPressDown(_:)), for: .touchDown)
@@ -3037,7 +3035,7 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
         }, completion: nil)
     }
 
-    // MARK: - Save toast
+    // MARK: - 保存提示
 
     func showSaveToastWithSuccess(_ success: Bool) {
         self.saveToastView?.removeFromSuperview()
@@ -3095,7 +3093,7 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
         })
     }
 
-    // MARK: - Draft autosave
+    // MARK: - 草稿自动保存
 
     func restoreDraftIfNeeded() {
         if self.activeSession != nil {
@@ -3157,7 +3155,7 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
         NotificationCenter.default.removeObserver(self)
     }
 
-    // MARK: - Color matching
+    // MARK: - 颜色匹配
 
     func color(_ lhs: UIColor?, matchesColor rhs: UIColor?) -> Bool {
         guard let lhs = lhs, let rhs = rhs else {

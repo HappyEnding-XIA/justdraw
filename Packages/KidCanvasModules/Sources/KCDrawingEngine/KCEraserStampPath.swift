@@ -9,13 +9,12 @@ import Foundation
 import CoreGraphics
 import KCDomain
 
-/// Generates the `CGPath` for a single eraser stamp and computes the
-/// interpolated stamp positions along a stroke path, ported from
-/// `-[KDDrawingCanvasView eraserShapePathForShape:center:size:]` and
-/// `-[KDDrawingCanvasView drawStampedEraserStroke:]`.
+/// 生成单个橡皮擦印章的 `CGPath`，并计算沿笔画路径的插值印章位置，
+/// 移植自 `-[KDDrawingCanvasView eraserShapePathForShape:center:size:]`
+/// 和 `-[KDDrawingCanvasView drawStampedEraserStroke:]`。
 public enum KCEraserStampPath {
 
-    /// Returns the closed path for `shape` centered at `center`, sized from `size`.
+    /// 返回以 `center` 为中心、按 `size` 缩放的 `shape` 的闭合路径。
     public static func path(for shape: KCEraserShape, center: CGPoint, size: CGFloat) -> CGPath {
         let radius = max(10.0, size * 0.55)
         switch shape {
@@ -39,12 +38,11 @@ public enum KCEraserStampPath {
         }
     }
 
-    /// Returns the interpolated stamp center positions along the given path,
-    /// spaced according to the prototype's rule: `max(6, lineWidth × 0.38)`.
+    /// 返回沿给定路径插值得到的印章中心位置，间距遵循原型规则：
+    /// `max(6, lineWidth × 0.38)`。
     ///
-    /// The OC code collects path points via `CGPathApply` then linearly
-    /// interpolates between consecutive points at the calculated spacing.
-    /// This method reproduces that algorithm identically.
+    /// OC 代码通过 `CGPathApply` 收集路径点，然后按计算出的间距在相邻点之间
+    /// 进行线性插值。本方法完全复刻该算法。
     public static func interpolatedStampPoints(
         along path: CGPath,
         lineWidth: CGFloat
@@ -100,9 +98,9 @@ public enum KCEraserStampPath {
         return result
     }
 
-    // MARK: - Private
+    // MARK: - 私有
 
-    /// Five-point star outline, matching the prototype.
+    /// 五角星轮廓，与原型保持一致。
     static func star(center: CGPoint, outerRadius: CGFloat, innerRadius: CGFloat, points: Int) -> CGPath {
         let path = CGMutablePath()
         let totalVertices = points * 2

@@ -8,12 +8,12 @@
 import Foundation
 import KCCommon
 
-/// An immutable snapshot of the canvas, used for undo/redo and serialization.
+/// 画布的不可变快照，用于撤销/重做与序列化。
 ///
-/// Modeled on the Objective-C `KDCanvasState`: a background raster (PNG bytes),
-/// the committed strokes, and the placed stickers. Keeping the background as
-/// `Data` keeps this type `UIKit`-free and `Codable`; the app/engine layer
-/// produces the bytes when rasterizing flood-fill results or line art.
+/// 以 Objective-C 的 `KDCanvasState` 为蓝本：包含背景位图（PNG 字节）、
+/// 已提交的笔画，以及已放置的贴纸。将背景保存为 `Data` 使该类型保持
+/// 不依赖 `UIKit` 且可 `Codable`；App/引擎层在栅格化油漆桶填充结果或
+/// 线稿时产出这些字节。
 public struct KCCanvasSnapshot: Codable, Equatable, Sendable {
     public var backgroundImageData: Data?
     public var strokes: [KCStroke]
@@ -29,8 +29,8 @@ public struct KCCanvasSnapshot: Codable, Equatable, Sendable {
         self.stickers = stickers
     }
 
-    /// `true` when there is anything to render — matching the prototype's
-    /// `canvasStateHasVisibleContent:`.
+    /// 当存在任何可渲染内容时为 `true`——对应原型中的
+    /// `canvasStateHasVisibleContent:`。
     public var hasVisibleContent: Bool {
         backgroundImageData != nil || !strokes.isEmpty || !stickers.isEmpty
     }

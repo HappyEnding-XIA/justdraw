@@ -20,7 +20,7 @@ final class FloodFillEngineTests: XCTestCase {
     }
 
     func testStopsAtColorBoundary() {
-        // Left half white, vertical black wall at column 5, right half white.
+        // 左半部为白色，第 5 列有一道竖直的黑色墙，右半部为白色。
         let buffer = KCBitmapBuffer(width: 10, height: 4, fill: .white)
         for y in 0..<4 {
             buffer.setPixel(.black, x: 5, y: y)
@@ -28,21 +28,21 @@ final class FloodFillEngineTests: XCTestCase {
         let changed = KCFloodFillEngine.fill(buffer: buffer, startX: 0, startY: 0,
                                            fillColor: KCRGBA8(red: 255, green: 0, blue: 0),
                                            tolerance: 28)
-        // Columns 0-4 (5 cols) across 4 rows = 20 pixels.
+        // 第 0-4 列（共 5 列）× 4 行 = 20 个像素。
         XCTAssertEqual(changed, 20)
         XCTAssertEqual(buffer.pixel(x: 0, y: 0).red, 255)
-        // Right half untouched (wall blocked BFS).
+        // 右半部未受影响（墙阻挡了 BFS 扩展）。
         XCTAssertEqual(buffer.pixel(x: 6, y: 0), .white)
     }
 
     func testToleranceAllowNearColors() {
-        // Seed is near-white (252). A neighbor at 250 is within tolerance*4=112.
+        // 种子为近白色（252）。邻居像素 250 在 tolerance*4=112 范围内。
         let nearWhite = KCRGBA8(red: 252, green: 252, blue: 252)
         let buffer = KCBitmapBuffer(width: 3, height: 1, fill: nearWhite)
         buffer.setPixel(KCRGBA8(red: 250, green: 250, blue: 250), x: 2, y: 0)
         let changed = KCFloodFillEngine.fill(buffer: buffer, startX: 0, startY: 0,
                                            fillColor: .black, tolerance: 28)
-        // delta between 252 and 250 = 2 per channel * 3 = 6 <= 112, so all fill.
+        // 252 与 250 之间的 delta = 每通道 2 × 3 = 6 <= 112，因此全部填充。
         XCTAssertEqual(changed, 3)
     }
 
@@ -62,16 +62,16 @@ final class FloodFillEngineTests: XCTestCase {
     }
 
     func testDiagonalBarrierDoesNotLeak() {
-        // 4-connected fill must not cross a diagonal line of boundary pixels.
+        // 4 连通填充不得穿过对角线排列的边界像素。
         let buffer = KCBitmapBuffer(width: 5, height: 5, fill: .white)
         for i in 0..<5 {
             buffer.setPixel(.black, x: i, y: i)
         }
         KCFloodFillEngine.fill(buffer: buffer, startX: 0, startY: 4,
                              fillColor: KCRGBA8(red: 255, green: 0, blue: 0), tolerance: 28)
-        // (0,4) is white and reachable; the diagonal only touches corners.
+        // (0,4) 为白色且可达；对角线仅触及角点。
         XCTAssertEqual(buffer.pixel(x: 0, y: 4).red, 255)
-        // (4,0) is separated by the diagonal and stays white.
+        // (4,0) 被对角线隔开，保持白色。
         XCTAssertEqual(buffer.pixel(x: 4, y: 0), .white)
     }
 }
@@ -106,13 +106,13 @@ final class BitmapBufferRoundTripTests: XCTestCase {
         }
         let restored = KCBitmapBuffer(cgImage: image)
         XCTAssertNotNil(restored)
-        // Premultiplied-last RGB is lossless for opaque colors.
+        // premultiplied-last 的 RGB 对于不透明颜色是无损的。
         XCTAssertEqual(restored?.pixel(x: 0, y: 0).red, 30)
         XCTAssertEqual(restored?.pixel(x: 7, y: 7).blue, 90)
     }
 
     func testZeroSizedImageInitFails() {
-        // CGImage with zero dimensions is not produced; guard via empty buffer.
+        // 零尺寸的 CGImage 不会产生；通过空缓冲区触发保护。
         let buffer = KCBitmapBuffer(width: 0, height: 0)
         XCTAssertNil(buffer.makeCGImage())
     }
@@ -124,7 +124,7 @@ final class PressureModelTests: XCTestCase {
     }
 
     func testFingerClampsToLowerBound() {
-        // 0.96 + 0*0.28 = 0.96, within [0.92, 1.18].
+        // 0.96 + 0*0.28 = 0.96，落在 [0.92, 1.18] 范围内。
         let p = KCPressureModel.finger(normalizedForce: 0)
         XCTAssertEqual(p, 0.96, accuracy: 1e-9)
     }
@@ -141,7 +141,7 @@ final class PressureModelTests: XCTestCase {
     }
 
     func testPencilClampsToLowerBound() {
-        // 0.72 + 0*0.95 = 0.72; the 0.65 floor only matters for negative force.
+        // 0.72 + 0*0.95 = 0.72；0.65 下限仅在负压力时才起作用。
         let p = KCPressureModel.pencil(normalizedForce: 0)
         XCTAssertEqual(p, 0.72, accuracy: 1e-9)
     }
@@ -164,10 +164,10 @@ final class EraserStampPathTests: XCTestCase {
     }
 
     func testMinimumRadiusEnforcedForTinySize() {
-        // size * 0.55 = 1.1, should be clamped up to 10.
+        // size * 0.55 = 1.1，应被向上钳制到 10。
         let path = KCEraserStampPath.path(for: .circle, center: CGPoint(x: 0, y: 0), size: 2)
         let bounds = path.boundingBox
-        // Diameter should be ~20 (radius 10), far larger than size 2.
+        // 直径应约为 20（半径 10），远大于 size 2。
         XCTAssertGreaterThan(bounds.width, 15)
     }
 }

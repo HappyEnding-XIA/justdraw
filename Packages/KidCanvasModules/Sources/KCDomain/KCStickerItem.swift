@@ -9,9 +9,8 @@ import Foundation
 import CoreGraphics
 import KCCommon
 
-/// An affine transform stored as its six Core Graphics matrix components, so
-/// sticker state stays `Codable` and `UIKit`-free while remaining convertible
-/// to/from `CGAffineTransform`.
+/// 以六个 Core Graphics 矩阵分量形式存储的仿射变换，使贴纸状态保持
+/// 可 `Codable` 且不依赖 `UIKit`，同时仍可与 `CGAffineTransform` 互转。
 public struct KCStickerTransform: Codable, Equatable, Sendable {
     public var a: Double
     public var b: Double
@@ -29,7 +28,7 @@ public struct KCStickerTransform: Codable, Equatable, Sendable {
         self.ty = ty
     }
 
-    /// The identity transform.
+    /// 恒等变换。
     public static let identity = KCStickerTransform(a: 1, b: 0, c: 0, d: 1, tx: 0, ty: 0)
 
     public init(cgAffineTransform transform: CGAffineTransform) {
@@ -47,31 +46,30 @@ public struct KCStickerTransform: Codable, Equatable, Sendable {
         CGAffineTransform(a: a, b: b, c: c, d: d, tx: tx, ty: ty)
     }
 
-    /// Uniform scale extracted from the matrix, the same way the prototype reads
-    /// it when clamping sticker size: `hypot(a, c)`.
+    /// 从矩阵中提取的均匀缩放，与原型在钳制贴纸尺寸时的读取方式相同：
+    /// `hypot(a, c)`。
     public var scale: Double {
         let value = hypot(a, c)
         return value > 0 ? value : 1.0
     }
 
-    /// Returns a copy scaled by `factor` (applied like `CGAffineTransformScale`).
+    /// 返回按 `factor` 缩放后的副本（应用方式同 `CGAffineTransformScale`）。
     public func scaled(by factor: Double) -> KCStickerTransform {
         let scaled = cgAffineTransform.scaledBy(x: factor, y: factor)
         return KCStickerTransform(cgAffineTransform: scaled)
     }
 
-    /// Returns a copy rotated by `angle` radians.
+    /// 返回按 `angle` 弧度旋转后的副本。
     public func rotated(by angle: Double) -> KCStickerTransform {
         let rotated = cgAffineTransform.rotated(by: angle)
         return KCStickerTransform(cgAffineTransform: rotated)
     }
 }
 
-/// A sticker placed on the canvas, modeled on the Objective-C `KDStickerState`.
+/// 放置在画布上的贴纸，以 Objective-C 的 `KDStickerState` 为蓝本。
 ///
-/// Position is the absolute `center` in canvas coordinates plus a full affine
-/// `transform` (carrying scale and rotation). The SF Symbol identifier and tint
-/// color define the sticker's appearance.
+/// 位置以画布坐标系下的绝对 `center` 加上完整的仿射 `transform`（承载缩放与
+/// 旋转）表示。SF Symbol 标识符与着色定义了贴纸的外观。
 public struct KCStickerItem: Codable, Equatable, Sendable, Identifiable {
     public let id: UUID
     public var symbolName: String

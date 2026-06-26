@@ -9,12 +9,11 @@ import Foundation
 import CoreGraphics
 import KCCommon
 
-/// A single brush or eraser stroke, modeled on the Objective-C `KDStroke`.
+/// 单笔画笔或橡皮擦笔画，以 Objective-C 的 `KDStroke` 为蓝本。
 ///
-/// A stroke carries the sampled touch points, the average pressure accumulated
-/// while drawing, and the tool/brush/eraser configuration in effect. Pressure is
-/// stored as a running sum and count so the rendered width can be recomputed
-/// (`averagePressure`) without keeping every sample.
+/// 一笔笔画携带采样到的触摸点、绘制过程中累积的平均压感，以及生效的工具/
+/// 画笔/橡皮擦配置。压感以累加和与计数的形式存储，从而无需保留每个采样即可
+/// 重新计算渲染宽度（`averagePressure`）。
 public struct KCStroke: Codable, Equatable, Sendable {
     public var toolMode: KCToolMode
     public var brushStyle: KCBrushStyle
@@ -22,15 +21,15 @@ public struct KCStroke: Codable, Equatable, Sendable {
     public var color: KCHexColor
     public var lineWidth: Double
 
-    /// Touch points captured while drawing, in canvas coordinates.
+    /// 绘制过程中捕获的触摸点，使用画布坐标系。
     public var points: [CGPoint]
-    /// The first touch location; used for dot (tap) strokes and jitter filtering.
+    /// 第一个触摸位置；用于点（点击）笔画与抖动过滤。
     public var startPoint: CGPoint
-    /// `true` when the stroke was a tap that never moved — rendered as a filled dot.
+    /// 当该笔画是一次从未移动的点击时为 `true`——渲染为一个实心圆点。
     public var dotStroke: Bool
-    /// Running sum of normalized pressure samples (see `KCPressureModel`).
+    /// 归一化压感采样的累加和（见 `KCPressureModel`）。
     public var pressureTotal: Double
-    /// Number of pressure samples accumulated in `pressureTotal`.
+    /// 累加到 `pressureTotal` 中的压感采样数。
     public var pressureSampleCount: Int
 
     public init(
@@ -57,13 +56,13 @@ public struct KCStroke: Codable, Equatable, Sendable {
         self.pressureSampleCount = pressureSampleCount
     }
 
-    /// Mean normalized pressure, falling back to 1.0 when no samples exist,
-    /// matching the prototype's `-[KDStroke averagePressure]`.
+    /// 平均归一化压感，无采样时回退到 1.0，对应原型中的
+    /// `-[KDStroke averagePressure]`。
     public var averagePressure: Double {
         pressureSampleCount <= 0 ? 1.0 : pressureTotal / Double(pressureSampleCount)
     }
 
-    /// Accumulates one normalized pressure sample.
+    /// 累加一个归一化压感采样。
     public mutating func recordPressure(_ normalizedPressure: Double) {
         pressureTotal += normalizedPressure
         pressureSampleCount += 1

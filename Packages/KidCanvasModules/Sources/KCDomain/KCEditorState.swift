@@ -8,9 +8,8 @@
 import Foundation
 import KCCommon
 
-/// The single source of truth for the active editing configuration, consolidating
-/// the tool/brush/color/size state that the prototype scattered across the canvas
-/// view and main view controller.
+/// 当前编辑配置的唯一数据源，整合了原型中分散在画布视图与主视图控制器里的
+/// 工具/画笔/颜色/尺寸状态。
 public struct KCEditorState: Codable, Equatable, Sendable {
     public var toolMode: KCToolMode
     public var brushStyle: KCBrushStyle
@@ -19,12 +18,12 @@ public struct KCEditorState: Codable, Equatable, Sendable {
     public var lineWidth: Double
     public var stickerSymbol: String
     public var fillTolerance: Double
-    /// Recently used colors (PRD calls for 6–8). Newest first.
+    /// 最近使用的颜色（PRD 要求 6–8 种）。最新的排在最前。
     public var recentColors: [KCHexColor]
-    /// Last-used width per brush style, so each brush remembers its own size
-    /// (mirrors the prototype's `KDBrushWidthsByStyle` preference).
+    /// 每种画笔样式上次使用的宽度，使每种画笔各自记住自己的尺寸
+    /// （对应原型中的 `KDBrushWidthsByStyle` 偏好）。
     public var lineWidthByBrush: [KCBrushStyle: Double]
-    /// Which palette size is currently shown.
+    /// 当前显示的调色板尺寸。
     public var paletteSize: KCPaletteSize
 
     public init(
@@ -51,20 +50,20 @@ public struct KCEditorState: Codable, Equatable, Sendable {
         self.paletteSize = paletteSize
     }
 
-    /// Prototype default color: `rgb(0.94, 0.43, 0.45)` ≈ `#F06E73`.
+    /// 原型默认颜色：`rgb(0.94, 0.43, 0.45)` ≈ `#F06E73`。
     public static let defaultColor = KCHexColor(red: 0.94, green: 0.43, blue: 0.45)
     public static let defaultLineWidth: Double = 12.0
     public static let defaultStickerSymbol = "star.fill"
     public static let defaultFillTolerance: Double = 28.0
-    /// Maximum recent colors retained (upper bound from the PRD's "6–8").
+    /// 保留的最近颜色上限（PRD 要求“6–8”的上界）。
     public static let recentColorLimit = 8
 
-    /// Remembers `width` as the last-used size for the active brush style.
+    /// 将 `width` 记为当前画笔样式上次使用的尺寸。
     public mutating func rememberBrushWidth(_ width: Double) {
         lineWidthByBrush[brushStyle] = width
     }
 
-    /// Switches brush style and restores that brush's remembered width (if any).
+    /// 切换画笔样式，并恢复该画笔记忆的宽度（如有）。
     public mutating func selectBrush(_ style: KCBrushStyle, fallbackWidth: Double = KCEditorState.defaultLineWidth) {
         brushStyle = style
         if let remembered = lineWidthByBrush[style] {
@@ -74,7 +73,7 @@ public struct KCEditorState: Codable, Equatable, Sendable {
         }
     }
 
-    /// Pushes a color onto recent history (deduplicated, capped), newest first.
+    /// 将一个颜色推入最近历史（去重、封顶），最新的排在最前。
     public mutating func useColor(_ newColor: KCHexColor) {
         color = newColor
         recentColors.removeAll { $0 == newColor }
@@ -85,7 +84,7 @@ public struct KCEditorState: Codable, Equatable, Sendable {
     }
 }
 
-/// Palette size toggle (PRD: 24-color default, optional 36-color).
+/// 调色板尺寸切换（PRD：默认 24 色，可选 36 色）。
 public enum KCPaletteSize: String, Codable, CaseIterable, Sendable {
     case standard
     case extended

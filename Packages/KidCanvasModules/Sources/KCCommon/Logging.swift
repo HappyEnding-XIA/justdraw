@@ -7,11 +7,11 @@
 
 import Foundation
 
-/// A minimal logging seam so modules can emit diagnostics without depending on
-/// `os.Logger` availability or a concrete logging framework.
+/// 一个最小化的日志接口（seam），使各模块可以输出诊断信息，而无需依赖
+/// `os.Logger` 的可用性或某个具体的日志框架。
 ///
-/// The app shell assigns a concrete sink at startup. By default logs are dropped,
-/// which keeps the package testable and framework-free.
+/// app 外壳会在启动时指派具体的日志 sink。默认情况下日志会被丢弃，
+/// 从而保持本包可测试且不依赖任何框架。
 public protocol KCLogging: Sendable {
     func log(_ level: KCLogLevel, _ message: @autoclosure () -> String)
 }
@@ -23,7 +23,7 @@ public enum KCLogLevel: String, Sendable {
     case error
 }
 
-/// Global logging sink. Swap this out from the app shell; modules call `KCLog`.
+/// 全局日志 sink。从 app 外壳处替换它；各模块调用 `KCLog`。
 public enum KCLog {
     nonisolated(unsafe) public static var sink: any KCLogging = KCNullLogger()
 
@@ -44,13 +44,13 @@ public enum KCLog {
     }
 }
 
-/// Default no-op logger.
+/// 默认的空操作（no-op）日志器。
 public struct KCNullLogger: KCLogging {
     public init() {}
     public func log(_ level: KCLogLevel, _ message: @autoclosure () -> String) {}
 }
 
-/// A logger that buffers messages in memory, useful for tests and debugging.
+/// 将日志消息缓冲在内存中的日志器，适用于测试和调试。
 public final class KCBufferedLogger: KCLogging, @unchecked Sendable {
     public struct Entry: Equatable, Sendable {
         public let level: KCLogLevel

@@ -10,11 +10,11 @@ import XCTest
 
 final class CrayonGrainTests: XCTestCase {
 
-    // Reference case hand-computed from the original Objective-C math:
-    // bounds {0,0,100,50}, lineWidth 10.
-    // grainBounds {-5,-5,110,60}; spacing = max(4, 4.6) = 4.6;
-    // columnCount = ceil(110/4.6) = 24; rowCount = ceil(60/4.6) = 14;
-    // dash count = (14+1) * (24+1) = 375; dashWidth = max(0.7, 0.45) = 0.7.
+    // 根据原始 Objective-C 数学手工计算的参考用例：
+    // bounds {0,0,100,50}，lineWidth 10。
+    // grainBounds {-5,-5,110,60}；spacing = max(4, 4.6) = 4.6；
+    // columnCount = ceil(110/4.6) = 24；rowCount = ceil(60/4.6) = 14；
+    // dash count = (14+1) * (24+1) = 375；dashWidth = max(0.7, 0.45) = 0.7。
     private static let referenceBounds = CGRect(x: 0, y: 0, width: 100, height: 50)
     private static let referenceLineWidth: CGFloat = 10
 
@@ -34,8 +34,8 @@ final class CrayonGrainTests: XCTestCase {
     }
 
     func testFirstDashGeometryMatchesPrototype() {
-        // row 0, column 0: seed 0 → jitter (-1.02, -0.84); center (-6.02, -5.84);
-        // dashLength 1.5 (floored); y offset +0.7 (even seed).
+        // row 0, column 0：seed 0 → jitter (-1.02, -0.84)；center (-6.02, -5.84)；
+        // dashLength 1.5（已取下限）；y offset +0.7（偶数 seed）。
         let dashes = KCCrayonGrain.dashes(pathBounds: CrayonGrainTests.referenceBounds,
                                           lineWidth: CrayonGrainTests.referenceLineWidth)
         let first = dashes[0]
@@ -46,9 +46,9 @@ final class CrayonGrainTests: XCTestCase {
     }
 
     func testDashGeometryAtRowColumnMatchesPrototype() {
-        // row 1, column 1 (row-major index 25 + 1 = 26): seed 54.
-        // jitter (0.68, 0.28); center (0.28, -0.12);
-        // dashLength = 10 * (0.10 + 4*0.018) = 1.72; y offset +0.7.
+        // row 1, column 1（行优先索引 25 + 1 = 26）：seed 54。
+        // jitter (0.68, 0.28)；center (0.28, -0.12)；
+        // dashLength = 10 * (0.10 + 4*0.018) = 1.72；y offset +0.7。
         let dashes = KCCrayonGrain.dashes(pathBounds: CrayonGrainTests.referenceBounds,
                                           lineWidth: CrayonGrainTests.referenceLineWidth)
         let dash = dashes[26]
@@ -59,8 +59,8 @@ final class CrayonGrainTests: XCTestCase {
     }
 
     func testGridRespectsColumnAndRowCaps() {
-        // Huge bounds with small spacing force both caps: 220 columns × 180 rows.
-        // lineWidth 4 → spacing = max(4, 1.84) = 4; grainBounds grows by 2 each side.
+        // 巨大的 bounds 配合较小的 spacing 会同时触发两个上限：220 列 × 180 行。
+        // lineWidth 4 → spacing = max(4, 1.84) = 4；grainBounds 每侧扩展 2。
         let dashes = KCCrayonGrain.dashes(pathBounds: CGRect(x: 0, y: 0, width: 10000, height: 10000),
                                           lineWidth: 4)
         XCTAssertEqual(dashes.count, (180 + 1) * (220 + 1))

@@ -7,20 +7,19 @@
 
 import Foundation
 
-/// Shared error type for KidCanvas modules.
+/// KidCanvas 各模块共用的错误类型。
 ///
-/// Modules surface failures through a single, descriptive enum so that the app
-/// shell and feature layers can switch over known cases without importing every
-/// module's bespoke error type.
+/// 各模块通过同一个描述性的枚举来暴露失败，使 app 外壳和功能层
+/// 可以针对已知 case 进行 switch，而无需导入每个模块各自定制的错误类型。
 public enum KCError: Error, Equatable, Sendable {
-    /// A required file or directory could not be located.
+    /// 无法定位所需的文件或目录。
     case missingResource(String)
-    /// An I/O operation (read/write/move) failed.
+    /// I/O 操作（读/写/移动）失败。
     case ioFailure(String)
-    /// On-disk data could not be decoded into the expected type.
+    /// 磁盘上的数据无法解码为期望的类型。
     case decodingFailed(String)
-    /// Input failed a precondition (invalid image, empty identifier, etc.).
+    /// 输入未通过前置条件校验（非法图片、空标识符等）。
     case invalidInput(String)
-    /// A legacy format was detected but could not be migrated by this module.
+    /// 检测到旧版格式，但本模块无法完成迁移。
     case legacyMigrationDeferred(String)
 }

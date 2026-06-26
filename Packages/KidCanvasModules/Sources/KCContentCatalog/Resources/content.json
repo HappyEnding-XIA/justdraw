@@ -1,0 +1,34 @@
+{
+  "stickerGroups": [
+    {
+      "id": "animals",
+      "title": "Animals",
+      "symbols": ["butterfly.fill", "pawprint.fill", "tortoise.fill", "hare.fill"]
+    },
+    {
+      "id": "nature",
+      "title": "Nature",
+      "symbols": ["leaf.fill", "camera.macro", "sun.max.fill", "cloud.fill"]
+    },
+    {
+      "id": "decor",
+      "title": "Decor",
+      "symbols": ["star.fill", "heart.fill", "moon.stars.fill", "rainbow", "gift.fill"]
+    },
+    {
+      "id": "faces",
+      "title": "Faces",
+      "symbols": ["face.smiling.fill", "figure.2", "hand.thumbsup.fill", "sparkles"]
+    }
+  ],
+  "lineArtTemplates": [
+    { "id": "bunny", "title": "Bunny", "category": "Animals" },
+    { "id": "car", "title": "Car", "category": "Vehicles" },
+    { "id": "fish", "title": "Fish", "category": "Animals" },
+    { "id": "flower", "title": "Flower", "category": "Nature" },
+    { "id": "house", "title": "House", "category": "Objects" },
+    { "id": "rocket", "title": "Rocket", "category": "Vehicles" },
+    { "id": "cupcake", "title": "Cupcake", "category": "Food" },
+    { "id": "dino", "title": "Dino", "category": "Animals" }
+  ]
+}

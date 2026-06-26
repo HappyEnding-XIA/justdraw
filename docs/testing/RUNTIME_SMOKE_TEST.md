@@ -1,0 +1,73 @@
+# 运行时烟测（Runtime Smoke Test）
+
+> 静态验收（`swift test` + `validate_project.py` + `xcodebuild build`）通过后，用 `scripts/runtime_smoke_test.sh` 验证 app 能真正在模拟器里启动并稳定运行。静态验收只能证明"能编译"，运行时烟测证明"能启动、不崩溃、UI 能渲染"。
+
+## 何时必须跑
+
+- 改动 App target Sources（`KidCanvas/*.swift`）或 `project.pbxproj` 之后。
+- OC→Swift 转换、bridge 改动、App 生命周期改动之后。
+- 怀疑运行时回归时（静态构建无法发现启动崩溃、selector 不匹配等）。
+
+## 用法
+
+```bash
+# 默认 iPhone 17 Pro
+scripts/runtime_smoke_test.sh
+
+# 指定设备
+scripts/runtime_smoke_test.sh "iPad Pro 11 M4"
+```
+
+脚本流程：清理 `._*` → 按设备名解析 UDID → 启动设备 → Debug 构建 → 安装 → 启动 → 等待 3 秒检查进程存活 → 截图到 `/tmp/kc_smoke_<device>.png`。
+
+可选环境变量：`CONFIGURATION`（默认 `Debug`）、`DERIVED_DATA`（默认 `/tmp/kc-dd`）、`SCREENSHOT_DIR`（默认 `/tmp`）。
+
+## 退出码
+
+| 码 | 含义 |
+|---|---|
+| 0 | 烟测通过 |
+| 2 | 指定设备不存在 |
+| 3 | 构建失败（日志 `/tmp/kc_smoke_build.log`）|
+| 4 | 找不到产物 `.app` |
+| 5 | 启动失败（常见 `FBSOpenApplication` code 4）|
+| 6 | 启动后进程未存活（崩溃）|
+
+## 故障排查
+
+### 设备不存在
+
+`xcrun simctl list devices available` 查看可用设备名，确保拼写一致。脚本失败时会打印前 20 行可用设备。
+
+### CoreSimulator 卡住（`FBSOpenApplication Error Code 4`）
+
+**通常不是代码问题**——宿主机 CoreSimulator / LaunchServices 数据库（LSDB）被污染时，所有 app（含原 OC 版）都无法启动。特征：`simctl launch` 返回 code 4，且引用已删除的镜像路径。
+
+处理（按代价从低到高）：
+
+1. `xcrun simctl shutdown all` 后重试。
+2. `xcrun simctl erase all`（清空所有模拟器数据，会丢已安装 app）。
+3. `killall -9 com.apple.CoreSimulator.CoreSimulatorService` 后重试。
+4. **重启 Mac**（本项目 2026-06-26 遇到的 LSDB 污染最终靠重启清除）。
+
+教训：永远不要用 `find` 匹配 `Index.noindex` 镜像路径做 `simctl install`——会污染 bundle id 的 LSDB 解析。只用 `DerivedData/Build/Products/<config>-iphonesimulator/<App>.app` 的真实产物路径。
+
+### bundle id 启动失败
+
+确认 `Info.plist` 的 `CFBundleIdentifier` 与脚本里 `BUNDLE_ID` 一致（当前 `com.kidcanvas.drawing`）。
+
+### 启动后崩溃（进程未存活）
+
+抓崩溃日志：
+
+```bash
+xcrun simctl spawn "<UDID>" log stream --predicate 'process == "KidCanvas"' --level debug
+```
+
+对照改动定位。OC→Swift 转换若有备份（`/tmp/*.bak`），可对比转换前后行为。
+
+## 环境依赖
+
+- Xcode 命令行工具（`xcode-select -p`）
+- `python3`（macOS 自带，用于解析 `simctl list -j` 的 JSON；`validate_project.py` 同样依赖）
+- 无其他重依赖。

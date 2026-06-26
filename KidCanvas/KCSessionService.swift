@@ -1,5 +1,5 @@
 //
-//  SessionStoreBridge.swift
+//  KCSessionService.swift
 //  KidCanvas
 //
 //  Created by 小大 on 2026/06/25.
@@ -11,18 +11,14 @@ import KCCommon
 import KCDomain
 import KCSessionPersistence
 
-/// Type-safe, ObjC-visible session metadata DTO.
+/// 类型安全的会话元数据 DTO，可供跨语言边界使用。
 ///
-/// Replaces the loose `[String: Any]` / NSDictionary previously handed across
-/// the Swift↔ObjC boundary: OC now reads typed properties (`session.identifier`,
-/// `session.title`, …) instead of string-keyed dictionary access (`session[@"id"]`).
-/// The ObjC interface is declared in `SessionStoreBridge.h` (hand-authored,
-/// matching this Swift `@objc(KCSessionMetadata)` class) so OC can use it
-/// without depending on the auto-generated (currently empty) Swift header.
+/// 取代了过去在 Swift↔ObjC 边界传递的松散 `[String: Any]` / NSDictionary：
+/// 调用方读取类型化属性（`session.identifier`、`session.title`、…），
+/// 而非字符串 key 的字典访问（`session[@"id"]`）。
 ///
-/// This is a read-only view model over `KCArtworkSession`; it does not change
-/// the on-disk JSON schema (the `KCSessionStore` still persists the underlying
-/// `KCArtworkSession`).
+/// 这是 `KCArtworkSession` 的只读视图模型，不改变磁盘 JSON schema
+///（`KCSessionStore` 仍持久化底层的 `KCArtworkSession`）。
 @objc(KCSessionMetadata)
 final class KCSessionMetadata: NSObject {
     @objc let identifier: String
@@ -48,23 +44,19 @@ final class KCSessionMetadata: NSObject {
     }
 }
 
-/// ObjC bridge over the Swift `KCSessionStore`, covering all operations
-/// that the OC `KDSessionStore` provides. OC code can use this bridge
-/// as a drop-in replacement; session metadata is returned as the typed
-/// `KCSessionMetadata` DTO (no longer as NSDictionary).
+/// 基于 Swift `KCSessionStore` 的适配层，覆盖原 OC `KDSessionStore` 的全部
+/// 操作。会话元数据以类型化的 `KCSessionMetadata` DTO 返回（不再是
+/// NSDictionary）。
 ///
-/// **Error handling**: Storage errors are silently degraded via `try?`
-/// (returning nil/empty/false) rather than propagated to the OC caller,
-/// matching the prototype's `KDSessionStore` behavior which also swallowed
-/// errors. Once the app is fully Swift, replace these with proper `throws`.
-@objc(SessionStoreBridge)
-final class SessionStoreBridge: NSObject {
-    @objc static let shared = SessionStoreBridge()
-
+/// **错误处理**：存储错误通过 `try?` 静默降级（返回 nil/空/false）而不上抛，
+/// 与原型 `KDSessionStore` 吞掉错误的行为一致。后续可替换为正式的
+/// `throws` 抛出（§6.5 允许桥接/适配层用 `try?` 降级）。
+@objc(KCSessionService)
+final class KCSessionService: NSObject {
     private let store = KCSessionStore(legacyMigrator: LegacyArchiveMigrator())
     private static let thumbnailSize = CGSize(width: 240, height: 180)
 
-    // MARK: - Session queries
+    // MARK: - 会话查询
 
     @objc func hasSavedSessions() -> Bool {
         (try? store.hasSavedSessions()) ?? false
@@ -74,18 +66,17 @@ final class SessionStoreBridge: NSObject {
         (try? store.loadSessions().count) ?? 0
     }
 
-    /// Returns all sessions as typed `KCSessionMetadata` DTOs (newest first).
+    /// 返回所有会话（类型化的 `KCSessionMetadata` DTO，按最新优先排序）。
     @objc func loadAllSessions() -> [KCSessionMetadata] {
         guard let sessions = try? store.loadSessions() else { return [] }
         return sessions.map { KCSessionMetadata($0) }
     }
 
-    // MARK: - Artwork save (UIImage convenience)
+    // MARK: - 保存画作（UIImage 便捷方法）
 
-    /// Saves artwork from a UIImage. Generates PNG data + 240×180 JPEG
-    /// thumbnail internally. If `existingSessionId` is non-nil, updates that
-    /// session; otherwise creates a new one.
-    /// Returns the session metadata DTO, or nil on failure.
+    /// 保存来自 UIImage 的画作，内部生成 PNG 数据 + 240×180 JPEG 缩略图。
+    /// 若 `existingSessionId` 非空则更新该会话，否则新建会话。
+    /// 返回会话元数据 DTO，失败返回 nil。
     @objc func saveImage(_ image: UIImage, existingSessionId: String?) -> KCSessionMetadata? {
         guard let pngData = image.pngData() else { return nil }
         let thumbnail = Self.generateThumbnail(from: image)
@@ -93,11 +84,10 @@ final class SessionStoreBridge: NSObject {
         return saveArtwork(pngData: pngData, thumbnailJPEGData: thumbData, existingSessionId: existingSessionId)
     }
 
-    // MARK: - Artwork save / load (Data)
+    // MARK: - 保存/读取画作（Data）
 
-    /// Saves artwork PNG + JPEG thumbnail. If `existingSessionId` is non-nil,
-    /// updates that session; otherwise creates a new one.
-    /// Returns the session metadata DTO, or nil on failure.
+    /// 保存画作 PNG + JPEG 缩略图。若 `existingSessionId` 非空则更新该会话，
+    /// 否则新建会话。返回会话元数据 DTO，失败返回 nil。
     @objc func saveArtwork(
         pngData: Data,
         thumbnailJPEGData: Data,
@@ -114,47 +104,47 @@ final class SessionStoreBridge: NSObject {
         return KCSessionMetadata(session)
     }
 
-    /// Returns the full-resolution artwork as a UIImage.
+    /// 返回全分辨率画作 UIImage。
     @objc func artworkImage(forSessionId sessionId: String) -> UIImage? {
         guard let data = artworkData(forSessionId: sessionId) else { return nil }
         return UIImage(data: data)
     }
 
-    /// Returns the full-resolution artwork PNG data for the given session id.
+    /// 返回指定会话的全分辨率画作 PNG 数据。
     @objc func artworkData(forSessionId sessionId: String) -> Data? {
         guard let session = findSession(id: sessionId) else { return nil }
         return store.artworkData(for: session)
     }
 
-    /// Returns the thumbnail as a UIImage.
+    /// 返回缩略图 UIImage。
     @objc func thumbnailImage(forSessionId sessionId: String) -> UIImage? {
         guard let data = thumbnailData(forSessionId: sessionId) else { return nil }
         return UIImage(data: data)
     }
 
-    /// Returns the thumbnail JPEG data for the given session id.
+    /// 返回指定会话的缩略图 JPEG 数据。
     @objc func thumbnailData(forSessionId sessionId: String) -> Data? {
         guard let session = findSession(id: sessionId) else { return nil }
         return store.thumbnailData(for: session)
     }
 
-    // MARK: - Session delete
+    // MARK: - 删除会话
 
-    /// Deletes the session and its associated files.
+    /// 删除会话及其关联文件。
     @objc func deleteSession(withId sessionId: String) {
         guard let session = findSession(id: sessionId) else { return }
         try? store.delete(session)
     }
 
-    // MARK: - Draft autosave
+    // MARK: - 草稿自动保存
 
-    /// Saves draft from a UIImage (convenience).
+    /// 保存来自 UIImage 的草稿（便捷方法）。
     @objc func saveDraftImage(_ image: UIImage) -> Bool {
         guard let data = image.pngData() else { return false }
         return saveDraftData(pngData: data)
     }
 
-    /// Loads the draft as a UIImage.
+    /// 以 UIImage 形式加载草稿。
     @objc func loadDraftImage() -> UIImage? {
         guard let data = store.loadDraft() else { return nil }
         return UIImage(data: data)
@@ -172,14 +162,14 @@ final class SessionStoreBridge: NSObject {
         store.clearDraft()
     }
 
-    // MARK: - Private helpers
+    // MARK: - 私有辅助方法
 
     private func findSession(id: String) -> KCArtworkSession? {
         try? store.loadSessions().first { $0.id == id }
     }
 
-    /// Generates a 240×180 thumbnail with white background and aspect-fit,
-    /// matching the prototype's `thumbnailImageFromImage:`.
+    /// 生成 240×180 缩略图，白底、aspect-fit，与原型 `thumbnailImageFromImage:`
+    /// 行为一致。
     private static func generateThumbnail(from image: UIImage) -> UIImage {
         let renderer = UIGraphicsImageRenderer(size: thumbnailSize)
         return renderer.image { context in

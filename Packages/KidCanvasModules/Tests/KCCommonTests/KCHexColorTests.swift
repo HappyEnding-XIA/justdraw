@@ -45,7 +45,7 @@ final class HexColorTests: XCTestCase {
     }
 
     func testRgba8MatchesPrototypeRounding() {
-        // Prototype uses lrint(component * 255): 0.94 -> 240.
+        // 原型使用 lrint(component * 255)：0.94 -> 240。
         let color = KCHexColor(red: 0.94, green: 0.43, blue: 0.45, alpha: 1.0)
         XCTAssertEqual(color.rgba8.red, 240)
         XCTAssertEqual(color.rgba8.green, 110)
@@ -54,8 +54,8 @@ final class HexColorTests: XCTestCase {
     }
 
     func testCodableRoundTrip() throws {
-        // Compare the canonical hex string: the stored form survives the
-        // 8-bit-per-channel quantization, the raw Doubles do not.
+        // 比较规范的十六进制字符串：存储形式能经受住每通道 8 位的量化，
+        // 而原始的 Double 值则不能。
         let original = KCHexColor(red: 0.5, green: 0.25, blue: 0.125, alpha: 1.0)
         let data = try JSONEncoder().encode(original)
         let decoded = try JSONDecoder().decode(KCHexColor.self, from: data)
@@ -71,7 +71,7 @@ final class HexColorTests: XCTestCase {
 
 final class LoggingTests: XCTestCase {
     func testNullLoggerIsDefault() {
-        // Should not crash and should not require a sink.
+        // 不应崩溃，也不应需要设置 sink。
         KCLog.info("hello")
     }
 

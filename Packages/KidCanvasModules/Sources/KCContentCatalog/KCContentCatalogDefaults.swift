@@ -9,12 +9,12 @@ import Foundation
 import KCDomain
 import KCCommon
 
-/// Built-in content catalog: color palettes, sticker groups, and line-art
-/// templates. Values are ported verbatim from the Objective-C prototype
-/// (`makePalette24`/`makePalette36`, `stickerSymbolsByCategory`, `makeLineArtItems`).
-// TODO(content): move to JSON/package resource.
+/// 内置内容目录：色盘、贴纸分组和线稿模板。
+/// 取值逐字迁移自 Objective-C 原型
+/// （`makePalette24`/`makePalette36`、`stickerSymbolsByCategory`、`makeLineArtItems`）。
+// TODO(content): palette24/36 仍硬编码，待后续迁移到 JSON（贴纸/线稿已迁移）。
 public enum KCContentCatalogDefaults {
-    /// The default 24-color palette, in display order.
+    /// 默认 24 色色盘，按显示顺序排列。
     public static let palette24: [KCHexColor] = [
         KCHexColor(red: 0.94, green: 0.43, blue: 0.45),
         KCHexColor(red: 0.94, green: 0.55, blue: 0.36),
@@ -42,8 +42,8 @@ public enum KCContentCatalogDefaults {
         KCHexColor(red: 0.14, green: 0.16, blue: 0.19),
     ]
 
-    /// The extended 36-color palette: the 24-color set plus 12 lighter pastels
-    /// and grayscale tones, appended in prototype order.
+    /// 扩展 36 色色盘：在 24 色集合基础上追加 12 种更浅的粉彩色与灰阶色，
+    /// 按原型顺序追加。
     public static let palette36: [KCHexColor] = palette24 + [
         KCHexColor(red: 0.98, green: 0.81, blue: 0.81),
         KCHexColor(red: 0.99, green: 0.90, blue: 0.76),
@@ -59,40 +59,70 @@ public enum KCContentCatalogDefaults {
         KCHexColor(white: 0.05),
     ]
 
-    /// Built-in sticker groups (category -> SF Symbol names), in display order.
-    public static let stickerGroups: [KCStickerGroup] = [
-        KCStickerGroup(id: "animals", title: "Animals",
-                     symbols: ["butterfly.fill", "pawprint.fill", "tortoise.fill", "hare.fill"]),
-        KCStickerGroup(id: "nature", title: "Nature",
-                     symbols: ["leaf.fill", "camera.macro", "sun.max.fill", "cloud.fill"]),
-        KCStickerGroup(id: "decor", title: "Decor",
-                     symbols: ["star.fill", "heart.fill", "moon.stars.fill", "rainbow", "gift.fill"]),
-        KCStickerGroup(id: "faces", title: "Faces",
-                     symbols: ["face.smiling.fill", "figure.2", "hand.thumbsup.fill", "sparkles"]),
-    ]
+    /// 内置贴纸分组（类别 -> SF Symbol 名称），从 package resource 加载。
+    public static let stickerGroups: [KCStickerGroup] = loaded.stickerGroups
 
-    /// Built-in line-art templates, in display order. The prototype renders these
-    /// procedurally; categories are assigned here for future grouping.
-    public static let lineArtTemplates: [KCLineArtTemplate] = [
-        KCLineArtTemplate(id: "bunny", title: "Bunny", category: "Animals"),
-        KCLineArtTemplate(id: "car", title: "Car", category: "Vehicles"),
-        KCLineArtTemplate(id: "fish", title: "Fish", category: "Animals"),
-        KCLineArtTemplate(id: "flower", title: "Flower", category: "Nature"),
-        KCLineArtTemplate(id: "house", title: "House", category: "Objects"),
-        KCLineArtTemplate(id: "rocket", title: "Rocket", category: "Vehicles"),
-        KCLineArtTemplate(id: "cupcake", title: "Cupcake", category: "Food"),
-        KCLineArtTemplate(id: "dino", title: "Dino", category: "Animals"),
-    ]
+    /// 内置线稿模板，从 package resource 加载。原型以程序化方式渲染这些模板。
+    public static let lineArtTemplates: [KCLineArtTemplate] = loaded.lineArtTemplates
+
+    /// 从 `Resources/content.json` 加载贴纸/线稿元数据；资源缺失或解码失败时回退到硬编码默认值。
+    private static let loaded: KCContentDocument = {
+        let data: Data? = {
+            guard let url = Bundle.module.url(forResource: "content", withExtension: "json") else { return nil }
+            return try? Data(contentsOf: url)
+        }()
+        return decodedContent(from: data)
+            ?? KCContentDocument(stickerGroups: Fallback.stickerGroups, lineArtTemplates: Fallback.lineArtTemplates)
+    }()
+
+    /// 解码 JSON 数据为内容文档；数据为空或解码失败时返回 `nil`，由调用方回退。供加载与测试复用。
+    static func decodedContent(from data: Data?) -> KCContentDocument? {
+        guard let data,
+              let doc = try? JSONDecoder().decode(KCContentDocument.self, from: data),
+              !doc.stickerGroups.isEmpty,
+              !doc.lineArtTemplates.isEmpty else { return nil }
+        return doc
+    }
+
+    /// JSON 不可用时的硬编码回退，内容与 `Resources/content.json` 逐字一致。
+    private enum Fallback {
+        static let stickerGroups: [KCStickerGroup] = [
+            KCStickerGroup(id: "animals", title: "Animals",
+                         symbols: ["butterfly.fill", "pawprint.fill", "tortoise.fill", "hare.fill"]),
+            KCStickerGroup(id: "nature", title: "Nature",
+                         symbols: ["leaf.fill", "camera.macro", "sun.max.fill", "cloud.fill"]),
+            KCStickerGroup(id: "decor", title: "Decor",
+                         symbols: ["star.fill", "heart.fill", "moon.stars.fill", "rainbow", "gift.fill"]),
+            KCStickerGroup(id: "faces", title: "Faces",
+                         symbols: ["face.smiling.fill", "figure.2", "hand.thumbsup.fill", "sparkles"]),
+        ]
+        static let lineArtTemplates: [KCLineArtTemplate] = [
+            KCLineArtTemplate(id: "bunny", title: "Bunny", category: "Animals"),
+            KCLineArtTemplate(id: "car", title: "Car", category: "Vehicles"),
+            KCLineArtTemplate(id: "fish", title: "Fish", category: "Animals"),
+            KCLineArtTemplate(id: "flower", title: "Flower", category: "Nature"),
+            KCLineArtTemplate(id: "house", title: "House", category: "Objects"),
+            KCLineArtTemplate(id: "rocket", title: "Rocket", category: "Vehicles"),
+            KCLineArtTemplate(id: "cupcake", title: "Cupcake", category: "Food"),
+            KCLineArtTemplate(id: "dino", title: "Dino", category: "Animals"),
+        ]
+    }
+}
+
+/// 内置内容 JSON 文档的解码容器（贴纸/线稿元数据外置为 package resource）。
+struct KCContentDocument: Codable {
+    let stickerGroups: [KCStickerGroup]
+    let lineArtTemplates: [KCLineArtTemplate]
 }
 
 extension KCHexColor {
-    /// Grayscale initializer mirroring `UIColor(white:alpha:)`.
+    /// 灰阶初始化方法，对应 `UIColor(white:alpha:)`。
     public init(white: Double, alpha: Double = 1.0) {
         self.init(red: white, green: white, blue: white, alpha: alpha)
     }
 }
 
-/// A bundled view of all built-in content, convenient for injection.
+/// 所有内置内容的打包视图，便于注入。
 public struct KCBundledContentCatalog: Sendable {
     public let standardPalette: KCContentPalette
     public let extendedPalette: KCContentPalette
@@ -115,7 +145,7 @@ public struct KCBundledContentCatalog: Sendable {
         self.lineArtTemplates = lineArtTemplates
     }
 
-    /// Returns the palette matching `size`.
+    /// 返回与 `size` 对应的色盘。
     public func palette(for size: KCPaletteSize) -> KCContentPalette {
         switch size {
         case .standard: return standardPalette

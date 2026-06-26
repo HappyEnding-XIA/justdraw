@@ -47,28 +47,28 @@ final class StrokeRenderMathTests: XCTestCase {
     }
 
     func testRenderedWidthFloorsToOne() {
-        // Tiny width + tiny pressure must not drop below 1.0.
+        // 极小的宽度 + 极小的压力不得低于 1.0。
         let metrics = KCStrokeRenderMath.metrics(for: stroke(tool: .brush, brush: .pencil, width: 0.1, pressure: 0.01))
         XCTAssertGreaterThanOrEqual(metrics.renderedLineWidth, 1.0)
     }
 
     func testEraserIgnoresPressureAndUsesFullAlpha() {
         let metrics = KCStrokeRenderMath.metrics(for: stroke(tool: .eraser, brush: .pen, width: 30, pressure: 0.3))
-        // Eraser forces pressure to 1.0; pen width = 30 * 0.72 * 1.0 = 21.6; alpha 1.0.
+        // 橡皮擦强制压力为 1.0；pen width = 30 * 0.72 * 1.0 = 21.6；alpha 1.0。
         XCTAssertEqual(metrics.alpha, 1.0)
         XCTAssertEqual(metrics.renderedLineWidth, 21.6, accuracy: 1e-9)
     }
 
     func testEraserConfiguredWidthAppliesOnePointThreeFiveMultiplier() {
         XCTAssertEqual(KCStrokeRenderMath.eraserConfiguredWidth(from: 20), 27.0, accuracy: 1e-9)
-        // Small widths are lifted to the 16 floor.
+        // 小宽度被提升到 16 的下限。
         XCTAssertEqual(KCStrokeRenderMath.eraserConfiguredWidth(from: 4), 16.0, accuracy: 1e-9)
     }
 
-    // MARK: - Primitive renderedMetrics
+    // MARK: - 基础 renderedMetrics
 
     func testRenderedMetricsPrimitiveMatchesFullModel() {
-        // The primitive method should produce identical results to metrics(for:).
+        // 基础方法应产生与 metrics(for:) 完全一致的结果。
         let s = stroke(tool: .brush, brush: .crayon, width: 16, pressure: 0.8)
         let full = KCStrokeRenderMath.metrics(for: s)
         let primitive = KCStrokeRenderMath.renderedMetrics(brushStyle: .crayon, lineWidth: 16, pressure: 0.8)

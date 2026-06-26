@@ -64,7 +64,7 @@ final class StickerTransformTests: XCTestCase {
     }
 
     func testScaleMatchesPrototypeFormula() {
-        // Prototype reads scale as hypot(transform.a, transform.c).
+        // 原型将缩放读取为 hypot(transform.a, transform.c)。
         let transform = KCStickerTransform(a: 3, b: 0, c: 4, d: 1, tx: 0, ty: 0)
         XCTAssertEqual(transform.scale, 5.0, accuracy: 1e-9)
     }
@@ -128,7 +128,7 @@ final class EditorStateTests: XCTestCase {
         XCTAssertEqual(state.stickerSymbol, "star.fill")
         XCTAssertEqual(state.fillTolerance, 28.0)
         XCTAssertEqual(state.paletteSize.colorCount, 24)
-        // rgb(0.94, 0.43, 0.45) -> #F06E73
+        // rgb(0.94, 0.43, 0.45) → #F06E73
         XCTAssertEqual(state.color.hex, "#F06E73")
     }
 
@@ -138,7 +138,7 @@ final class EditorStateTests: XCTestCase {
         let blue = KCHexColor(hex: "#0000FF")!
         state.useColor(red)
         state.useColor(blue)
-        state.useColor(red) // reusing red should move it to front, not duplicate
+        state.useColor(red) // 再次使用 red 应将其移到最前，而非重复添加
         XCTAssertEqual(state.recentColors.first, red)
         XCTAssertEqual(state.recentColors.count, 2)
     }
@@ -158,7 +158,7 @@ final class EditorStateTests: XCTestCase {
         state.selectBrush(.pen, fallbackWidth: 12)
         state.lineWidth = 8
         state.rememberBrushWidth(8)
-        // Switching back to the original brush restores 30.
+        // 切换回原来的画笔会恢复为 30。
         state.selectBrush(.pencil, fallbackWidth: 12)
         XCTAssertEqual(state.lineWidth, 30)
     }

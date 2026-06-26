@@ -121,22 +121,22 @@ final class SessionStoreTests: XCTestCase {
 
     func testMetadataFileRoundTripsAcrossInstances() throws {
         let (_, dir) = makeStore()
-        // First instance writes.
+        // 第一个实例写入。
         let writer = KCSessionStore(directoryURL: dir, now: { Date(timeIntervalSince1970: 5) }, makeID: { "abc" })
         _ = try writer.saveArtwork(pngData: Data([1]), thumbnailJPEGData: Data([2]), existing: nil)
-        // Fresh instance reads the same on-disk metadata.
+        // 新实例读取同一份磁盘元数据。
         let reader = KCSessionStore(directoryURL: dir)
         XCTAssertEqual(try reader.loadSessions().first?.id, "abc")
     }
 }
 
-// MARK: - Legacy migration
+// MARK: - 旧版迁移
 
 final class LegacyMigrationTests: XCTestCase {
     func testLegacyArchiveIsMigratedToJSONWhenMigratorSupplied() throws {
         let dir = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent(UUID().uuidString, isDirectory: true)
         try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
-        // Place a sentinel file where the legacy archive would live.
+        // 在旧版归档应处的位置放一个哨兵文件。
         let archiveURL = dir.appendingPathComponent("sessions.archive")
         try Data(repeating: 0xFF, count: 4).write(to: archiveURL)
 
@@ -151,7 +151,7 @@ final class LegacyMigrationTests: XCTestCase {
         XCTAssertTrue(spy.wasAsked)
         XCTAssertEqual(loaded.first?.id, "legacy-1")
 
-        // JSON metadata is now persisted, so the migrator should not be needed again.
+        // 此时 JSON 元数据已持久化，因此不应再需要迁移器。
         spy.wasAsked = false
         spy.result = nil
         let reloaded = try store.loadSessions()

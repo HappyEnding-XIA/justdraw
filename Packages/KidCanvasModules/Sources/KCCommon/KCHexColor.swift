@@ -8,20 +8,19 @@
 import Foundation
 import CoreGraphics
 
-/// A UIKit-free, Codable color value stored as normalized 0...1 RGBA components.
+/// 不依赖 UIKit 的可编码颜色值，以归一化的 0...1 RGBA 分量存储。
 ///
-/// `KCHexColor` keeps the domain and engine layers decoupled from `UIKit/UIColor`.
-/// It round-trips through a hex string (`#RRGGBB` or `#RRGGBBAA`) for storage,
-/// matching the hex representation already used by the Objective-C prototype's
-/// strokes and stickers.
+/// `KCHexColor` 让 domain 与 engine 层与 `UIKit/UIColor` 解耦。
+/// 它通过十六进制字符串（`#RRGGBB` 或 `#RRGGBBAA`）进行往返存储，
+/// 与 Objective-C 原型中笔画和贴纸已采用的十六进制表示保持一致。
 public struct KCHexColor: Equatable, Hashable, Sendable {
-    /// Red component in `0...1`.
+    /// 红色分量，取值范围 `0...1`。
     public var red: Double
-    /// Green component in `0...1`.
+    /// 绿色分量，取值范围 `0...1`。
     public var green: Double
-    /// Blue component in `0...1`.
+    /// 蓝色分量，取值范围 `0...1`。
     public var blue: Double
-    /// Alpha component in `0...1`.
+    /// 透明度分量，取值范围 `0...1`。
     public var alpha: Double
 
     public init(red: Double, green: Double, blue: Double, alpha: Double = 1.0) {
@@ -31,15 +30,15 @@ public struct KCHexColor: Equatable, Hashable, Sendable {
         self.alpha = min(1, max(0, alpha))
     }
 
-    /// Black (`#000000`).
+    /// 黑色（`#000000`）。
     public static let black = KCHexColor(red: 0, green: 0, blue: 0)
-    /// White (`#FFFFFF`).
+    /// 白色（`#FFFFFF`）。
     public static let white = KCHexColor(red: 1, green: 1, blue: 1)
-    /// Fully transparent.
+    /// 完全透明。
     public static let clear = KCHexColor(red: 0, green: 0, blue: 0, alpha: 0)
 
-    /// 8-bit per channel components, computed the same way the prototype rasterizes
-    /// colors (`lrint(component * 255)`), so flood-fill and sampling stay faithful.
+    /// 每通道 8 位的分量，计算方式与原型对颜色栅格化的方式一致
+    /// （`lrint(component * 255)`），从而保证油漆桶填充和取色保持准确。
     public var rgba8: (red: UInt8, green: UInt8, blue: UInt8, alpha: UInt8) {
         (
             UInt8(max(0, min(255, lrint(red * 255)))),
@@ -49,10 +48,10 @@ public struct KCHexColor: Equatable, Hashable, Sendable {
         )
     }
 
-    /// Parses a hex color string.
+    /// 解析十六进制颜色字符串。
     ///
-    /// Accepted forms (leading `#` optional): `RGB`, `RRGGBB`, `RRGGBBAA`.
-    /// Returns `nil` for malformed input.
+    /// 可接受的形式（前导 `#` 可选）：`RGB`、`RRGGBB`、`RRGGBBAA`。
+    /// 对于格式错误的输入返回 `nil`。
     public init?(hex: String) {
         var trimmed = hex
         if trimmed.hasPrefix("#") {
@@ -69,8 +68,8 @@ public struct KCHexColor: Equatable, Hashable, Sendable {
         var value: UInt64 = 0
         guard Scanner(string: trimmed).scanHexInt64(&value) else { return nil }
 
-        // Format is `#RRGGBB` or `#RRGGBBAA` (alpha in the low byte). Shifts are
-        // arranged so the alpha position never aliases into an RGB channel.
+        // 格式为 `#RRGGBB` 或 `#RRGGBBAA`（alpha 位于低位字节）。移位排列确保
+        // alpha 的位置不会与某个 RGB 通道发生混叠。
         if trimmed.count == 8 {
             let r = Double((value >> 24) & 0xFF) / 255.0
             let g = Double((value >> 16) & 0xFF) / 255.0
@@ -85,7 +84,7 @@ public struct KCHexColor: Equatable, Hashable, Sendable {
         }
     }
 
-    /// Compact hex representation: `#RRGGBB` when fully opaque, otherwise `#RRGGBBAA`.
+    /// 紧凑的十六进制表示：完全不透明时为 `#RRGGBB`，否则为 `#RRGGBBAA`。
     public var hex: String {
         let (r, g, b, a) = rgba8
         let prefix = String(format: "#%02X%02X%02X", r, g, b)

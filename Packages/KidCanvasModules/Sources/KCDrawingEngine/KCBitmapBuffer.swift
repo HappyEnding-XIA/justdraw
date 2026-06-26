@@ -8,19 +8,17 @@
 import Foundation
 import CoreGraphics
 
-/// A mutable KCRGBA8 bitmap, the bridge between `CGImage` raster data and the
-/// pure-logic engines (flood fill, sampling).
+/// 可变的 KCRGBA8 位图，是 `CGImage` 光栅数据与纯逻辑引擎（泛洪填充、采样）之间的桥梁。
 ///
-/// Storage is `[UInt8]` in RGBA order, four bytes per pixel, `width * height`
-/// pixels row-major. Interop with `CGImage` uses the same bitmap info as the
-/// Objective-C prototype (`premultipliedLast | byteOrder32Big`) so that pixel
-/// values round-trip identically.
+/// 存储为 RGBA 顺序的 `[UInt8]`，每像素 4 字节，共 `width * height` 个像素，按行优先排列。
+/// 与 `CGImage` 互操作时使用与 Objective-C 原型相同的位图信息
+/// （`premultipliedLast | byteOrder32Big`），以保证像素值往返完全一致。
 public final class KCBitmapBuffer {
     public let width: Int
     public let height: Int
     public private(set) var pixels: [UInt8]
 
-    /// Creates a buffer filled with a single color.
+    /// 创建一个用单一颜色填充的缓冲区。
     public init(width: Int, height: Int, fill: KCRGBA8 = .white) {
         precondition(width >= 0 && height >= 0, "KCBitmapBuffer dimensions must be non-negative")
         self.width = width
@@ -40,8 +38,7 @@ public final class KCBitmapBuffer {
         self.pixels = pixels
     }
 
-    /// Creates a buffer by rasterizing a `CGImage`. Returns `nil` for empty or
-    /// un-decodable images.
+    /// 通过光栅化 `CGImage` 创建缓冲区。对于空图像或无法解码的图像返回 `nil`。
     public init?(cgImage: CGImage) {
         let width = cgImage.width
         let height = cgImage.height
@@ -83,7 +80,7 @@ public final class KCBitmapBuffer {
         (y * width + x) * 4
     }
 
-    /// Reads the pixel at `(x, y)`. Assumes the coordinate is in bounds.
+    /// 读取 `(x, y)` 处的像素。假设坐标在边界内。
     public func pixel(x: Int, y: Int) -> KCRGBA8 {
         let index = pixelIndex(x: x, y: y)
         return KCRGBA8(
@@ -94,7 +91,7 @@ public final class KCBitmapBuffer {
         )
     }
 
-    /// Writes `rgba` at `(x, y)`. Assumes the coordinate is in bounds.
+    /// 将 `rgba` 写入 `(x, y)`。假设坐标在边界内。
     public func setPixel(_ rgba: KCRGBA8, x: Int, y: Int) {
         let index = pixelIndex(x: x, y: y)
         pixels[index] = rgba.red
@@ -103,7 +100,7 @@ public final class KCBitmapBuffer {
         pixels[index + 3] = rgba.alpha
     }
 
-    /// Renders the buffer back to a `CGImage`.
+    /// 将缓冲区渲染回 `CGImage`。
     public func makeCGImage() -> CGImage? {
         let bytesPerRow = width * 4
         let colorSpace = CGColorSpaceCreateDeviceRGB()
