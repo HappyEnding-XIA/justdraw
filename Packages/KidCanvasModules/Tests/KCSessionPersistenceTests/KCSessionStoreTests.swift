@@ -1,5 +1,5 @@
 //
-//  SessionStoreTests.swift
+//  KCSessionStoreTests.swift
 //  KCSessionPersistenceTests
 //
 //  Created by 小大 on 2026/06/25.

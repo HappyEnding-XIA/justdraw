@@ -10,7 +10,50 @@ import KCCommon
 import KCDomain
 import KCSessionPersistence
 
-/// Decodes the legacy OC `sessions.archive` (`NSKeyedArchiver` format containing
+/// Swift replacement for the Objective-C `KDArtworkSession` model, exposed under
+/// the **same Objective-C runtime name** (`@objc(KDArtworkSession)`) so that
+/// `NSKeyedUnarchiver` resolves it against legacy `sessions.archive` files
+/// written by the old OC app.
+///
+/// The `NSSecureCoding` keys are byte-identical to the former OC
+/// `encodeWithCoder:`/`initWithCoder:` (`sessionIdentifier`, `title`,
+/// `artworkFileName`, `thumbnailFileName`, `modifiedAt`), so existing users'
+/// archives decode without any data migration. Co-located with its only consumer
+/// (`LegacyArchiveMigrator`) to avoid a separate file/project entry.
+@objc(KDArtworkSession)
+final class KCLegacyArtworkSession: NSObject, NSSecureCoding {
+    @objc var sessionIdentifier: String?
+    @objc var title: String?
+    @objc var artworkFileName: String?
+    @objc var thumbnailFileName: String?
+    @objc var modifiedAt: Date?
+
+    override init() {
+        self.modifiedAt = Date()
+        super.init()
+    }
+
+    static var supportsSecureCoding: Bool { true }
+
+    func encode(with coder: NSCoder) {
+        coder.encode(sessionIdentifier, forKey: "sessionIdentifier")
+        coder.encode(title, forKey: "title")
+        coder.encode(artworkFileName, forKey: "artworkFileName")
+        coder.encode(thumbnailFileName, forKey: "thumbnailFileName")
+        coder.encode(modifiedAt, forKey: "modifiedAt")
+    }
+
+    required init?(coder: NSCoder) {
+        self.sessionIdentifier = coder.decodeObject(of: NSString.self, forKey: "sessionIdentifier") as String?
+        self.title = coder.decodeObject(of: NSString.self, forKey: "title") as String?
+        self.artworkFileName = coder.decodeObject(of: NSString.self, forKey: "artworkFileName") as String?
+        self.thumbnailFileName = coder.decodeObject(of: NSString.self, forKey: "thumbnailFileName") as String?
+        self.modifiedAt = coder.decodeObject(of: NSDate.self, forKey: "modifiedAt") as Date?
+        super.init()
+    }
+}
+
+/// Decodes the legacy `sessions.archive` (`NSKeyedArchiver` format containing
 /// `KDArtworkSession` objects) and maps them to `KCArtworkSession` for the
 /// Swift `KCSessionStore`.
 ///
@@ -23,27 +66,27 @@ final class LegacyArchiveMigrator: NSObject, KCLegacySessionMigrator {
 
         let allowedClasses: [AnyClass] = [
             NSArray.self,
-            KDArtworkSession.self,
+            KCLegacyArtworkSession.self,
             NSString.self,
             NSDate.self,
         ]
 
-        guard let ocSessions = try? NSKeyedUnarchiver.unarchivedObject(
+        guard let legacySessions = try? NSKeyedUnarchiver.unarchivedObject(
             ofClasses: allowedClasses,
             from: data
-        ) as? [KDArtworkSession] else {
+        ) as? [KCLegacyArtworkSession] else {
             return nil
         }
 
-        guard !ocSessions.isEmpty else { return nil }
+        guard !legacySessions.isEmpty else { return nil }
 
-        return ocSessions.map { oc in
+        return legacySessions.map { legacy in
             KCArtworkSession(
-                id: oc.sessionIdentifier ?? UUID().uuidString,
-                title: oc.title ?? "",
-                artworkFileName: oc.artworkFileName ?? "",
-                thumbnailFileName: oc.thumbnailFileName ?? "",
-                modifiedAt: oc.modifiedAt ?? Date.distantPast
+                id: legacy.sessionIdentifier ?? UUID().uuidString,
+                title: legacy.title ?? "",
+                artworkFileName: legacy.artworkFileName ?? "",
+                thumbnailFileName: legacy.thumbnailFileName ?? "",
+                modifiedAt: legacy.modifiedAt ?? Date.distantPast
             )
         }
     }

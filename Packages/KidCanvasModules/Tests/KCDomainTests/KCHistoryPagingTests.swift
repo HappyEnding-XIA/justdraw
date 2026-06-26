@@ -1,0 +1,69 @@
+//
+//  KCHistoryPagingTests.swift
+//  KCDomainTests
+//
+//  Created by 小大 on 2026/06/26.
+//
+
+import XCTest
+@testable import KCDomain
+
+final class HistoryPagingTests: XCTestCase {
+
+    func testMaxPageIndexIsZeroWhenNoSessions() {
+        let paging = KCHistoryPaging(sessionCount: 0, pageSize: 6)
+        XCTAssertEqual(paging.maxPageIndex, 0)
+    }
+
+    func testMaxPageIndexFitsExactPageBoundary() {
+        // 12 sessions, 6 per page → pages 0 and 1 exactly filled → max index 1.
+        let paging = KCHistoryPaging(sessionCount: 12, pageSize: 6)
+        XCTAssertEqual(paging.maxPageIndex, 1)
+    }
+
+    func testMaxPageIndexRoundsUpForPartialLastPage() {
+        // 13 sessions, 6 per page → pages 0,1 full + page 2 has 1 → max index 2.
+        let paging = KCHistoryPaging(sessionCount: 13, pageSize: 6)
+        XCTAssertEqual(paging.maxPageIndex, 2)
+    }
+
+    func testMaxPageIndexTreatsZeroPageSizeAsOne() {
+        // Degenerate page size 0 must not divide by zero; treated as 1 → 5 pages.
+        let paging = KCHistoryPaging(sessionCount: 5, pageSize: 0)
+        XCTAssertEqual(paging.maxPageIndex, 4)
+    }
+
+    func testClampedPageIndexPullsOutOfRangeBackIn() {
+        var paging = KCHistoryPaging(sessionCount: 13, pageSize: 6, pageIndex: 99)
+        XCTAssertEqual(paging.clampedPageIndex, 2)
+        paging.pageIndex = -3
+        XCTAssertEqual(paging.clampedPageIndex, 0)
+    }
+
+    func testClampedPageIndexLeavesInboundIndexUnchanged() {
+        let paging = KCHistoryPaging(sessionCount: 13, pageSize: 6, pageIndex: 1)
+        XCTAssertEqual(paging.clampedPageIndex, 1)
+    }
+
+    func testCanAdvanceAndCanRetreatBoundaries() {
+        let paging5 = KCHistoryPaging(sessionCount: 13, pageSize: 6, pageIndex: 2)
+        XCTAssertTrue(paging5.canRetreat)
+        XCTAssertFalse(paging5.canAdvance) // at max page
+
+        let paging0 = KCHistoryPaging(sessionCount: 13, pageSize: 6, pageIndex: 0)
+        XCTAssertFalse(paging0.canRetreat)
+        XCTAssertTrue(paging0.canAdvance)
+    }
+
+    func testSessionIndexForThumbCombinesPageAndOffset() {
+        // Page 2 × 6 per page + thumb 4 → session index 16.
+        let paging = KCHistoryPaging(sessionCount: 50, pageSize: 6, pageIndex: 2)
+        XCTAssertEqual(paging.sessionIndex(forThumb: 4), 16)
+    }
+
+    func testSessionIndexForThumbUsesEffectivePageSizeWhenZero() {
+        // page size 0 → effective 1; page 3 × 1 + thumb 0 → 3.
+        let paging = KCHistoryPaging(sessionCount: 50, pageSize: 0, pageIndex: 3)
+        XCTAssertEqual(paging.sessionIndex(forThumb: 0), 3)
+    }
+}

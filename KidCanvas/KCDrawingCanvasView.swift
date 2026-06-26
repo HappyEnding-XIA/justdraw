@@ -1,0 +1,911 @@
+//
+//  KCDrawingCanvasView.swift
+//  KidCanvas
+//
+//  Created by 小大 on 2026/06/26.
+//
+
+import UIKit
+
+// MARK: - Tool enums
+
+@objc(KDToolMode)
+enum KDToolMode: Int {
+    case brush = 0
+    case eraser
+    case fill
+    case sticker
+    case picker
+}
+
+@objc(KDBrushStyle)
+enum KDBrushStyle: Int {
+    case pencil = 0
+    case pen
+    case crayon
+}
+
+@objc(KDEraserShape)
+enum KDEraserShape: Int {
+    case circle = 0
+    case cloud
+    case star
+}
+
+// MARK: - Delegate
+
+@objc(KDDrawingCanvasViewDelegate)
+protocol KDDrawingCanvasViewDelegate: AnyObject {
+    func drawingCanvasView(_ canvasView: KCDrawingCanvasView, didPickColor color: UIColor)
+    @objc optional func drawingCanvasViewSelectionDidChange(_ canvasView: KCDrawingCanvasView)
+    @objc optional func drawingCanvasViewContentDidChange(_ canvasView: KCDrawingCanvasView)
+}
+
+// MARK: - Canvas state model types
+
+final class KDStroke: NSObject {
+    var path: UIBezierPath = UIBezierPath()
+    var color: UIColor = .black
+    var lineWidth: CGFloat = 0
+    var pressureTotal: CGFloat = 0
+    var pressureSampleCount: Int = 0
+    var startPoint: CGPoint = .zero
+    var dotStroke: Bool = false
+    var toolMode: KDToolMode = .brush
+    var brushStyle: KDBrushStyle = .pencil
+    var eraserShape: KDEraserShape = .circle
+
+    var averagePressure: CGFloat {
+        pressureSampleCount <= 0 ? 1.0 : pressureTotal / CGFloat(pressureSampleCount)
+    }
+}
+
+final class KDStickerState: NSObject {
+    var symbolName: String = ""
+    var symbolColor: UIColor = .black
+    var center: CGPoint = .zero
+    var transform: CGAffineTransform = .identity
+}
+
+final class KDCanvasState: NSObject {
+    var backgroundImage: UIImage?
+    var strokes: [KDStroke] = []
+    var stickers: [KDStickerState] = []
+}
+
+// MARK: - Sticker view
+
+final class KDStickerView: UIImageView {
+    var symbolName: String = ""
+    var symbolColor: UIColor = .black
+}
+
+// MARK: - Canvas view
+
+/// Faithful Swift port of the Objective-C `KDDrawingCanvasView`. Behavior is
+/// preserved 1:1 (touch drawing, undo/redo, sticker gestures, rendering). The
+/// pure drawing algorithms are delegated to the Swift drawing engine via
+/// `KCDrawingEngineBridge` (unchanged from the OC version).
+@objc(KDDrawingCanvasView)
+final class KCDrawingCanvasView: UIView, UIGestureRecognizerDelegate {
+
+    @objc weak var delegate: KDDrawingCanvasViewDelegate?
+
+    @objc var currentColor: UIColor = UIColor(red: 0.94, green: 0.43, blue: 0.45, alpha: 1.0)
+    @objc var currentLineWidth: CGFloat = 12.0
+    @objc var currentToolMode: KDToolMode = .brush
+    @objc var currentBrushStyle: KDBrushStyle = .pencil
+    @objc var currentEraserShape: KDEraserShape = .circle
+    @objc var currentStickerSymbol: String = "star.fill"
+    @objc var fillTolerance: Double = 28.0
+
+    private var strokes: [KDStroke] = []
+    private var stickers: [KDStickerView] = []
+    private var undoStates: [KDCanvasState] = []
+    private var redoStates: [KDCanvasState] = []
+    private var activeStroke: KDStroke?
+    private var backgroundImage: UIImage?
+    private var pendingStrokeState: KDCanvasState?
+    private var pendingStickerTransformState: KDCanvasState?
+    private var activeStrokeDidMutate = false
+    private var stickerTransformDidMutate = false
+    private var activeStickerGestureCount = 0
+    private weak var selectedStickerView: KDStickerView?
+
+    private static let maximumHistoryStates = 48
+
+    override init(frame: CGRect) {
+        super.init(frame: frame)
+        backgroundColor = .white
+        isMultipleTouchEnabled = true
+    }
+
+    required init?(coder: NSCoder) {
+        super.init(coder: coder)
+        backgroundColor = .white
+        isMultipleTouchEnabled = true
+    }
+
+    override func draw(_ rect: CGRect) {
+        super.draw(rect)
+
+        UIColor.white.setFill()
+        UIRectFill(bounds)
+        drawImage(backgroundImage, aspectFitIn: bounds)
+
+        for stroke in strokes {
+            drawStroke(stroke)
+        }
+
+        if let activeStroke {
+            drawStroke(activeStroke)
+        }
+    }
+
+    private func drawStroke(_ stroke: KDStroke) {
+        let strokeColor: UIColor = stroke.toolMode == .eraser ? .white : stroke.color
+        let pressure: CGFloat = stroke.toolMode == .eraser ? 1.0 : stroke.averagePressure
+        let renderedLineWidth = KCDrawingEngineBridge.renderedStrokeLineWidth(
+            brushStyle: stroke.brushStyle.rawValue,
+            lineWidth: stroke.lineWidth,
+            averagePressure: pressure
+        )
+        let alpha = KCDrawingEngineBridge.renderedStrokeAlpha(
+            brushStyle: stroke.brushStyle.rawValue,
+            lineWidth: stroke.lineWidth,
+            averagePressure: pressure
+        )
+
+        if stroke.toolMode == .eraser && stroke.eraserShape != .circle {
+            drawStampedEraserStroke(stroke, color: strokeColor)
+            return
+        }
+
+        strokeColor.withAlphaComponent(alpha).setStroke()
+        let renderPath = stroke.path.copy() as! UIBezierPath
+        renderPath.lineCapStyle = .round
+        renderPath.lineJoinStyle = .round
+        renderPath.lineWidth = renderedLineWidth
+        renderPath.stroke()
+
+        if stroke.brushStyle == .pencil && stroke.toolMode != .eraser {
+            strokeColor.withAlphaComponent(0.16).setStroke()
+            let softPath = renderPath.copy() as! UIBezierPath
+            softPath.lineWidth = max(1.0, renderedLineWidth * 1.45)
+            softPath.stroke()
+        }
+
+        if stroke.brushStyle == .crayon && stroke.toolMode != .eraser {
+            for index in 0..<3 {
+                strokeColor.withAlphaComponent(0.16).setStroke()
+                let texturePath = renderPath.copy() as! UIBezierPath
+                texturePath.lineWidth = max(1.0, renderedLineWidth * 0.28)
+                let transform = CGAffineTransform(translationX: CGFloat(index - 1) * 1.8,
+                                                  y: index % 2 == 0 ? 1.2 : -1.2)
+                texturePath.apply(transform)
+                texturePath.stroke()
+            }
+            drawCrayonGrain(forPath: renderPath, color: strokeColor, lineWidth: renderedLineWidth)
+        }
+    }
+
+    private func drawCrayonGrain(forPath path: UIBezierPath, color: UIColor, lineWidth: CGFloat) {
+        let bounds = path.cgPath.boundingBoxOfPath
+        if bounds.isEmpty {
+            return
+        }
+
+        let context = UIGraphicsGetCurrentContext()
+        context?.saveGState()
+        let clipPath = path.copy() as! UIBezierPath
+        clipPath.lineWidth = max(2.0, lineWidth * 1.06)
+        clipPath.lineCapStyle = .round
+        clipPath.lineJoinStyle = .round
+        clipPath.addClip()
+
+        color.withAlphaComponent(0.18).setStroke()
+        let dashWidth = KCDrawingEngineBridge.crayonGrainDashWidth(lineWidth: lineWidth)
+        let dashPoints = KCDrawingEngineBridge.crayonGrainDashPoints(pathBounds: bounds, lineWidth: lineWidth)
+        let pointCount = dashPoints.count
+        var index = 0
+        while index + 1 < pointCount {
+            let start = dashPoints[index].cgPointValue
+            let end = dashPoints[index + 1].cgPointValue
+            let dash = UIBezierPath()
+            dash.lineWidth = dashWidth
+            dash.lineCapStyle = .round
+            dash.move(to: start)
+            dash.addLine(to: end)
+            dash.stroke()
+            index += 2
+        }
+
+        context?.restoreGState()
+    }
+
+    // MARK: - Touch handling
+
+    override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
+        if event?.allTouches?.count ?? 0 > 1 {
+            return
+        }
+
+        guard let touch = touches.first else { return }
+        let point = touch.location(in: self)
+
+        if hitTestSticker(at: point) {
+            return
+        }
+
+        if currentToolMode == .picker {
+            let pickedColor = colorAtPoint(point)
+            currentColor = pickedColor ?? currentColor
+            delegate?.drawingCanvasView(self, didPickColor: currentColor)
+            return
+        }
+
+        if currentToolMode == .fill {
+            let previousState = canvasStateSnapshot()
+            if performFloodFill(at: point, color: currentColor) {
+                commitUndoStateSnapshot(previousState)
+            }
+            return
+        }
+
+        if currentToolMode == .sticker {
+            let normalized = CGPoint(x: point.x / max(bounds.width, 1.0),
+                                     y: point.y / max(bounds.height, 1.0))
+            insertStickerSymbol(currentStickerSymbol, atNormalizedPoint: normalized)
+            return
+        }
+
+        pendingStrokeState = canvasStateSnapshot()
+        activeStrokeDidMutate = false
+        let stroke = KDStroke()
+        stroke.color = currentColor
+        stroke.lineWidth = currentToolMode == .eraser ? max(16.0, currentLineWidth * 1.35) : currentLineWidth
+        stroke.toolMode = currentToolMode
+        stroke.brushStyle = currentBrushStyle
+        stroke.eraserShape = currentEraserShape
+        stroke.path = UIBezierPath()
+        stroke.path.lineWidth = stroke.lineWidth
+        stroke.startPoint = point
+        addPressureSample(from: touch, to: stroke)
+        stroke.path.move(to: point)
+        activeStroke = stroke
+
+        deselectSticker()
+        setNeedsDisplay()
+    }
+
+    override func touchesMoved(_ touches: Set<UITouch>, with event: UIEvent?) {
+        if event?.allTouches?.count ?? 0 > 1 {
+            activeStroke = nil
+            pendingStrokeState = nil
+            activeStrokeDidMutate = false
+            setNeedsDisplay()
+            return
+        }
+
+        guard let activeStroke else { return }
+
+        guard let touch = touches.first else { return }
+        let coalescedTouches = event?.coalescedTouches(for: touch) ?? [touch]
+        for coalescedTouch in coalescedTouches {
+            let point = coalescedTouch.location(in: self)
+            let dx = point.x - activeStroke.startPoint.x
+            let dy = point.y - activeStroke.startPoint.y
+            if !activeStrokeDidMutate && hypot(dx, dy) < 2.0 {
+                continue
+            }
+
+            activeStroke.path.addLine(to: point)
+            addPressureSample(from: coalescedTouch, to: activeStroke)
+            activeStrokeDidMutate = true
+        }
+        setNeedsDisplay()
+    }
+
+    override func touchesEnded(_ touches: Set<UITouch>, with event: UIEvent?) {
+        guard let activeStroke else { return }
+
+        guard let touch = touches.first else { return }
+        let point = touch.location(in: self)
+        if activeStrokeDidMutate {
+            activeStroke.path.addLine(to: point)
+            addPressureSample(from: touch, to: activeStroke)
+        } else {
+            let dotRadius = max(1.0, activeStroke.lineWidth * 0.5)
+            activeStroke.path = UIBezierPath(ovalIn: CGRect(x: activeStroke.startPoint.x - dotRadius,
+                                                             y: activeStroke.startPoint.y - dotRadius,
+                                                             width: dotRadius * 2.0,
+                                                             height: dotRadius * 2.0))
+            activeStroke.path.lineWidth = activeStroke.lineWidth
+            activeStroke.dotStroke = true
+            activeStrokeDidMutate = true
+            addPressureSample(from: touch, to: activeStroke)
+        }
+        commitUndoStateSnapshot(pendingStrokeState)
+        strokes.append(activeStroke)
+        self.activeStroke = nil
+        pendingStrokeState = nil
+        activeStrokeDidMutate = false
+        setNeedsDisplay()
+        notifyContentChanged()
+    }
+
+    override func touchesCancelled(_ touches: Set<UITouch>, with event: UIEvent?) {
+        activeStroke = nil
+        pendingStrokeState = nil
+        activeStrokeDidMutate = false
+        setNeedsDisplay()
+    }
+
+    private func addPressureSample(from touch: UITouch, to stroke: KDStroke) {
+        stroke.pressureTotal += normalizedPressure(for: touch)
+        stroke.pressureSampleCount += 1
+    }
+
+    private func normalizedPressure(for touch: UITouch) -> Double {
+        KCDrawingEngineBridge.normalizedPressure(
+            force: touch.force,
+            maximumPossibleForce: touch.maximumPossibleForce,
+            isPencil: touch.type == .pencil
+        )
+    }
+
+    // MARK: - Undo / redo
+
+    @objc func undoLastAction() {
+        if undoStates.isEmpty {
+            return
+        }
+
+        let currentState = canvasStateSnapshot()
+        redoStates.append(currentState)
+        trimHistoryStack(&redoStates)
+
+        let state = undoStates.removeLast()
+        applyCanvasState(state)
+        notifyContentChanged()
+    }
+
+    @objc func redoLastAction() {
+        if redoStates.isEmpty {
+            return
+        }
+
+        let currentState = canvasStateSnapshot()
+        undoStates.append(currentState)
+        trimHistoryStack(&undoStates)
+
+        let state = redoStates.removeLast()
+        applyCanvasState(state)
+        notifyContentChanged()
+    }
+
+    @objc func clearCanvas() {
+        if !canvasHasVisibleContent {
+            return
+        }
+        commitCurrentStateForUndo()
+        resetCanvasContents()
+        setNeedsDisplay()
+        notifyContentChanged()
+    }
+
+    @objc func startBlankCanvas() {
+        resetCanvasContents()
+        clearHistoryStacks()
+        setNeedsDisplay()
+        notifyContentChanged()
+    }
+
+    @objc func snapshotImage() -> UIImage {
+        let selectedSticker = self.selectedStickerView
+        let selectedBorderWidth = selectedSticker?.layer.borderWidth ?? 0
+        let selectedBorderColor = selectedSticker?.layer.borderColor
+        selectedSticker?.layer.borderWidth = 0.0
+
+        let renderer = UIGraphicsImageRenderer(bounds: bounds)
+        let image = renderer.image { context in
+            layer.render(in: context.cgContext)
+        }
+
+        selectedSticker?.layer.borderWidth = selectedBorderWidth
+        selectedSticker?.layer.borderColor = selectedBorderColor
+        return image
+    }
+
+    private func rasterImageExcludingStickers() -> UIImage {
+        let renderer = UIGraphicsImageRenderer(bounds: bounds)
+        return renderer.image { _ in
+            UIColor.white.setFill()
+            UIRectFill(bounds)
+            drawImage(backgroundImage, aspectFitIn: bounds)
+
+            for stroke in strokes {
+                drawStroke(stroke)
+            }
+        }
+    }
+
+    private func drawImage(_ image: UIImage?, aspectFitIn rect: CGRect) {
+        guard let image else { return }
+
+        let imageSize = image.size
+        if imageSize.width <= 0.0 || imageSize.height <= 0.0 || rect.isEmpty {
+            return
+        }
+
+        let scale = min(rect.width / imageSize.width, rect.height / imageSize.height)
+        let drawSize = CGSize(width: imageSize.width * scale, height: imageSize.height * scale)
+        let drawRect = CGRect(x: rect.midX - drawSize.width / 2.0,
+                              y: rect.midY - drawSize.height / 2.0,
+                              width: drawSize.width,
+                              height: drawSize.height)
+        image.draw(in: drawRect)
+    }
+
+    @objc func replaceCanvas(with image: UIImage) {
+        resetCanvasContents()
+        clearHistoryStacks()
+        backgroundImage = image
+        setNeedsDisplay()
+        notifyContentChanged()
+    }
+
+    @objc func restoreCanvas(with image: UIImage) {
+        resetCanvasContents()
+        clearHistoryStacks()
+        backgroundImage = image
+        setNeedsDisplay()
+        notifyContentChanged()
+    }
+
+    @objc func insertStickerSymbol(_ symbol: String, atNormalizedPoint normalizedPoint: CGPoint) {
+        commitCurrentStateForUndo()
+        let sticker = makeStickerView(withSymbol: symbol.count > 0 ? symbol : "star.fill", color: currentColor)
+        sticker.center = CGPoint(x: normalizedPoint.x * bounds.width, y: normalizedPoint.y * bounds.height)
+        constrainStickerView(sticker)
+        stickers.append(sticker)
+        addSubview(sticker)
+        bringSubviewToFront(sticker)
+        selectStickerView(sticker)
+        setNeedsDisplay()
+        notifyContentChanged()
+    }
+
+    @objc func deleteSelectedSticker() {
+        guard let selected = selectedStickerView else { return }
+
+        commitCurrentStateForUndo()
+        stickers.removeAll { $0 === selected }
+        selected.removeFromSuperview()
+        deselectSticker()
+        setNeedsDisplay()
+        notifyContentChanged()
+    }
+
+    @objc func bringSelectedStickerToFront() {
+        guard let selected = selectedStickerView else { return }
+
+        commitCurrentStateForUndo()
+        bringSubviewToFront(selected)
+        stickers.removeAll { $0 === selected }
+        stickers.append(selected)
+        notifySelectionChanged()
+        notifyContentChanged()
+    }
+
+    @objc func hasSelectedSticker() -> Bool {
+        selectedStickerView != nil
+    }
+
+    @objc func loadLineArtImage(_ image: UIImage) {
+        resetCanvasContents()
+        clearHistoryStacks()
+        backgroundImage = image
+        setNeedsDisplay()
+        notifyContentChanged()
+    }
+
+    // MARK: - Canvas state snapshotting
+
+    private func canvasStateSnapshot() -> KDCanvasState {
+        let state = KDCanvasState()
+        state.backgroundImage = backgroundImage
+        state.strokes = strokes.map { copyOfStroke($0) }
+        state.stickers = stickers.map { stickerStateFromView($0) }
+        return state
+    }
+
+    private func commitCurrentStateForUndo() {
+        commitUndoStateSnapshot(canvasStateSnapshot())
+    }
+
+    private func commitUndoStateSnapshot(_ state: KDCanvasState?) {
+        guard let state else { return }
+        undoStates.append(state)
+        trimHistoryStack(&undoStates)
+        redoStates.removeAll()
+    }
+
+    private func clearHistoryStacks() {
+        undoStates.removeAll()
+        redoStates.removeAll()
+    }
+
+    private func trimHistoryStack(_ stack: inout [KDCanvasState]) {
+        while stack.count > Self.maximumHistoryStates {
+            stack.removeFirst()
+        }
+    }
+
+    private func applyCanvasState(_ state: KDCanvasState) {
+        resetCanvasContents()
+        backgroundImage = state.backgroundImage
+
+        for stroke in state.strokes {
+            strokes.append(copyOfStroke(stroke))
+        }
+
+        for stickerState in state.stickers {
+            let sticker = stickerViewFromState(stickerState)
+            stickers.append(sticker)
+            addSubview(sticker)
+        }
+
+        deselectSticker()
+        setNeedsDisplay()
+    }
+
+    private func resetCanvasContents() {
+        strokes.removeAll()
+        for sticker in stickers {
+            sticker.removeFromSuperview()
+        }
+        stickers.removeAll()
+        backgroundImage = nil
+        activeStroke = nil
+        pendingStrokeState = nil
+        pendingStickerTransformState = nil
+        activeStrokeDidMutate = false
+        stickerTransformDidMutate = false
+        activeStickerGestureCount = 0
+        deselectSticker()
+    }
+
+    private func copyOfStroke(_ stroke: KDStroke) -> KDStroke {
+        let copy = KDStroke()
+        copy.path = stroke.path.copy() as! UIBezierPath
+        copy.color = stroke.color
+        copy.lineWidth = stroke.lineWidth
+        copy.pressureTotal = stroke.pressureTotal
+        copy.pressureSampleCount = stroke.pressureSampleCount
+        copy.startPoint = stroke.startPoint
+        copy.dotStroke = stroke.dotStroke
+        copy.toolMode = stroke.toolMode
+        copy.brushStyle = stroke.brushStyle
+        copy.eraserShape = stroke.eraserShape
+        return copy
+    }
+
+    private func stickerStateFromView(_ sticker: KDStickerView) -> KDStickerState {
+        let state = KDStickerState()
+        state.symbolName = sticker.symbolName
+        state.symbolColor = sticker.symbolColor
+        state.center = sticker.center
+        state.transform = sticker.transform
+        return state
+    }
+
+    private func stickerViewFromState(_ state: KDStickerState) -> KDStickerView {
+        let sticker = makeStickerView(withSymbol: state.symbolName, color: state.symbolColor)
+        sticker.center = state.center
+        sticker.transform = state.transform
+        constrainStickerView(sticker)
+        return sticker
+    }
+
+    private var canvasHasVisibleContent: Bool {
+        canvasStateHasVisibleContent(canvasStateSnapshot())
+    }
+
+    private func canvasStateHasVisibleContent(_ state: KDCanvasState) -> Bool {
+        state.backgroundImage != nil || !state.strokes.isEmpty || !state.stickers.isEmpty
+    }
+
+    // MARK: - Flood fill / color sampling
+
+    private func performFloodFill(at point: CGPoint, color fillColor: UIColor) -> Bool {
+        let baseImage = rasterImageExcludingStickers()
+        guard let sourceImageRef = baseImage.cgImage else { return false }
+
+        let width = sourceImageRef.width
+        let height = sourceImageRef.height
+        if width == 0 || height == 0 {
+            return false
+        }
+
+        let startX = Int(min(max(point.x * baseImage.scale, 0), CGFloat(width - 1)))
+        let startY = Int(min(max(point.y * baseImage.scale, 0), CGFloat(height - 1)))
+
+        guard let filledImage = KCDrawingEngineBridge.floodFillImage(
+            sourceImageRef,
+            startX: startX,
+            startY: startY,
+            fillColor: fillColor,
+            tolerance: fillTolerance
+        ) else {
+            return false
+        }
+
+        backgroundImage = UIImage(cgImage: filledImage, scale: baseImage.scale, orientation: .up)
+        strokes.removeAll()
+        setNeedsDisplay()
+        notifyContentChanged()
+        return true
+    }
+
+    private func colorAtPoint(_ point: CGPoint) -> UIColor? {
+        let image = snapshotImage()
+        guard let imageRef = image.cgImage else { return nil }
+
+        let imageSize = image.size
+        if imageSize.width <= 0.0 || imageSize.height <= 0.0 {
+            return nil
+        }
+
+        if point.x < 0.0 || point.y < 0.0 || point.x >= imageSize.width || point.y >= imageSize.height {
+            return nil
+        }
+
+        return KCDrawingEngineBridge.sampleColorFromImage(
+            imageRef,
+            x: Int(point.x * image.scale),
+            y: Int(point.y * image.scale)
+        )
+    }
+
+    // MARK: - Sticker views
+
+    private func makeStickerView(withSymbol symbol: String, color: UIColor) -> KDStickerView {
+        let sticker = KDStickerView(image: stickerImage(forSymbol: symbol, pointSize: 56.0, color: color))
+        sticker.symbolName = symbol
+        sticker.symbolColor = color
+        sticker.isUserInteractionEnabled = true
+        sticker.bounds = CGRect(x: 0, y: 0, width: 72, height: 72)
+        sticker.contentMode = .scaleAspectFit
+        sticker.layer.shadowColor = UIColor(red: 0.18, green: 0.22, blue: 0.28, alpha: 1.0).cgColor
+        sticker.layer.shadowOpacity = 0.16
+        sticker.layer.shadowRadius = 8.0
+        sticker.layer.shadowOffset = CGSize(width: 0.0, height: 4.0)
+
+        let pan = UIPanGestureRecognizer(target: self, action: #selector(handleStickerPan(_:)))
+        pan.delegate = self
+        sticker.addGestureRecognizer(pan)
+
+        let pinch = UIPinchGestureRecognizer(target: self, action: #selector(handleStickerPinch(_:)))
+        pinch.delegate = self
+        sticker.addGestureRecognizer(pinch)
+
+        let rotation = UIRotationGestureRecognizer(target: self, action: #selector(handleStickerRotation(_:)))
+        rotation.delegate = self
+        sticker.addGestureRecognizer(rotation)
+
+        let tap = UITapGestureRecognizer(target: self, action: #selector(handleStickerTap(_:)))
+        sticker.addGestureRecognizer(tap)
+
+        return sticker
+    }
+
+    private func drawStampedEraserStroke(_ stroke: KDStroke, color strokeColor: UIColor) {
+        strokeColor.withAlphaComponent(1.0).setFill()
+        if stroke.dotStroke {
+            let stamp = KCDrawingEngineBridge.eraserStampPath(
+                shape: stroke.eraserShape.rawValue,
+                center: stroke.startPoint,
+                size: stroke.lineWidth
+            )
+            stamp?.fill()
+            return
+        }
+
+        let stampPoints = KCDrawingEngineBridge.eraserStampPointsAlongPath(stroke.path.cgPath, lineWidth: stroke.lineWidth)
+        for value in stampPoints {
+            let stamp = KCDrawingEngineBridge.eraserStampPath(
+                shape: stroke.eraserShape.rawValue,
+                center: value.cgPointValue,
+                size: stroke.lineWidth
+            )
+            stamp?.fill()
+        }
+    }
+
+    @objc func handleStickerTap(_ recognizer: UITapGestureRecognizer) {
+        guard let sticker = recognizer.view as? KDStickerView else { return }
+        selectStickerView(sticker)
+    }
+
+    @objc func handleStickerPan(_ recognizer: UIPanGestureRecognizer) {
+        guard let sticker = recognizer.view as? KDStickerView else { return }
+        if recognizer.state == .began {
+            beginStickerTransformIfNeeded(for: sticker)
+        }
+        let translation = recognizer.translation(in: self)
+        sticker.center = CGPoint(x: sticker.center.x + translation.x, y: sticker.center.y + translation.y)
+        constrainStickerCenter(sticker)
+        recognizer.setTranslation(.zero, in: self)
+        stickerTransformDidMutate = true
+        if recognizer.state == .ended {
+            endStickerTransformIfNeeded()
+            notifySelectionChanged()
+        }
+        if recognizer.state == .cancelled || recognizer.state == .failed {
+            endStickerTransformIfNeeded()
+        }
+    }
+
+    @objc func handleStickerPinch(_ recognizer: UIPinchGestureRecognizer) {
+        guard let sticker = recognizer.view as? KDStickerView else { return }
+        if recognizer.state == .began {
+            beginStickerTransformIfNeeded(for: sticker)
+        }
+        sticker.transform = sticker.transform.scaledBy(x: recognizer.scale, y: recognizer.scale)
+        constrainStickerScale(sticker)
+        constrainStickerCenter(sticker)
+        recognizer.scale = 1.0
+        stickerTransformDidMutate = true
+        if recognizer.state == .ended {
+            endStickerTransformIfNeeded()
+            notifySelectionChanged()
+        }
+        if recognizer.state == .cancelled || recognizer.state == .failed {
+            endStickerTransformIfNeeded()
+        }
+    }
+
+    @objc func handleStickerRotation(_ recognizer: UIRotationGestureRecognizer) {
+        guard let sticker = recognizer.view as? KDStickerView else { return }
+        if recognizer.state == .began {
+            beginStickerTransformIfNeeded(for: sticker)
+        }
+        sticker.transform = sticker.transform.rotated(by: recognizer.rotation)
+        constrainStickerView(sticker)
+        recognizer.rotation = 0.0
+        stickerTransformDidMutate = true
+        if recognizer.state == .ended {
+            endStickerTransformIfNeeded()
+            notifySelectionChanged()
+        }
+        if recognizer.state == .cancelled || recognizer.state == .failed {
+            endStickerTransformIfNeeded()
+        }
+    }
+
+    func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer,
+                           shouldRecognizeSimultaneouslyWith otherGestureRecognizer: UIGestureRecognizer) -> Bool {
+        true
+    }
+
+    private func constrainStickerView(_ sticker: KDStickerView) {
+        constrainStickerScale(sticker)
+        constrainStickerCenter(sticker)
+    }
+
+    private func constrainStickerScale(_ sticker: KDStickerView) {
+        sticker.transform = KCDrawingEngineBridge.stickerTransformByClampingScale(sticker.transform)
+    }
+
+    private func constrainStickerCenter(_ sticker: KDStickerView) {
+        sticker.center = KCDrawingEngineBridge.clampStickerCenter(
+            sticker.center,
+            frame: sticker.frame,
+            canvasBounds: bounds
+        )
+    }
+
+    private func hitTestSticker(at point: CGPoint) -> Bool {
+        for sticker in stickers.reversed() {
+            let localPoint = convert(point, to: sticker)
+            if sticker.point(inside: localPoint, with: nil) {
+                selectStickerView(sticker)
+                return true
+            }
+        }
+        deselectSticker()
+        return false
+    }
+
+    private func selectStickerView(_ sticker: KDStickerView) {
+        deselectSticker()
+        selectedStickerView = sticker
+        sticker.layer.borderWidth = 2.0
+        sticker.layer.borderColor = UIColor(red: 0.42, green: 0.74, blue: 0.97, alpha: 0.65).cgColor
+        sticker.layer.cornerRadius = 16.0
+        notifySelectionChanged()
+    }
+
+    private func deselectSticker() {
+        selectedStickerView?.layer.borderWidth = 0.0
+        selectedStickerView = nil
+        notifySelectionChanged()
+    }
+
+    private func notifySelectionChanged() {
+        delegate?.drawingCanvasViewSelectionDidChange?(self)
+    }
+
+    private func beginStickerTransformIfNeeded(for sticker: KDStickerView) {
+        if activeStickerGestureCount == 0 {
+            pendingStickerTransformState = canvasStateSnapshot()
+            stickerTransformDidMutate = false
+            selectStickerView(sticker)
+        }
+        activeStickerGestureCount += 1
+    }
+
+    private func endStickerTransformIfNeeded() {
+        if activeStickerGestureCount > 0 {
+            activeStickerGestureCount -= 1
+        }
+
+        if activeStickerGestureCount == 0 {
+            if stickerTransformDidMutate {
+                commitUndoStateSnapshot(pendingStickerTransformState)
+                notifyContentChanged()
+            }
+            pendingStickerTransformState = nil
+            stickerTransformDidMutate = false
+        }
+    }
+
+    @objc func canUndo() -> Bool {
+        !undoStates.isEmpty
+    }
+
+    @objc func canRedo() -> Bool {
+        !redoStates.isEmpty
+    }
+
+    @objc func hasVisibleContent() -> Bool {
+        canvasHasVisibleContent
+    }
+
+    private func notifyContentChanged() {
+        delegate?.drawingCanvasViewContentDidChange?(self)
+    }
+
+    private func stickerImage(forSymbol symbol: String, pointSize: CGFloat, color: UIColor) -> UIImage {
+        let imageSize = CGSize(width: 72.0, height: 72.0)
+        let renderer = UIGraphicsImageRenderer(size: imageSize)
+        return renderer.image { _ in
+            let resolvedSymbol = UIImage(systemName: symbol) != nil ? symbol : "star.fill"
+            let outlineConfiguration = UIImage.SymbolConfiguration(pointSize: pointSize + 8.0, weight: .bold)
+            if let outlineImage = UIImage(systemName: resolvedSymbol, withConfiguration: outlineConfiguration)?
+                .withTintColor(.white, renderingMode: .alwaysOriginal) {
+                let outlineRect = CGRect(x: (imageSize.width - outlineImage.size.width) / 2.0,
+                                         y: (imageSize.height - outlineImage.size.height) / 2.0,
+                                         width: outlineImage.size.width,
+                                         height: outlineImage.size.height)
+                outlineImage.draw(in: outlineRect)
+            }
+
+            let configuration = UIImage.SymbolConfiguration(pointSize: pointSize, weight: .semibold)
+            if let symbolImage = UIImage(systemName: resolvedSymbol, withConfiguration: configuration)?
+                .withTintColor(color, renderingMode: .alwaysOriginal) {
+                let symbolRect = CGRect(x: (imageSize.width - symbolImage.size.width) / 2.0,
+                                        y: (imageSize.height - symbolImage.size.height) / 2.0,
+                                        width: symbolImage.size.width,
+                                        height: symbolImage.size.height)
+                symbolImage.draw(in: symbolRect)
+            }
+        }
+    }
+
+    @objc(eraserShapePathForShape:center:size:)
+    func eraserShapePath(forShape shape: KDEraserShape, center: CGPoint, size: CGFloat) -> UIBezierPath? {
+        KCDrawingEngineBridge.eraserStampPath(shape: shape.rawValue, center: center, size: size)
+    }
+}

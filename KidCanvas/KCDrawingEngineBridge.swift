@@ -152,6 +152,87 @@ final class KCDrawingEngineBridge: NSObject {
             .map { NSValue(cgPoint: $0) }
     }
 
+    // MARK: - Crayon grain
+
+    /// Returns the crayon grain dash endpoints for a stroke whose path bounding
+    /// box is `pathBounds` and rendered line width is `lineWidth`, computed by
+    /// the Swift `KCCrayonGrain` engine. The Objective-C caller draws each dash
+    /// (clip / color / stroke) in UIKit.
+    ///
+    /// Each dash is encoded as two consecutive `NSValue`-wrapped `CGPoint`s
+    /// (start, then end); the returned array length is always even. Use
+    /// `crayonGrainDashWidth(lineWidth:)` for the constant per-dash stroke width.
+    @objc static func crayonGrainDashPoints(
+        pathBounds: CGRect,
+        lineWidth: CGFloat
+    ) -> [NSValue] {
+        let dashes = KCCrayonGrain.dashes(pathBounds: pathBounds, lineWidth: lineWidth)
+        var values: [NSValue] = []
+        values.reserveCapacity(dashes.count * 2)
+        for dash in dashes {
+            values.append(NSValue(cgPoint: dash.start))
+            values.append(NSValue(cgPoint: dash.end))
+        }
+        return values
+    }
+
+    /// The constant per-dash stroke width for the crayon grain texture
+    /// (`max(0.7, lineWidth * 0.045)`). Equal to each dash's `lineWidth` produced
+    /// by `KCCrayonGrain.dashes(...)`; exposed separately so the Objective-C grain
+    /// drawer does not re-derive the constant inline.
+    @objc static func crayonGrainDashWidth(lineWidth: CGFloat) -> CGFloat {
+        max(0.7, lineWidth * 0.045)
+    }
+
+    // MARK: - Sticker transform constraints
+
+    /// Returns the sticker's affine transform with its uniform scale clamped to
+    /// the prototype's `[0.48, 2.6]` range (degenerate → identity). The ObjC
+    /// pinch handler applies the result to the view; only the math lives in
+    /// Swift (`KCStickerConstraints`).
+    @objc static func stickerTransformByClampingScale(
+        _ transform: CGAffineTransform
+    ) -> CGAffineTransform {
+        KCStickerConstraints.transformWithClampedScale(transform)
+    }
+
+    /// Returns the sticker `center` clamped so the sticker stays reachable inside
+    /// `canvasBounds`. The ObjC pan handler applies the result to the view.
+    @objc static func clampStickerCenter(
+        _ center: CGPoint,
+        frame: CGRect,
+        canvasBounds: CGRect
+    ) -> CGPoint {
+        KCStickerConstraints.clampedCenter(center, frame: frame, canvasBounds: canvasBounds)
+    }
+
+    // MARK: - History paging (KCHistoryFeature boundary)
+
+    /// Highest valid history page index for `sessionCount` sessions at `pageSize`.
+    /// Delegates to the Swift `KCHistoryPaging` history-Feature model.
+    @objc static func historyMaxPageIndex(sessionCount: Int, pageSize: Int) -> Int {
+        KCHistoryPaging(sessionCount: sessionCount, pageSize: pageSize).maxPageIndex
+    }
+
+    /// `pageIndex` clamped to the valid range for `sessionCount`/`pageSize`.
+    @objc static func historyClampedPageIndex(
+        _ pageIndex: Int,
+        sessionCount: Int,
+        pageSize: Int
+    ) -> Int {
+        KCHistoryPaging(sessionCount: sessionCount, pageSize: pageSize, pageIndex: pageIndex).clampedPageIndex
+    }
+
+    /// Absolute session index for a thumbnail slot `thumbIndex` on `pageIndex`.
+    @objc static func historySessionIndex(
+        thumbIndex: Int,
+        pageIndex: Int,
+        pageSize: Int
+    ) -> Int {
+        KCHistoryPaging(sessionCount: 0, pageSize: pageSize, pageIndex: pageIndex)
+            .sessionIndex(forThumb: thumbIndex)
+    }
+
     // MARK: - Private enum mapping (OC Int → Swift String enum)
 
     /// Maps OC `KDBrushStyle` integer (0=pencil, 1=pen, 2=crayon) to the Swift

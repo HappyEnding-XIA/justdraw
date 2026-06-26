@@ -281,18 +281,25 @@ KCSessionPersistence/
 - 非显而易见的约束
 - 算法或边界条件
 
+注释语言：
+
+- 代码注释统一使用中文
+- 文件头中的 Xcode 固定字段可保留英文，例如 `Created by`
+- API 名称、系统类型、协议名、错误原文、第三方库名称等必要技术名词可保留英文
+- 面向用户展示的 UI 文案不因本规则改变，仍按产品多语言策略处理
+
 不要写显而易见的注释。
 
 推荐：
 
 ```swift
-// Flood fill must cap pixel allocation to avoid oversized imported image crashes.
+// 限制 flood fill 的像素分配，避免导入超大图片时崩溃。
 ```
 
 不推荐：
 
 ```swift
-// Set value to width
+// 将 value 设置给 width
 width = value
 ```
 

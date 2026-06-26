@@ -7,10 +7,6 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		A10000010000000000000004 /* KDMainViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = A10000110000000000000006 /* KDMainViewController.m */; };
-		A10000010000000000000005 /* KDDrawingCanvasView.m in Sources */ = {isa = PBXBuildFile; fileRef = A10000110000000000000008 /* KDDrawingCanvasView.m */; };
-		A10000010000000000000006 /* KDArtworkSession.m in Sources */ = {isa = PBXBuildFile; fileRef = A1000011000000000000000D /* KDArtworkSession.m */; };
-		A10000010000000000000007 /* KDSessionStore.m in Sources */ = {isa = PBXBuildFile; fileRef = A1000011000000000000000F /* KDSessionStore.m */; };
 		A10000010000000000000008 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A10000110000000000000010 /* Assets.xcassets */; };
 		A10000010000000000000009 /* KCContentBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000110000000000000011 /* KCContentBridge.swift */; };
 		A1000001000000000000000A /* KCDrawingEngineBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000110000000000000012 /* KCDrawingEngineBridge.swift */; };
@@ -18,29 +14,23 @@
 		A1000001000000000000000C /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000110000000000000016 /* AppDelegate.swift */; };
 		A1000001000000000000000D /* SceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000110000000000000017 /* SceneDelegate.swift */; };
 		A1000001000000000000000E /* LegacyArchiveMigrator.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000110000000000000019 /* LegacyArchiveMigrator.swift */; };
+		A1000001000000000000000F /* KCDrawingCanvasView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000011000000000000001A /* KCDrawingCanvasView.swift */; };
+		A10000010000000000000010 /* KCMainViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000011000000000000001B /* KCMainViewController.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
-		A10000110000000000000006 /* KDMainViewController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = KDMainViewController.m; sourceTree = "<group>"; };
-		A10000110000000000000007 /* KDMainViewController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = KDMainViewController.h; sourceTree = "<group>"; };
-		A10000110000000000000008 /* KDDrawingCanvasView.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = KDDrawingCanvasView.m; sourceTree = "<group>"; };
-		A10000110000000000000009 /* KDDrawingCanvasView.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = KDDrawingCanvasView.h; sourceTree = "<group>"; };
 		A1000011000000000000000A /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		A1000011000000000000000B /* KidCanvas.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = KidCanvas.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		A1000011000000000000000C /* KDArtworkSession.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = KDArtworkSession.h; sourceTree = "<group>"; };
-		A1000011000000000000000D /* KDArtworkSession.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = KDArtworkSession.m; sourceTree = "<group>"; };
-		A1000011000000000000000E /* KDSessionStore.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = KDSessionStore.h; sourceTree = "<group>"; };
-		A1000011000000000000000F /* KDSessionStore.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = KDSessionStore.m; sourceTree = "<group>"; };
 		A10000110000000000000010 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		A10000110000000000000011 /* KCContentBridge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KCContentBridge.swift; sourceTree = "<group>"; };
 		A10000110000000000000012 /* KCDrawingEngineBridge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KCDrawingEngineBridge.swift; sourceTree = "<group>"; };
-		A10000110000000000000013 /* KCDrawingEngineBridge.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = KCDrawingEngineBridge.h; sourceTree = "<group>"; };
 		A10000110000000000000014 /* SessionStoreBridge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionStoreBridge.swift; sourceTree = "<group>"; };
-		A10000110000000000000015 /* SessionStoreBridge.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = SessionStoreBridge.h; sourceTree = "<group>"; };
 		A10000110000000000000016 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		A10000110000000000000017 /* SceneDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SceneDelegate.swift; sourceTree = "<group>"; };
 		A10000110000000000000018 /* KidCanvas-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "KidCanvas-Bridging-Header.h"; sourceTree = "<group>"; };
 		A10000110000000000000019 /* LegacyArchiveMigrator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LegacyArchiveMigrator.swift; sourceTree = "<group>"; };
+		A1000011000000000000001A /* KCDrawingCanvasView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KCDrawingCanvasView.swift; sourceTree = "<group>"; };
+		A1000011000000000000001B /* KCMainViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KCMainViewController.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -69,20 +59,12 @@
 				A10000110000000000000017 /* SceneDelegate.swift */,
 				A10000110000000000000018 /* KidCanvas-Bridging-Header.h */,
 				A10000110000000000000019 /* LegacyArchiveMigrator.swift */,
-				A10000110000000000000007 /* KDMainViewController.h */,
-				A10000110000000000000006 /* KDMainViewController.m */,
-				A10000110000000000000009 /* KDDrawingCanvasView.h */,
-				A10000110000000000000008 /* KDDrawingCanvasView.m */,
-				A1000011000000000000000C /* KDArtworkSession.h */,
-				A1000011000000000000000D /* KDArtworkSession.m */,
-				A1000011000000000000000E /* KDSessionStore.h */,
-				A1000011000000000000000F /* KDSessionStore.m */,
+				A1000011000000000000001B /* KCMainViewController.swift */,
+				A1000011000000000000001A /* KCDrawingCanvasView.swift */,
 				A10000110000000000000010 /* Assets.xcassets */,
 				A10000110000000000000011 /* KCContentBridge.swift */,
 				A10000110000000000000012 /* KCDrawingEngineBridge.swift */,
-				A10000110000000000000013 /* KCDrawingEngineBridge.h */,
 				A10000110000000000000014 /* SessionStoreBridge.swift */,
-				A10000110000000000000015 /* SessionStoreBridge.h */,
 				A1000011000000000000000A /* Info.plist */,
 			);
 			path = KidCanvas;
@@ -177,10 +159,8 @@
 				A1000001000000000000000C /* AppDelegate.swift in Sources */,
 				A1000001000000000000000D /* SceneDelegate.swift in Sources */,
 				A1000001000000000000000E /* LegacyArchiveMigrator.swift in Sources */,
-				A10000010000000000000004 /* KDMainViewController.m in Sources */,
-				A10000010000000000000005 /* KDDrawingCanvasView.m in Sources */,
-				A10000010000000000000006 /* KDArtworkSession.m in Sources */,
-				A10000010000000000000007 /* KDSessionStore.m in Sources */,
+				A1000001000000000000000F /* KCDrawingCanvasView.swift in Sources */,
+				A10000010000000000000010 /* KCMainViewController.swift in Sources */,
 				A10000010000000000000009 /* KCContentBridge.swift in Sources */,
 				A1000001000000000000000A /* KCDrawingEngineBridge.swift in Sources */,
 				A1000001000000000000000B /* SessionStoreBridge.swift in Sources */,
@@ -225,7 +205,7 @@
 				CLANG_ENABLE_OBJC_ARC = YES;
 				COPY_PHASE_STRIP = NO;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
-				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_NSASSERTIONS = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				GCC_C_LANGUAGE_STANDARD = gnu17;
 				GCC_NO_COMMON_BLOCKS = YES;

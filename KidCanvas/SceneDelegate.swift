@@ -20,7 +20,7 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
     ) {
         guard let windowScene = scene as? UIWindowScene else { return }
         let window = UIWindow(windowScene: windowScene)
-        let mainViewController = KDMainViewController()
+        let mainViewController = KCMainViewController()
         mainViewController.overrideUserInterfaceStyle = .light
         window.overrideUserInterfaceStyle = .light
         window.rootViewController = mainViewController

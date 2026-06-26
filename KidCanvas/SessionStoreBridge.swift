@@ -11,10 +11,47 @@ import KCCommon
 import KCDomain
 import KCSessionPersistence
 
+/// Type-safe, ObjC-visible session metadata DTO.
+///
+/// Replaces the loose `[String: Any]` / NSDictionary previously handed across
+/// the Swift↔ObjC boundary: OC now reads typed properties (`session.identifier`,
+/// `session.title`, …) instead of string-keyed dictionary access (`session[@"id"]`).
+/// The ObjC interface is declared in `SessionStoreBridge.h` (hand-authored,
+/// matching this Swift `@objc(KCSessionMetadata)` class) so OC can use it
+/// without depending on the auto-generated (currently empty) Swift header.
+///
+/// This is a read-only view model over `KCArtworkSession`; it does not change
+/// the on-disk JSON schema (the `KCSessionStore` still persists the underlying
+/// `KCArtworkSession`).
+@objc(KCSessionMetadata)
+final class KCSessionMetadata: NSObject {
+    @objc let identifier: String
+    @objc let title: String
+    @objc let artworkFileName: String
+    @objc let thumbnailFileName: String
+    @objc let modifiedAt: Date
+
+    init(identifier: String, title: String, artworkFileName: String, thumbnailFileName: String, modifiedAt: Date) {
+        self.identifier = identifier
+        self.title = title
+        self.artworkFileName = artworkFileName
+        self.thumbnailFileName = thumbnailFileName
+        self.modifiedAt = modifiedAt
+    }
+
+    init(_ session: KCArtworkSession) {
+        self.identifier = session.id
+        self.title = session.title
+        self.artworkFileName = session.artworkFileName
+        self.thumbnailFileName = session.thumbnailFileName
+        self.modifiedAt = session.modifiedAt
+    }
+}
+
 /// ObjC bridge over the Swift `KCSessionStore`, covering all operations
 /// that the OC `KDSessionStore` provides. OC code can use this bridge
-/// as a drop-in replacement; session metadata is returned as NSDictionary
-/// arrays (avoiding direct dependence on the Swift `KCArtworkSession` type).
+/// as a drop-in replacement; session metadata is returned as the typed
+/// `KCSessionMetadata` DTO (no longer as NSDictionary).
 ///
 /// **Error handling**: Storage errors are silently degraded via `try?`
 /// (returning nil/empty/false) rather than propagated to the OC caller,
@@ -37,12 +74,10 @@ final class SessionStoreBridge: NSObject {
         (try? store.loadSessions().count) ?? 0
     }
 
-    /// Returns all sessions as an array of dictionaries (newest first).
-    /// Each dictionary contains: `id`, `title`, `artworkFileName`,
-    /// `thumbnailFileName`, `modifiedAt` (NSDate).
-    @objc func loadSessionDictionaries() -> [[String: Any]] {
+    /// Returns all sessions as typed `KCSessionMetadata` DTOs (newest first).
+    @objc func loadAllSessions() -> [KCSessionMetadata] {
         guard let sessions = try? store.loadSessions() else { return [] }
-        return sessions.map { sessionToDictionary($0) }
+        return sessions.map { KCSessionMetadata($0) }
     }
 
     // MARK: - Artwork save (UIImage convenience)
@@ -50,8 +85,8 @@ final class SessionStoreBridge: NSObject {
     /// Saves artwork from a UIImage. Generates PNG data + 240×180 JPEG
     /// thumbnail internally. If `existingSessionId` is non-nil, updates that
     /// session; otherwise creates a new one.
-    /// Returns the session dictionary, or nil on failure.
-    @objc func saveImage(_ image: UIImage, existingSessionId: String?) -> [String: Any]? {
+    /// Returns the session metadata DTO, or nil on failure.
+    @objc func saveImage(_ image: UIImage, existingSessionId: String?) -> KCSessionMetadata? {
         guard let pngData = image.pngData() else { return nil }
         let thumbnail = Self.generateThumbnail(from: image)
         guard let thumbData = thumbnail.jpegData(compressionQuality: 0.85) else { return nil }
@@ -62,12 +97,12 @@ final class SessionStoreBridge: NSObject {
 
     /// Saves artwork PNG + JPEG thumbnail. If `existingSessionId` is non-nil,
     /// updates that session; otherwise creates a new one.
-    /// Returns the session dictionary, or nil on failure.
+    /// Returns the session metadata DTO, or nil on failure.
     @objc func saveArtwork(
         pngData: Data,
         thumbnailJPEGData: Data,
         existingSessionId: String?
-    ) -> [String: Any]? {
+    ) -> KCSessionMetadata? {
         let existing: KCArtworkSession? = existingSessionId.flatMap { id in
             (try? store.loadSessions())?.first { $0.id == id }
         }
@@ -76,7 +111,7 @@ final class SessionStoreBridge: NSObject {
             thumbnailJPEGData: thumbnailJPEGData,
             existing: existing
         ) else { return nil }
-        return sessionToDictionary(session)
+        return KCSessionMetadata(session)
     }
 
     /// Returns the full-resolution artwork as a UIImage.
@@ -141,16 +176,6 @@ final class SessionStoreBridge: NSObject {
 
     private func findSession(id: String) -> KCArtworkSession? {
         try? store.loadSessions().first { $0.id == id }
-    }
-
-    private func sessionToDictionary(_ session: KCArtworkSession) -> [String: Any] {
-        [
-            "id": session.id,
-            "title": session.title,
-            "artworkFileName": session.artworkFileName,
-            "thumbnailFileName": session.thumbnailFileName,
-            "modifiedAt": session.modifiedAt,
-        ]
     }
 
     /// Generates a 240×180 thumbnail with white background and aspect-fit,
