@@ -65,12 +65,6 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
     var canvasContainerView: UIView!
     var canvasView: KCDrawingCanvasView!
     var sizeSlider: UISlider!
-    var palette24: [UIColor]!
-    var palette36: [UIColor]!
-    var recentColors: [UIColor]!
-    var stickerSymbolsByCategory: [String: [String]]!
-    var stickerCategories: [String]!
-    var selectedStickerCategory: String!
     var lineArtItems: [KDLineArtItem]!
     var colorButtons: [UIButton] = []
     var recentColorButtons: [UIButton] = []
@@ -103,6 +97,10 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
     var stickerRowStack: UIStackView!
     let sessionStore: KCSessionService
     let contentCatalog: KCBundledContentCatalog
+    /// 内容选择 Feature（色盘 / 最近色 / 贴纸分类），从 contentCatalog 构造，T022 抽出。
+    private(set) lazy var contentPicker: KCContentPickerFeature = {
+        KCContentPickerFeature(contentCatalog: self.contentCatalog)
+    }()
     var sessions: [KCSessionMetadata] = []
     var activeSession: KCSessionMetadata?
     var selectedHistorySession: KCSessionMetadata?
@@ -112,7 +110,6 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
     var toolStateChip: UIView!
     var toolStateSwatch: UIView!
     var toolStateLabel: UILabel!
-    var showing36Palette: Bool = false
     var historyPageIndex: Int = 0
     var draftSaveTimer: Timer?
     var suppressNextDraftSave: Bool = false
@@ -141,17 +138,8 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
 
         self.view.backgroundColor = UIColor(red: 0.97, green: 0.94, blue: 0.89, alpha: 1.0)
         self.lineArtStrokeScale = 1.0
-        // 色盘来源：KCContentCatalog（与原 makePalette24/36 取值逐位一致，UIColor(kcHex:) 无损转换）。
-        self.palette24 = self.contentCatalog.palette(for: .standard).colors.map { UIColor(kcHex: $0) }
-        self.palette36 = self.contentCatalog.palette(for: .extended).colors.map { UIColor(kcHex: $0) }
-        self.recentColors = self.loadRecentColors()
-        // 贴纸来源：KCContentCatalog 的 stickerGroups（顺序与标题由 catalog 驱动）。
-        let stickerGroups = self.contentCatalog.stickerGroups
-        self.stickerCategories = stickerGroups.map(\.title)
-        self.stickerSymbolsByCategory = Dictionary(
-            uniqueKeysWithValues: stickerGroups.map { ($0.title, $0.symbols) }
-        )
-        self.selectedStickerCategory = self.stickerCategories.first
+        // 内容选择 Feature 在构造时从 contentCatalog 建好色盘与贴纸分组；这里载入最近色。
+        self.contentPicker.loadRecentColors()
         self.lineArtItems = self.makeLineArtItems()
         self.colorButtons = []
         self.recentColorButtons = []
@@ -172,7 +160,7 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
         self.reloadStickerButtons()
         self.selectToolMode(.brush)
         self.selectBrushStyle(.pencil)
-        self.selectColor(self.palette24.first!, sender: nil)
+        self.selectColor(self.contentPicker.palette24.first!, sender: nil)
         self.selectStickerSymbol(self.currentStickerSymbols().first!)
         self.refreshEraserShapeButtons()
         self.refreshStickerEditButtons()
@@ -788,7 +776,7 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
             ringHole.widthAnchor.constraint(equalToConstant: 28.0),
             ringHole.heightAnchor.constraint(equalToConstant: 28.0)
         ])
-        self.paletteGridHeightConstraint = grid.heightAnchor.constraint(equalToConstant: self.paletteGridHeightForColorCount(self.palette24.count))
+        self.paletteGridHeightConstraint = grid.heightAnchor.constraint(equalToConstant: self.paletteGridHeightForColorCount(self.contentPicker.palette24.count))
         self.paletteGridHeightConstraint.isActive = true
         self.reloadRecentColorRow()
     }
@@ -858,7 +846,7 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
         stickerCategoryRow.distribution = .fillEqually
         panel.addSubview(stickerCategoryRow)
 
-        for category in self.stickerCategories {
+        for category in self.contentPicker.stickerCategories {
             let button = UIButton(type: .system)
             button.translatesAutoresizingMaskIntoConstraints = false
             let configuration = UIImage.SymbolConfiguration(pointSize: 15.0, weight: .bold)
@@ -1285,31 +1273,11 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
     }
 
     func stickerAccessibilityLabelForSymbol(_ symbol: String) -> String {
-        let labels: [String: String] = [
-            "star.fill": "Star Sticker",
-            "heart.fill": "Heart Sticker",
-            "sun.max.fill": "Sun Sticker",
-            "leaf.fill": "Leaf Sticker",
-            "cloud.fill": "Cloud Sticker",
-            "moon.stars.fill": "Moon Sticker",
-            "rainbow": "Rainbow Sticker",
-            "camera.macro": "Flower Sticker",
-            "butterfly.fill": "Butterfly Sticker",
-            "pawprint.fill": "Paw Sticker",
-            "gift.fill": "Gift Sticker",
-            "face.smiling.fill": "Smile Sticker"
-        ]
-        return labels[symbol] ?? "Sticker"
+        return self.contentPicker.accessibilityLabel(forSymbol: symbol)
     }
 
     func stickerCategorySymbolForCategory(_ category: String) -> String {
-        let symbols: [String: String] = [
-            "Animals": "pawprint.fill",
-            "Nature": "leaf.fill",
-            "Decor": "sparkles",
-            "Faces": "face.smiling.fill"
-        ]
-        return symbols[category] ?? "star.fill"
+        return self.contentPicker.categorySymbol(forCategory: category)
     }
 
     func toolCardButtonWithSymbolName(_ symbolName: String, accentColor: UIColor, title: String) -> KDBrushButton {
@@ -1664,31 +1632,27 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
     // MARK: - 调色板（颜色取自 contentCatalog，见 viewDidLoad）
 
     func currentPalette() -> [UIColor] {
-        return self.showing36Palette ? self.palette36 : self.palette24
+        return self.contentPicker.currentPalette
     }
 
     func paletteGridColumns() -> Int {
-        return 6
+        return self.contentPicker.paletteGridColumns
     }
 
     func paletteColorButtonSize() -> CGFloat {
-        return 30.0
+        return self.contentPicker.paletteColorButtonSize
     }
 
     func paletteColorButtonSpacing() -> CGFloat {
-        return 8.0
+        return self.contentPicker.paletteColorButtonSpacing
     }
 
     func paletteGridWidth() -> CGFloat {
-        let columns = self.paletteGridColumns()
-        return CGFloat(columns) * self.paletteColorButtonSize() + CGFloat(columns - 1) * self.paletteColorButtonSpacing()
+        return self.contentPicker.paletteGridWidth
     }
 
     func paletteGridHeightForColorCount(_ colorCount: Int) -> CGFloat {
-        let columns = self.paletteGridColumns()
-        let rows = (colorCount + columns - 1) / columns
-        let spacingCount = max(0, rows - 1)
-        return CGFloat(rows) * self.paletteColorButtonSize() + CGFloat(spacingCount) * self.paletteColorButtonSpacing()
+        return self.contentPicker.paletteGridHeight(forColorCount: colorCount)
     }
 
     var colorWheelCachedImage: UIImage?
@@ -1778,10 +1742,10 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
         }
         self.recentColorButtons.removeAll()
 
-        for index in 0..<self.recentColors.count {
+        for index in 0..<self.contentPicker.recentColors.count {
             let button = UIButton(type: .custom)
             button.translatesAutoresizingMaskIntoConstraints = false
-            button.backgroundColor = self.recentColors[index]
+            button.backgroundColor = self.contentPicker.recentColors[index]
             button.layer.cornerRadius = 13.0
             button.layer.borderWidth = 3.0
             button.layer.borderColor = UIColor(white: 1.0, alpha: 0.92).cgColor
@@ -1800,11 +1764,7 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
     }
 
     func currentStickerSymbols() -> [String] {
-        let symbols = self.stickerSymbolsByCategory[self.selectedStickerCategory] ?? []
-        if symbols.count > 0 {
-            return symbols
-        }
-        return self.stickerSymbolsByCategory[self.stickerCategories.first ?? ""] ?? []
+        return self.contentPicker.currentStickerSymbols()
     }
 
     func reloadStickerButtons() {
@@ -1840,7 +1800,7 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
     func refreshStickerCategoryButtons() {
         for button in self.stickerCategoryButtons {
             let category = self.stickerCategoryFromButton(button)
-            let active = category == self.selectedStickerCategory
+            let active = category == self.contentPicker.selectedStickerCategory
             button.backgroundColor = active
                 ? UIColor(red: 0.97, green: 0.86, blue: 0.48, alpha: 1.0)
                 : UIColor(white: 1.0, alpha: 0.62)
@@ -1854,70 +1814,12 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
     }
 
     func stickerCategoryFromButton(_ button: UIButton) -> String? {
-        let prefix = "sticker.category."
-        let identifier = button.accessibilityIdentifier ?? ""
-        if !identifier.hasPrefix(prefix) {
-            return nil
-        }
-
-        let slug = String(identifier.dropFirst(prefix.count))
-        for category in self.stickerCategories {
-            if category.lowercased() == slug {
-                return category
-            }
-        }
-        return nil
+        return self.contentPicker.category(forButtonIdentifier: button.accessibilityIdentifier ?? "")
     }
 
     func addRecentColor(_ color: UIColor?) {
-        guard let color = color else {
-            return
-        }
-
-        for index in stride(from: self.recentColors.count - 1, through: 0, by: -1) {
-            if self.color(self.recentColors[index], matchesColor: color) {
-                self.recentColors.remove(at: index)
-            }
-        }
-
-        self.recentColors.insert(color, at: 0)
-        while self.recentColors.count > 8 {
-            self.recentColors.removeLast()
-        }
-
-        self.persistRecentColors()
+        self.contentPicker.addRecentColor(color)
         self.reloadRecentColorRow()
-    }
-
-    func loadRecentColors() -> [UIColor] {
-        let storedColors = UserDefaults.standard.array(forKey: "KDRecentColors") as? [[String: Any]] ?? []
-        var colors: [UIColor] = []
-        for components in storedColors {
-            guard let red = components["r"] as? Double,
-                  let green = components["g"] as? Double,
-                  let blue = components["b"] as? Double,
-                  let alpha = components["a"] as? Double else {
-                continue
-            }
-            colors.append(UIColor(red: CGFloat(red), green: CGFloat(green), blue: CGFloat(blue), alpha: CGFloat(alpha)))
-        }
-        return colors
-    }
-
-    func persistRecentColors() {
-        var storedColors: [[String: Any]] = []
-        storedColors.reserveCapacity(self.recentColors.count)
-        for color in self.recentColors {
-            var red: CGFloat = 0.0
-            var green: CGFloat = 0.0
-            var blue: CGFloat = 0.0
-            var alpha: CGFloat = 0.0
-            guard color.getRed(&red, green: &green, blue: &blue, alpha: &alpha) else {
-                continue
-            }
-            storedColors.append(["r": Double(red), "g": Double(green), "b": Double(blue), "a": Double(alpha)])
-        }
-        UserDefaults.standard.set(storedColors, forKey: "KDRecentColors")
     }
 
     func loadBrushWidthPreferences() {
@@ -1959,7 +1861,7 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
     }
 
     func updatePaletteButtons() {
-        let palette36 = self.showing36Palette
+        let palette36 = self.contentPicker.showing36Palette
         self.palette24Button.setTitleColor(palette36 ? UIColor(red: 0.49, green: 0.53, blue: 0.59, alpha: 1.0) : UIColor(red: 0.39, green: 0.26, blue: 0.0, alpha: 1.0), for: .normal)
         self.palette24Button.backgroundColor = palette36 ? UIColor.clear : UIColor(red: 0.97, green: 0.86, blue: 0.48, alpha: 1.0)
         self.palette24Button.layer.borderWidth = palette36 ? 0.0 : 1.0
@@ -2290,7 +2192,7 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
         }
 
         for button in self.recentColorButtons {
-            if button.tag < self.recentColors.count && self.color(self.recentColors[button.tag], matchesColor: color) {
+            if button.tag < self.contentPicker.recentColors.count && self.color(self.contentPicker.recentColors[button.tag], matchesColor: color) {
                 button.layer.borderColor = UIColor(red: 0.12, green: 0.16, blue: 0.23, alpha: 0.18).cgColor
                 self.activeColorButton = button
                 break
@@ -2320,13 +2222,13 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
     // MARK: - 按钮动作
 
     @objc func didTapPalette24() {
-        self.showing36Palette = false
+        self.contentPicker.setShowing36Palette(false)
         self.updatePaletteButtons()
         self.reloadPaletteGrid()
     }
 
     @objc func didTapPalette36() {
-        self.showing36Palette = true
+        self.contentPicker.setShowing36Palette(true)
         self.updatePaletteButtons()
         self.reloadPaletteGrid()
     }
@@ -2703,8 +2605,8 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
     }
 
     @objc func didTapRecentColorButton(_ button: UIButton) {
-        if button.tag < self.recentColors.count {
-            self.selectColor(self.recentColors[button.tag], sender: button)
+        if button.tag < self.contentPicker.recentColors.count {
+            self.selectColor(self.contentPicker.recentColors[button.tag], sender: button)
         }
     }
 
@@ -2728,11 +2630,11 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
         guard let category = self.stickerCategoryFromButton(button) else {
             return
         }
-        if self.stickerSymbolsByCategory[category] == nil {
+        if self.contentPicker.stickerSymbolsByCategory[category] == nil {
             return
         }
 
-        self.selectedStickerCategory = category
+        self.contentPicker.selectStickerCategory(category)
         let firstSymbol = self.currentStickerSymbols().first
         if let firstSymbol, firstSymbol.count > 0 {
             self.canvasView.currentStickerSymbol = firstSymbol
@@ -3144,30 +3046,6 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
     // MARK: - 颜色匹配
 
     func color(_ lhs: UIColor?, matchesColor rhs: UIColor?) -> Bool {
-        guard let lhs = lhs, let rhs = rhs else {
-            return false
-        }
-
-        var lhsRed: CGFloat = 0.0
-        var lhsGreen: CGFloat = 0.0
-        var lhsBlue: CGFloat = 0.0
-        var lhsAlpha: CGFloat = 0.0
-        var rhsRed: CGFloat = 0.0
-        var rhsGreen: CGFloat = 0.0
-        var rhsBlue: CGFloat = 0.0
-        var rhsAlpha: CGFloat = 0.0
-
-        if !lhs.getRed(&lhsRed, green: &lhsGreen, blue: &lhsBlue, alpha: &lhsAlpha) {
-            return lhs == rhs
-        }
-        if !rhs.getRed(&rhsRed, green: &rhsGreen, blue: &rhsBlue, alpha: &rhsAlpha) {
-            return lhs == rhs
-        }
-
-        let tolerance: CGFloat = 0.01
-        return abs(lhsRed - rhsRed) < tolerance &&
-            abs(lhsGreen - rhsGreen) < tolerance &&
-            abs(lhsBlue - rhsBlue) < tolerance &&
-            abs(lhsAlpha - rhsAlpha) < tolerance
+        return KCContentPickerFeature.colorsMatch(lhs, rhs)
     }
 }

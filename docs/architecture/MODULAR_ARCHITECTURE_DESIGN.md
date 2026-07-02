@@ -162,6 +162,11 @@ App -> Feature -> Core/Infra -> Domain -> Common
 - 历史会话
 - 编辑器面板
 
+Feature 拆分进度（App 层 Feature 类型 + KCDomain 纯逻辑）：
+
+- **T022 `KCContentPickerFeature`（App 层）**：从 `KCMainViewController` 抽出，集中持有色盘（24/36 切换）、最近色（UserDefaults）、贴纸分类选择的状态与决策；`KCMainViewController` 持有其 lazy 实例 `contentPicker` 并委托。纯逻辑下沉到 KCDomain：`KCContentPickerLayout`（色盘网格几何）、`KCRecentColorQueue`（最近色去重/裁剪）、`KCStickerCategoryMapping`（分类↔符号↔无障碍标签↔ slug 解析），均有单测。UIKit 按钮创建/约束/事件仍留控制器；线稿列表（绘制闭包与画布耦合）暂未纳入，留待画布核心迁移。
+- **T013 `KCHistoryPaging`、T017 `KCToolStateChipTitle`（KCDomain）**：更早的最小边界抽取。
+
 ### 5.3 Core / Infrastructure 能力层
 
 职责：

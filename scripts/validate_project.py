@@ -215,6 +215,10 @@ def app_feature_checks(
     history_paging_text,
     composition_root_text,
     catalog_text,
+    content_picker_feature_text,
+    kc_content_picker_layout_text,
+    kc_recent_color_queue_text,
+    kc_sticker_category_mapping_text,
     plist,
     pbx_text,
 ):
@@ -258,10 +262,12 @@ def app_feature_checks(
     checks.append(require_text(main_text, "#selector(togglePanelsCollapsed", "Collapse control is wired to a toggle action"))
     checks.append(require_regex(main_text, r"func applyPanelsCollapsedAnimated[\s\S]*panel\.isHidden = self\.panelsCollapsed", "Collapse toggles panel visibility without touching tool state"))
     checks.append(require_text(main_text, "refreshToolStateChip", "Collapsed state shows a minimal current-tool indicator"))
-    # T021: palettes are sourced from KCContentCatalog; the main view controller no longer hardcodes makePalette24/36.
-    checks.append(require_text(main_text, "contentCatalog.palette(for: .standard)", "24-color palette is sourced from the content catalog"))
-    checks.append(require_text(main_text, "contentCatalog.palette(for: .extended)", "36-color palette is sourced from the content catalog"))
-    checks.append(require_text(main_text, "UIColor(kcHex:", "Palette KCHexColor values are bridged to UIColor"))
+    # T021/T022: palettes are sourced from KCContentCatalog and owned by KCContentPickerFeature;
+    # the main view controller no longer hardcodes makePalette24/36, it delegates to the feature.
+    checks.append(require_text(content_picker_feature_text, "contentCatalog.palette(for: .standard)", "24-color palette is sourced from the content catalog via the content picker feature"))
+    checks.append(require_text(content_picker_feature_text, "contentCatalog.palette(for: .extended)", "36-color palette is sourced from the content catalog via the content picker feature"))
+    checks.append(require_text(content_picker_feature_text, "UIColor(kcHex:", "Palette KCHexColor values are bridged to UIColor in the content picker feature"))
+    checks.append(require_text(main_text, "self.contentPicker", "Main view controller delegates content selection to KCContentPickerFeature"))
     checks.append(forbid_text(main_text, "func makePalette24", "24-color palette is no longer hardcoded in the main view controller"))
     checks.append(forbid_text(main_text, "func makePalette36", "36-color palette is no longer hardcoded in the main view controller"))
     checks.append(require_text(main_text, "UIColorPickerViewController", "Custom color picker exists"))
@@ -270,7 +276,9 @@ def app_feature_checks(
     checks.append(require_text(main_text, "popover?.sourceView = self.customColorButton ?? self.view", "Custom color picker anchors to the Custom button"))
     checks.append(require_text(main_text, "var recentColorRowStack", "Recent colors have a retained row for dynamic updates"))
     checks.append(require_regex(main_text, r"let recentScrollView[\s\S]*showsHorizontalScrollIndicator = false[\s\S]*recentScrollView\.addSubview\(recentRow\)", "Recent colors are presented in a horizontal scroll row"))
-    checks.append(require_regex(main_text, r"while self\.recentColors\.count > 8", "Recent colors keep up to eight colors"))
+    # T022: recent-color dedupe/cap logic moved to KCDomain KCRecentColorQueue (tested); controller delegates via the feature.
+    checks.append(require_text(kc_recent_color_queue_text, "defaultLimit: Int = 8", "Recent colors keep up to eight colors (KCDomain KCRecentColorQueue)"))
+    checks.append(require_text(content_picker_feature_text, "KCRecentColorQueue.inserting(", "Content picker feature delegates recent-color insertion to KCDomain"))
     checks.append(require_text(canvas_text, "case picker", "Eyedropper tool mode exists"))
     checks.append(require_text(canvas_text, "sampleColorFromImage(", "Eyedropper delegates pixel sampling to Swift"))
     checks.append(require_text(drawing_bridge_text, "KCBitmapBuffer(cgImage: image)", "Eyedropper bridge rasterizes the snapshot image"))
@@ -319,16 +327,22 @@ def app_feature_checks(
     checks.append(require_count_at_least(catalog_text, r'"category": "', 8, "Built-in line-art templates live in the content catalog"))
     checks.append(require_count_at_least(catalog_text, r'"[a-z0-9.]+\.fill"|"rainbow"|"camera\.macro"', 12, "Built-in sticker symbols live in the content catalog"))
     checks.append(require_text(main_text, "contentCatalog.lineArtTemplates", "Line-art order and titles are driven by the content catalog"))
-    checks.append(require_text(main_text, "contentCatalog.stickerGroups", "Sticker groups are sourced from the content catalog"))
-    checks.append(require_text(main_text, "stickerGroups.map(\\.title)", "Sticker categories are derived from catalog sticker groups"))
+    checks.append(require_text(content_picker_feature_text, "contentCatalog.stickerGroups", "Sticker groups are sourced from the content catalog via the content picker feature"))
+    checks.append(require_text(content_picker_feature_text, "map(\\.title)", "Sticker categories are derived from catalog sticker groups in the content picker feature"))
     checks.append(forbid_text(main_text, 'stickerCategories = ["Animals"', "Sticker categories are no longer hardcoded in the main view controller"))
     checks.append(forbid_text(main_text, "KDLineArtItem.item(title:", "Line-art titles are no longer hardcoded via .item(title:) in the main view controller"))
-    checks.append(require_text(main_text, "var stickerSymbolsByCategory", "Built-in stickers are organized by category"))
+    checks.append(require_text(content_picker_feature_text, "stickerSymbolsByCategory", "Built-in stickers are organized by category in the content picker feature"))
     checks.append(require_text(main_text, "func stickerCategorySymbolForCategory", "Sticker category controls use compact icon labels"))
     checks.append(require_regex(main_text, r'button\.setImage\(categoryImage, for: \.normal\)[\s\S]*button\.accessibilityLabel = "\\\(category\) Stickers"', "Sticker category buttons are icon-first while retaining accessibility labels"))
     checks.append(require_text(main_text, "func reloadStickerButtons", "Sticker panel reloads built-in stickers for the selected category"))
     checks.append(require_text(main_text, "func stickerCategoryFromButton", "Sticker category buttons resolve categories from stable identifiers"))
-    checks.append(require_regex(main_text, r"func didTapStickerCategoryButton[\s\S]*self\.selectedStickerCategory = category[\s\S]*reloadStickerButtons", "Sticker category buttons switch the visible sticker set"))
+    checks.append(require_regex(main_text, r"func didTapStickerCategoryButton[\s\S]*self\.contentPicker\.selectStickerCategory\(category\)[\s\S]*reloadStickerButtons", "Sticker category buttons switch the visible sticker set"))
+    # T022: pure content-picker logic is extracted to KCDomain (UIKit-free, tested via swift test).
+    checks.append(require_text(kc_sticker_category_mapping_text, "public enum KCStickerCategoryMapping", "Sticker category mapping logic is extracted to KCDomain"))
+    checks.append(require_text(kc_content_picker_layout_text, "public struct KCContentPickerLayout", "Palette grid layout math is extracted to KCDomain"))
+    checks.append(require_text(kc_recent_color_queue_text, "public enum KCRecentColorQueue", "Recent-color queue logic is extracted to KCDomain"))
+    checks.append(require_text(content_picker_feature_text, "KCStickerCategoryMapping.accessibilityLabel", "Content picker feature delegates sticker labels to KCDomain"))
+    checks.append(require_text(content_picker_feature_text, "layout: KCContentPickerLayout", "Content picker feature is constructed with the KCDomain palette grid layout"))
     # T021: the App Composition Root assembles the bundled content catalog and injects it into the main view controller.
     checks.append(require_text(composition_root_text, "KCBundledContentCatalog", "Composition Root assembles the bundled content catalog"))
     checks.append(require_text(composition_root_text, "self.contentCatalog = KCBundledContentCatalog()", "Composition Root constructs the content catalog"))
@@ -487,6 +501,10 @@ def main():
     history_paging_text = (ROOT / "Packages" / "KidCanvasModules" / "Sources" / "KCDomain" / "KCHistoryPaging.swift").read_text(encoding="utf-8")
     composition_root_text = (ROOT / "KidCanvas" / "KCAppCompositionRoot.swift").read_text(encoding="utf-8")
     catalog_text = (ROOT / "Packages" / "KidCanvasModules" / "Sources" / "KCContentCatalog" / "Resources" / "content.json").read_text(encoding="utf-8")
+    content_picker_feature_text = (ROOT / "KidCanvas" / "KCContentPickerFeature.swift").read_text(encoding="utf-8")
+    kc_content_picker_layout_text = (ROOT / "Packages" / "KidCanvasModules" / "Sources" / "KCDomain" / "KCContentPickerLayout.swift").read_text(encoding="utf-8")
+    kc_recent_color_queue_text = (ROOT / "Packages" / "KidCanvasModules" / "Sources" / "KCDomain" / "KCRecentColorQueue.swift").read_text(encoding="utf-8")
+    kc_sticker_category_mapping_text = (ROOT / "Packages" / "KidCanvasModules" / "Sources" / "KCDomain" / "KCStickerCategoryMapping.swift").read_text(encoding="utf-8")
     preview_text = (ROOT / "docs" / "product" / "mockups" / "ui-preview.html").read_text(encoding="utf-8")
     checks.extend(app_feature_checks(
         main_text,
@@ -506,6 +524,10 @@ def main():
         history_paging_text,
         composition_root_text,
         catalog_text,
+        content_picker_feature_text,
+        kc_content_picker_layout_text,
+        kc_recent_color_queue_text,
+        kc_sticker_category_mapping_text,
         plist,
         pbx_text,
     ))
