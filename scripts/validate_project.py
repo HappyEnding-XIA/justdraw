@@ -213,6 +213,8 @@ def app_feature_checks(
     crayon_grain_text,
     sticker_constraints_text,
     history_paging_text,
+    composition_root_text,
+    catalog_text,
     plist,
     pbx_text,
 ):
@@ -256,8 +258,12 @@ def app_feature_checks(
     checks.append(require_text(main_text, "#selector(togglePanelsCollapsed", "Collapse control is wired to a toggle action"))
     checks.append(require_regex(main_text, r"func applyPanelsCollapsedAnimated[\s\S]*panel\.isHidden = self\.panelsCollapsed", "Collapse toggles panel visibility without touching tool state"))
     checks.append(require_text(main_text, "refreshToolStateChip", "Collapsed state shows a minimal current-tool indicator"))
-    checks.append(require_text(main_text, "func makePalette24", "24-color palette exists"))
-    checks.append(require_text(main_text, "func makePalette36", "36-color palette exists"))
+    # T021: palettes are sourced from KCContentCatalog; the main view controller no longer hardcodes makePalette24/36.
+    checks.append(require_text(main_text, "contentCatalog.palette(for: .standard)", "24-color palette is sourced from the content catalog"))
+    checks.append(require_text(main_text, "contentCatalog.palette(for: .extended)", "36-color palette is sourced from the content catalog"))
+    checks.append(require_text(main_text, "UIColor(kcHex:", "Palette KCHexColor values are bridged to UIColor"))
+    checks.append(forbid_text(main_text, "func makePalette24", "24-color palette is no longer hardcoded in the main view controller"))
+    checks.append(forbid_text(main_text, "func makePalette36", "36-color palette is no longer hardcoded in the main view controller"))
     checks.append(require_text(main_text, "UIColorPickerViewController", "Custom color picker exists"))
     checks.append(require_regex(main_text, r"UIColorPickerViewController[\s\S]*modalPresentationStyle = \.popover", "Custom color picker is presented as an iPad popover"))
     checks.append(require_text(main_text, "var customColorButton", "Custom color button is retained for popover anchoring"))
@@ -308,15 +314,26 @@ def app_feature_checks(
     checks.append(require_text(flood_fill_text, "var queue = [Int]()", "Swift flood fill uses an indexed queue"))
     checks.append(require_text(color_sampler_text, "public enum KCColorSampler", "Color sampler is implemented in Swift"))
     checks.append(require_text(pressure_model_text, "public enum KCPressureModel", "Pressure model is implemented in Swift"))
-    checks.append(require_count_at_least(main_text, r'\.item\(title: "', 8, "Built-in line-art templates exist"))
-    checks.append(require_count_at_least(main_text, r'"[a-z0-9.]+\.fill"|"rainbow"|"camera\.macro"', 12, "Built-in sticker symbols exist"))
+    # T021: built-in sticker/line-art content is externalized to the KCContentCatalog resource (content.json);
+    # the main view controller consumes it via contentCatalog instead of hardcoding metadata.
+    checks.append(require_count_at_least(catalog_text, r'"category": "', 8, "Built-in line-art templates live in the content catalog"))
+    checks.append(require_count_at_least(catalog_text, r'"[a-z0-9.]+\.fill"|"rainbow"|"camera\.macro"', 12, "Built-in sticker symbols live in the content catalog"))
+    checks.append(require_text(main_text, "contentCatalog.lineArtTemplates", "Line-art order and titles are driven by the content catalog"))
+    checks.append(require_text(main_text, "contentCatalog.stickerGroups", "Sticker groups are sourced from the content catalog"))
+    checks.append(require_text(main_text, "stickerGroups.map(\\.title)", "Sticker categories are derived from catalog sticker groups"))
+    checks.append(forbid_text(main_text, 'stickerCategories = ["Animals"', "Sticker categories are no longer hardcoded in the main view controller"))
+    checks.append(forbid_text(main_text, "KDLineArtItem.item(title:", "Line-art titles are no longer hardcoded via .item(title:) in the main view controller"))
     checks.append(require_text(main_text, "var stickerSymbolsByCategory", "Built-in stickers are organized by category"))
-    checks.append(require_text(main_text, 'stickerCategories = ["Animals", "Nature", "Decor", "Faces"]', "Sticker categories cover animals, nature, decor, and faces"))
     checks.append(require_text(main_text, "func stickerCategorySymbolForCategory", "Sticker category controls use compact icon labels"))
     checks.append(require_regex(main_text, r'button\.setImage\(categoryImage, for: \.normal\)[\s\S]*button\.accessibilityLabel = "\\\(category\) Stickers"', "Sticker category buttons are icon-first while retaining accessibility labels"))
     checks.append(require_text(main_text, "func reloadStickerButtons", "Sticker panel reloads built-in stickers for the selected category"))
     checks.append(require_text(main_text, "func stickerCategoryFromButton", "Sticker category buttons resolve categories from stable identifiers"))
     checks.append(require_regex(main_text, r"func didTapStickerCategoryButton[\s\S]*self\.selectedStickerCategory = category[\s\S]*reloadStickerButtons", "Sticker category buttons switch the visible sticker set"))
+    # T021: the App Composition Root assembles the bundled content catalog and injects it into the main view controller.
+    checks.append(require_text(composition_root_text, "KCBundledContentCatalog", "Composition Root assembles the bundled content catalog"))
+    checks.append(require_text(composition_root_text, "self.contentCatalog = KCBundledContentCatalog()", "Composition Root constructs the content catalog"))
+    checks.append(require_text(composition_root_text, "KCMainViewController(sessionService: sessionService, contentCatalog: contentCatalog)", "Composition Root injects the content catalog into the main view controller"))
+    checks.append(require_text(main_text, "init(sessionService: KCSessionService, contentCatalog: KCBundledContentCatalog)", "Main view controller accepts the content catalog via constructor injection"))
     checks.append(require_count_at_least(main_text, r"\.photoLibrary", 2, "Album import exists and checks availability"))
     checks.append(require_text(main_text, ".originalImage", "Album import extracts the original selected image"))
     checks.append(require_text(main_text, "func imagePickerController", "Album import validates and normalizes images before replacing the canvas"))
@@ -468,6 +485,8 @@ def main():
     crayon_grain_text = (ROOT / "Packages" / "KidCanvasModules" / "Sources" / "KCDrawingEngine" / "KCCrayonGrain.swift").read_text(encoding="utf-8")
     sticker_constraints_text = (ROOT / "Packages" / "KidCanvasModules" / "Sources" / "KCDomain" / "KCStickerConstraints.swift").read_text(encoding="utf-8")
     history_paging_text = (ROOT / "Packages" / "KidCanvasModules" / "Sources" / "KCDomain" / "KCHistoryPaging.swift").read_text(encoding="utf-8")
+    composition_root_text = (ROOT / "KidCanvas" / "KCAppCompositionRoot.swift").read_text(encoding="utf-8")
+    catalog_text = (ROOT / "Packages" / "KidCanvasModules" / "Sources" / "KCContentCatalog" / "Resources" / "content.json").read_text(encoding="utf-8")
     preview_text = (ROOT / "docs" / "product" / "mockups" / "ui-preview.html").read_text(encoding="utf-8")
     checks.extend(app_feature_checks(
         main_text,
@@ -485,6 +504,8 @@ def main():
         crayon_grain_text,
         sticker_constraints_text,
         history_paging_text,
+        composition_root_text,
+        catalog_text,
         plist,
         pbx_text,
     ))

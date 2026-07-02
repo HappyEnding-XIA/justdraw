@@ -115,4 +115,25 @@ final class ContentCatalogTests: XCTestCase {
             ["bunny", "car", "fish", "flower", "house", "rocket", "cupcake", "dino"]
         )
     }
+
+    // MARK: - T021 App 接入约束（守护控制器对 catalog 的消费方式）
+
+    func testStickerGroupTitlesAreUnique() {
+        // 控制器用 Dictionary(uniqueKeysWithValues:) 把 title -> symbols 组装成贴纸分类；
+        // 重复 title 会让该构造崩溃，故目录的 group title 必须唯一。
+        let titles = KCContentCatalogDefaults.stickerGroups.map(\.title)
+        XCTAssertEqual(Set(titles).count, titles.count, "sticker group titles must be unique for title-keyed lookup")
+    }
+
+    func testLineArtTemplateTitlesMatchCanonicalOrder() {
+        // 控制器按 catalog 顺序展示线稿，并用 template.title 作为标题；标题必须唯一且与
+        // 原型的展示顺序一致，避免线稿网格顺序/标题漂移。
+        let templates = KCContentCatalogDefaults.lineArtTemplates
+        XCTAssertEqual(
+            templates.map(\.title),
+            ["Bunny", "Car", "Fish", "Flower", "House", "Rocket", "Cupcake", "Dino"]
+        )
+        let titles = templates.map(\.title)
+        XCTAssertEqual(Set(titles).count, titles.count, "line-art titles must be unique")
+    }
 }

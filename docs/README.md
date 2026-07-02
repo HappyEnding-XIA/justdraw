@@ -12,6 +12,11 @@
 - [Coding Standards](./architecture/CODING_STANDARDS.md)
 - [Module Decoupling Guidelines](./architecture/MODULE_DECOUPLING_GUIDELINES.md)
 
+## Modules
+
+- [Module Index](./modules/README.md)
+- [KCContentCatalog](./modules/KCContentCatalog.md) — 色盘 / 贴纸 / 线稿内容来源与 App 接入。
+
 ## Release
 
 - [Changelog](./release/CHANGELOG.md)

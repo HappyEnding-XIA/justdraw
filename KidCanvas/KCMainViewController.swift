@@ -7,6 +7,9 @@
 
 import UIKit
 import QuartzCore
+import KCCommon
+import KCDomain
+import KCContentCatalog
 
 // MARK: - 按压反馈 associated-object key
 
@@ -41,6 +44,17 @@ class KDLineArtItem: NSObject {
 
     static func item(title: String, drawingBlock: @escaping (CGRect) -> Void) -> KDLineArtItem {
         KDLineArtItem(title: title, drawingBlock: drawingBlock)
+    }
+}
+
+// MARK: - KCHexColor → UIColor 桥
+
+/// 把 UIKit 无关的 `KCHexColor`（KCCommon）转成 `UIColor`。两者都用归一化 0...1
+/// 分量，因此转换是无损的：与原 `makePalette24/36` 里直接 `UIColor(red:green:blue:alpha:)`
+/// 的取值逐位一致，避免色板视觉回归。
+extension UIColor {
+    convenience init(kcHex hex: KCHexColor) {
+        self.init(red: hex.red, green: hex.green, blue: hex.blue, alpha: hex.alpha)
     }
 }
 
@@ -88,6 +102,7 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
     var frontStickerButton: UIButton!
     var stickerRowStack: UIStackView!
     let sessionStore: KCSessionService
+    let contentCatalog: KCBundledContentCatalog
     var sessions: [KCSessionMetadata] = []
     var activeSession: KCSessionMetadata?
     var selectedHistorySession: KCSessionMetadata?
@@ -109,14 +124,16 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
     // MARK: - 视图生命周期
 
     /// 通过 Composition Root 注入依赖创建。避免控制器内部直接 `KCSessionService.shared`。
-    init(sessionService: KCSessionService) {
+    /// 内容目录（色盘 / 贴纸 / 线稿元数据）也由 Composition Root 注入，控制器不再硬编码。
+    init(sessionService: KCSessionService, contentCatalog: KCBundledContentCatalog) {
         self.sessionStore = sessionService
+        self.contentCatalog = contentCatalog
         super.init(nibName: nil, bundle: nil)
     }
 
-    @available(*, unavailable, message: "Use init(sessionService:) via KCAppCompositionRoot")
+    @available(*, unavailable, message: "Use init(sessionService:contentCatalog:) via KCAppCompositionRoot")
     required init?(coder: NSCoder) {
-        fatalError("Use init(sessionService:)")
+        fatalError("Use init(sessionService:contentCatalog:)")
     }
 
     override func viewDidLoad() {
@@ -124,17 +141,17 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
 
         self.view.backgroundColor = UIColor(red: 0.97, green: 0.94, blue: 0.89, alpha: 1.0)
         self.lineArtStrokeScale = 1.0
-        self.palette24 = self.makePalette24()
-        self.palette36 = self.makePalette36()
+        // 色盘来源：KCContentCatalog（与原 makePalette24/36 取值逐位一致，UIColor(kcHex:) 无损转换）。
+        self.palette24 = self.contentCatalog.palette(for: .standard).colors.map { UIColor(kcHex: $0) }
+        self.palette36 = self.contentCatalog.palette(for: .extended).colors.map { UIColor(kcHex: $0) }
         self.recentColors = self.loadRecentColors()
-        self.stickerCategories = ["Animals", "Nature", "Decor", "Faces"]
+        // 贴纸来源：KCContentCatalog 的 stickerGroups（顺序与标题由 catalog 驱动）。
+        let stickerGroups = self.contentCatalog.stickerGroups
+        self.stickerCategories = stickerGroups.map(\.title)
+        self.stickerSymbolsByCategory = Dictionary(
+            uniqueKeysWithValues: stickerGroups.map { ($0.title, $0.symbols) }
+        )
         self.selectedStickerCategory = self.stickerCategories.first
-        self.stickerSymbolsByCategory = [
-            "Animals": ["butterfly.fill", "pawprint.fill", "tortoise.fill", "hare.fill"],
-            "Nature": ["leaf.fill", "camera.macro", "sun.max.fill", "cloud.fill"],
-            "Decor": ["star.fill", "heart.fill", "moon.stars.fill", "rainbow", "gift.fill"],
-            "Faces": ["face.smiling.fill", "figure.2", "hand.thumbsup.fill", "sparkles"]
-        ]
         self.lineArtItems = self.makeLineArtItems()
         self.colorButtons = []
         self.recentColorButtons = []
@@ -1374,7 +1391,9 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
 
     func makeLineArtItems() -> [KDLineArtItem] {
         weak var weakSelf = self
-        let bunny = KDLineArtItem.item(title: "Bunny", drawingBlock: { (rect: CGRect) in
+        // 程序化绘制闭包按线稿 id 收录（绘制留在 App 层 UIKit/Core Graphics）；
+        // 展示顺序与标题由 contentCatalog.lineArtTemplates 驱动。
+        let bunny: (CGRect) -> Void = { (rect: CGRect) in
             let centerX = rect.midX
             let centerY = rect.midY + 18.0
 
@@ -1403,9 +1422,9 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
             mouth.move(to: CGPoint(x: centerX, y: centerY + 46.0))
             mouth.addCurve(to: CGPoint(x: centerX + 34.0, y: centerY + 72.0), controlPoint1: CGPoint(x: centerX + 2.0, y: centerY + 63.0), controlPoint2: CGPoint(x: centerX + 18.0, y: centerY + 76.0))
             weakSelf?.strokePath(mouth, width: 12.0)
-        })
+        }
 
-        let car = KDLineArtItem.item(title: "Car", drawingBlock: { (rect: CGRect) in
+        let car: (CGRect) -> Void = { (rect: CGRect) in
             let baseY = rect.maxY - 90.0
             let leftX = rect.minX + 80.0
 
@@ -1429,9 +1448,9 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
             weakSelf?.strokePath(UIBezierPath(ovalIn: CGRect(x: leftX + 296.0, y: baseY + 32.0, width: 96.0, height: 96.0)), width: 12.0)
             weakSelf?.strokePath(UIBezierPath(ovalIn: CGRect(x: leftX + 76.0, y: baseY + 56.0, width: 48.0, height: 48.0)), width: 12.0)
             weakSelf?.strokePath(UIBezierPath(ovalIn: CGRect(x: leftX + 320.0, y: baseY + 56.0, width: 48.0, height: 48.0)), width: 12.0)
-        })
+        }
 
-        let fish = KDLineArtItem.item(title: "Fish", drawingBlock: { (rect: CGRect) in
+        let fish: (CGRect) -> Void = { (rect: CGRect) in
             let centerX = rect.midX
             let centerY = rect.midY
 
@@ -1463,9 +1482,9 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
             smile.move(to: CGPoint(x: centerX - 130.0, y: centerY + 18.0))
             smile.addCurve(to: CGPoint(x: centerX - 74.0, y: centerY + 42.0), controlPoint1: CGPoint(x: centerX - 116.0, y: centerY + 42.0), controlPoint2: CGPoint(x: centerX - 90.0, y: centerY + 54.0))
             weakSelf?.strokePath(smile, width: 12.0)
-        })
+        }
 
-        let flower = KDLineArtItem.item(title: "Flower", drawingBlock: { (rect: CGRect) in
+        let flower: (CGRect) -> Void = { (rect: CGRect) in
             let centerX = rect.midX
             let centerY = rect.midY - 24.0
             let petalCenters: [CGPoint] = [
@@ -1499,9 +1518,9 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
             rightLeaf.addCurve(to: CGPoint(x: centerX - 4.0, y: centerY + 232.0), controlPoint1: CGPoint(x: centerX + 104.0, y: centerY + 244.0), controlPoint2: CGPoint(x: centerX + 38.0, y: centerY + 258.0))
             rightLeaf.close()
             weakSelf?.strokePath(rightLeaf, width: 12.0)
-        })
+        }
 
-        let house = KDLineArtItem.item(title: "House", drawingBlock: { (rect: CGRect) in
+        let house: (CGRect) -> Void = { (rect: CGRect) in
             let centerX = rect.midX
             let baseY = rect.maxY - 56.0
             let houseWidth = min(rect.width - 120.0, 360.0)
@@ -1519,9 +1538,9 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
             weakSelf?.strokePath(UIBezierPath(roundedRect: CGRect(x: centerX - 42.0, y: baseY - 104.0, width: 84.0, height: 104.0), cornerRadius: 18.0), width: 12.0)
             weakSelf?.strokePath(UIBezierPath(roundedRect: CGRect(x: leftX + 38.0, y: wallTop + 46.0, width: 84.0, height: 72.0), cornerRadius: 18.0), width: 12.0)
             weakSelf?.strokePath(UIBezierPath(roundedRect: CGRect(x: leftX + houseWidth - 122.0, y: wallTop + 46.0, width: 84.0, height: 72.0), cornerRadius: 18.0), width: 12.0)
-        })
+        }
 
-        let rocket = KDLineArtItem.item(title: "Rocket", drawingBlock: { (rect: CGRect) in
+        let rocket: (CGRect) -> Void = { (rect: CGRect) in
             let centerX = rect.midX
             let topY = rect.minY + 32.0
             let bottomY = rect.maxY - 54.0
@@ -1558,9 +1577,9 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
             flame.addCurve(to: CGPoint(x: centerX + 30.0, y: bottomY - 40.0), controlPoint1: CGPoint(x: centerX + 8.0, y: bottomY + 10.0), controlPoint2: CGPoint(x: centerX + 16.0, y: bottomY - 6.0))
             flame.close()
             weakSelf?.strokePath(flame, width: 12.0)
-        })
+        }
 
-        let cupcake = KDLineArtItem.item(title: "Cupcake", drawingBlock: { (rect: CGRect) in
+        let cupcake: (CGRect) -> Void = { (rect: CGRect) in
             let centerX = rect.midX
             let centerY = rect.midY + 20.0
 
@@ -1585,9 +1604,9 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
             for index in -1...1 {
                 weakSelf?.strokePath(UIBezierPath(ovalIn: CGRect(x: centerX + CGFloat(index) * 58.0 - 12.0, y: centerY - 70.0 + (index == 0 ? -24.0 : 0.0), width: 24.0, height: 24.0)), width: 8.0)
             }
-        })
+        }
 
-        let dino = KDLineArtItem.item(title: "Dino", drawingBlock: { (rect: CGRect) in
+        let dino: (CGRect) -> Void = { (rect: CGRect) in
             let centerX = rect.midX
             let centerY = rect.midY + 28.0
 
@@ -1622,60 +1641,27 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
 
             weakSelf?.strokePath(UIBezierPath(roundedRect: CGRect(x: centerX - 52.0, y: centerY + 78.0, width: 42.0, height: 88.0), cornerRadius: 16.0), width: 12.0)
             weakSelf?.strokePath(UIBezierPath(roundedRect: CGRect(x: centerX + 58.0, y: centerY + 78.0, width: 42.0, height: 88.0), cornerRadius: 16.0), width: 12.0)
-        })
+        }
 
-        return [bunny, car, fish, flower, house, rocket, cupcake, dino]
-    }
-
-    // MARK: - 调色板
-
-    func makePalette24() -> [UIColor] {
-        return [
-            UIColor(red: 0.94, green: 0.43, blue: 0.45, alpha: 1.0),
-            UIColor(red: 0.94, green: 0.55, blue: 0.36, alpha: 1.0),
-            UIColor(red: 0.96, green: 0.71, blue: 0.34, alpha: 1.0),
-            UIColor(red: 0.95, green: 0.80, blue: 0.41, alpha: 1.0),
-            UIColor(red: 0.75, green: 0.84, blue: 0.39, alpha: 1.0),
-            UIColor(red: 0.56, green: 0.84, blue: 0.63, alpha: 1.0),
-            UIColor(red: 0.43, green: 0.79, blue: 0.70, alpha: 1.0),
-            UIColor(red: 0.45, green: 0.73, blue: 0.97, alpha: 1.0),
-            UIColor(red: 0.55, green: 0.54, blue: 0.95, alpha: 1.0),
-            UIColor(red: 0.70, green: 0.49, blue: 0.93, alpha: 1.0),
-            UIColor(red: 0.94, green: 0.63, blue: 0.74, alpha: 1.0),
-            UIColor(red: 0.91, green: 0.39, blue: 0.65, alpha: 1.0),
-            UIColor(red: 0.88, green: 0.26, blue: 0.38, alpha: 1.0),
-            UIColor(red: 0.70, green: 0.22, blue: 0.27, alpha: 1.0),
-            UIColor(red: 0.66, green: 0.44, blue: 0.22, alpha: 1.0),
-            UIColor(red: 0.81, green: 0.64, blue: 0.34, alpha: 1.0),
-            UIColor(red: 0.59, green: 0.47, blue: 0.87, alpha: 1.0),
-            UIColor(red: 0.38, green: 0.58, blue: 0.95, alpha: 1.0),
-            UIColor(red: 0.22, green: 0.54, blue: 0.82, alpha: 1.0),
-            UIColor(red: 0.20, green: 0.63, blue: 0.57, alpha: 1.0),
-            UIColor(red: 0.26, green: 0.52, blue: 0.34, alpha: 1.0),
-            UIColor(red: 0.37, green: 0.35, blue: 0.31, alpha: 1.0),
-            UIColor(white: 0.63, alpha: 1.0),
-            UIColor(red: 0.14, green: 0.16, blue: 0.19, alpha: 1.0)
+        let drawings: [String: (CGRect) -> Void] = [
+            "bunny": bunny,
+            "car": car,
+            "fish": fish,
+            "flower": flower,
+            "house": house,
+            "rocket": rocket,
+            "cupcake": cupcake,
+            "dino": dino,
         ]
+
+        // 顺序与标题由 catalog 驱动；catalog id 命中则取对应绘制闭包，否则跳过。
+        return self.contentCatalog.lineArtTemplates.compactMap { template in
+            guard let draw = drawings[template.id] else { return nil }
+            return KDLineArtItem(title: template.title, drawingBlock: draw)
+        }
     }
 
-    func makePalette36() -> [UIColor] {
-        var colors = self.makePalette24()
-        colors.append(contentsOf: [
-            UIColor(red: 0.98, green: 0.81, blue: 0.81, alpha: 1.0),
-            UIColor(red: 0.99, green: 0.90, blue: 0.76, alpha: 1.0),
-            UIColor(red: 0.86, green: 0.93, blue: 0.73, alpha: 1.0),
-            UIColor(red: 0.75, green: 0.92, blue: 0.89, alpha: 1.0),
-            UIColor(red: 0.80, green: 0.89, blue: 0.99, alpha: 1.0),
-            UIColor(red: 0.89, green: 0.83, blue: 0.98, alpha: 1.0),
-            UIColor(red: 0.97, green: 0.82, blue: 0.91, alpha: 1.0),
-            UIColor(red: 0.89, green: 0.69, blue: 0.56, alpha: 1.0),
-            UIColor(red: 0.63, green: 0.72, blue: 0.79, alpha: 1.0),
-            UIColor(white: 0.86, alpha: 1.0),
-            UIColor(white: 0.96, alpha: 1.0),
-            UIColor(white: 0.05, alpha: 1.0)
-        ])
-        return colors
-    }
+    // MARK: - 调色板（颜色取自 contentCatalog，见 viewDidLoad）
 
     func currentPalette() -> [UIColor] {
         return self.showing36Palette ? self.palette36 : self.palette24

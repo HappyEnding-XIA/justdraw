@@ -141,6 +141,13 @@ App -> Feature -> Core/Infra -> Domain -> Common
 - 数据存储细节
 - 具体页面状态处理
 
+模块装配现状（T016/T021）：App 壳层的 Composition Root `KCAppCompositionRoot` 集中装配 App 级依赖并通过构造注入交给使用方，目前装配：
+
+- 会话服务 `KCSessionService`（Swift `KCSessionStore` + 旧 archive 迁移器）
+- 内容目录 `KCBundledContentCatalog`（色盘 / 贴纸分组 / 线稿模板的单一来源，详见 `docs/modules/KCContentCatalog.md`）
+
+`SceneDelegate` 经 `KCAppCompositionRoot.makeMainViewController()` 创建主控制器，`KCMainViewController(sessionService:contentCatalog:)` 接收已构造好的依赖，不在控制器内部重新装配或硬编码内容。后续业务模块（用户、付费）演进时，在此处统一装配。
+
 ### 5.2 Feature 业务层
 
 职责：
@@ -320,6 +327,14 @@ App -> Feature -> Core/Infra -> Domain -> Common
 
 - 使用 package 资源管理
 - 通过 JSON + asset catalog / pdf / png 管理内容
+
+实现现状（T020/T021）：
+
+- 贴纸分组与线稿模板的**元数据**外置为 package resource `Resources/content.json`，由 `KCContentCatalogDefaults.decodedContent(from:)` 解码；JSON 缺失或损坏时回退到逐字一致的硬编码 `Fallback`。
+- 调色板（24/36 色）以 `KCHexColor` 形式内置在 `KCContentCatalogDefaults.palette24/palette36`，尚未外置为 JSON。
+- 打包入口 `KCBundledContentCatalog`（Sendable）一次性暴露色盘 + 贴纸分组 + 线稿模板，供 App 层注入。
+- App 主路径通过 `KCAppCompositionRoot` 装配 `KCBundledContentCatalog` 并构造注入 `KCMainViewController`；控制器据此派生色盘、贴纸分类、线稿顺序与标题，不再硬编码这些内容。线稿的程序化绘制闭包仍保留在 App 层（UIKit/Core Graphics），由 catalog id 映射到对应闭包。
+- 详见 `docs/modules/KCContentCatalog.md`。
 
 ### 6.9 `KCEditorPanelsFeature`
 
