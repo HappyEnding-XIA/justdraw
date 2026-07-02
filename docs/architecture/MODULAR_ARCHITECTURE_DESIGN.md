@@ -166,6 +166,7 @@ Feature 拆分进度（App 层 Feature 类型 + KCDomain 纯逻辑）：
 
 - **T022 `KCContentPickerFeature`（App 层）**：从 `KCMainViewController` 抽出，集中持有色盘（24/36 切换）、最近色（UserDefaults）、贴纸分类选择的状态与决策；`KCMainViewController` 持有其 lazy 实例 `contentPicker` 并委托。纯逻辑下沉到 KCDomain：`KCContentPickerLayout`（色盘网格几何）、`KCRecentColorQueue`（最近色去重/裁剪）、`KCStickerCategoryMapping`（分类↔符号↔无障碍标签↔ slug 解析），均有单测。UIKit 按钮创建/约束/事件仍留控制器；线稿列表（绘制闭包与画布耦合）暂未纳入，留待画布核心迁移。
 - **T023 `KCEditorPanelsFeature`（App 层）**：从 `KCMainViewController` 抽出，持有浮动工具面板「收起/展开」状态与折叠态工具芯片色块决策；`KCMainViewController` 持有 lazy 实例 `editorPanels`，`applyPanelsCollapsedAnimated` 与 `refreshToolStateChip` 改为读 `editorPanels.collapseState` / `chipSwatchColor`。纯折叠态决策（图标/标签/各视图 alpha·hidden·enabled）下沉 KCDomain `KCEditorPanelsCollapseState`（有单测）。折叠动画、五组浮动面板视图本身、工具/画笔/颜色事件协调仍留控制器。
+- **T024 `KCHistoryFeature`（App 层）**：从 `KCMainViewController.refreshHistoryUI()` 抽出，集中历史缩略图槽位状态推导（空/普通/当前/选中/脏态）与「删除历史」可用性判定；`KCMainViewController` 持有 lazy 实例 `history`，`refreshHistoryUI` 改为每格 `history.thumbStatus(...)` + `borderColor(for:)`。纯槽位状态判定（优先级 + 边框宽 + 强调缩放 + 无障碍前缀）下沉 KCDomain `KCHistoryThumbStatus`（有单测），分页仍走 T013 `KCHistoryPaging`。历史会话数据、缩略图按钮构建、打开/删除/翻页事件协调仍留控制器；不触碰 session 持久化磁盘格式。
 - **T013 `KCHistoryPaging`、T017 `KCToolStateChipTitle`（KCDomain）**：更早的最小边界抽取。
 
 ### 5.3 Core / Infrastructure 能力层

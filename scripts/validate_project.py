@@ -221,6 +221,8 @@ def app_feature_checks(
     kc_sticker_category_mapping_text,
     editor_panels_feature_text,
     kc_editor_panels_collapse_state_text,
+    history_feature_text,
+    kc_history_thumb_status_text,
     plist,
     pbx_text,
 ):
@@ -396,7 +398,12 @@ def app_feature_checks(
     checks.append(require_regex(main_text, r"func drawingCanvasViewContentDidChange[\s\S]*if self\.activeSession != nil[\s\S]*self\.activeSessionHasUnsavedChanges = true", "User edits mark opened saved sessions as dirty"))
     checks.append(require_regex(main_text, r"self\.activeSession = session[\s\S]*self\.selectedHistorySession = session[\s\S]*self\.activeSessionHasUnsavedChanges = false[\s\S]*self\.suppressNextDraftSave = true", "Opening a saved session starts clean until the next user edit"))
     checks.append(require_regex(main_text, r"self\.activeSession = savedSession[\s\S]*self\.selectedHistorySession = savedSession[\s\S]*self\.activeSessionHasUnsavedChanges = false", "Saving clears saved-session dirty state"))
-    checks.append(require_regex(main_text, r"let isDirtyActiveSession = isActiveSession && self\.activeSessionHasUnsavedChanges[\s\S]*button\.layer\.borderWidth = isDirtyActiveSession \? 3\.0 : 2\.0", "History thumbnails show unsaved edits on active saved sessions"))
+    # T024: history thumb dirty/active/selected state decisions moved to KCDomain KCHistoryThumbStatus;
+    # the controller applies status.borderWidth / borderColor / emphasisScale via the history feature.
+    checks.append(require_text(kc_history_thumb_status_text, "self == .dirtyActive ? 3.0 : 2.0", "History thumbnail dirty-active state uses a thicker border (KCDomain)"))
+    checks.append(require_regex(main_text, r"self\.history\.thumbStatus\([\s\S]*status\.borderWidth[\s\S]*status\.isEmphasized", "History thumbnails apply KCDomain thumb-status decisions via the history feature"))
+    checks.append(require_text(main_text, "self.history.borderColor(for: status)", "History thumbnail border color is delegated to the history feature"))
+    checks.append(require_text(history_feature_text, "func canDeleteHistory(", "Delete-history availability is decided by the history feature"))
     checks.append(require_regex(main_text, r"func openSession[\s\S]*preserveUnsavedActiveSessionDraftIfNeeded\(\)[\s\S]*self\.sessionStore\.clearDraft\(\)", "Opening another history item preserves dirty edits without clearing their draft"))
     checks.append(require_regex(main_text, r"func preserveUnsavedActiveSessionDraftIfNeeded[\s\S]*self\.sessionStore\.saveDraftImage\(snapshot\)[\s\S]*return true", "Dirty active saved sessions can be synchronously preserved as draft"))
     checks.append(require_regex(main_text, r"func didTapNewCanvas[\s\S]*self\.suppressNextDraftSave = true[\s\S]*self\.canvasView\.startBlankCanvas\(\)", "New canvas starts a clean blank session without creating a draft"))
@@ -513,6 +520,8 @@ def main():
     kc_sticker_category_mapping_text = (ROOT / "Packages" / "KidCanvasModules" / "Sources" / "KCDomain" / "KCStickerCategoryMapping.swift").read_text(encoding="utf-8")
     editor_panels_feature_text = (ROOT / "KidCanvas" / "KCEditorPanelsFeature.swift").read_text(encoding="utf-8")
     kc_editor_panels_collapse_state_text = (ROOT / "Packages" / "KidCanvasModules" / "Sources" / "KCDomain" / "KCEditorPanelsCollapseState.swift").read_text(encoding="utf-8")
+    history_feature_text = (ROOT / "KidCanvas" / "KCHistoryFeature.swift").read_text(encoding="utf-8")
+    kc_history_thumb_status_text = (ROOT / "Packages" / "KidCanvasModules" / "Sources" / "KCDomain" / "KCHistoryThumbStatus.swift").read_text(encoding="utf-8")
     preview_text = (ROOT / "docs" / "product" / "mockups" / "ui-preview.html").read_text(encoding="utf-8")
     checks.extend(app_feature_checks(
         main_text,
@@ -538,6 +547,8 @@ def main():
         kc_sticker_category_mapping_text,
         editor_panels_feature_text,
         kc_editor_panels_collapse_state_text,
+        history_feature_text,
+        kc_history_thumb_status_text,
         plist,
         pbx_text,
     ))

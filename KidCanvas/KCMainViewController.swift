@@ -103,6 +103,8 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
     }()
     /// 编辑器面板 Feature（浮动面板收起/展开 + 工具状态芯片色块），T023 抽出。
     private(set) lazy var editorPanels: KCEditorPanelsFeature = KCEditorPanelsFeature()
+    /// 历史 Feature（缩略图槽位状态推导 + 删除可用性），T024 抽出。
+    private(set) lazy var history: KCHistoryFeature = KCHistoryFeature()
     var sessions: [KCSessionMetadata] = []
     var activeSession: KCSessionMetadata?
     var selectedHistorySession: KCSessionMetadata?
@@ -1887,7 +1889,11 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
 
         let draftImage = self.sessionStore.loadDraftImage()
         let selectedSession = self.currentSelectedHistorySession()
-        let canDeleteHistoryItem = selectedSession != nil || self.sessions.count > 0 || draftImage != nil
+        let canDeleteHistoryItem = self.history.canDeleteHistory(
+            hasSelectedSession: selectedSession != nil,
+            sessionCount: self.sessions.count,
+            hasDraft: draftImage != nil
+        )
         self.deleteHistoryButton.isEnabled = canDeleteHistoryItem
         self.deleteHistoryButton.alpha = canDeleteHistoryItem ? 1.0 : 0.55
 
@@ -1907,47 +1913,43 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
             self.draftThumbButton.backgroundColor = UIColor(red: 1.0, green: 0.995, blue: 0.98, alpha: 1.0)
         }
 
+        // 历史缩略图槽位状态推导（分页 + 选中/当前/脏态判定）由历史 Feature（KCDomain）给出，
+        // 控制器只负责把状态映射到 UIKit 边框色/缩放/无障碍标签。
+        let sessionIds = self.sessions.map(\.identifier)
+        let activeSessionId = self.activeSession?.identifier
+        let selectedSessionId = selectedSession?.identifier
         for index in 0..<self.historyThumbButtons.count {
             let button = self.historyThumbButtons[index]
-            let sessionIndex = self.sessionIndexForHistoryThumbIndex(index)
-            if sessionIndex < self.sessions.count {
+            let thumbResult = self.history.thumbStatus(
+                sessionIds: sessionIds,
+                pageIndex: self.historyPageIndex,
+                pageSize: self.historyPageSize(),
+                activeSessionId: activeSessionId,
+                selectedSessionId: selectedSessionId,
+                isDirtyActive: self.activeSessionHasUnsavedChanges,
+                thumbIndex: index
+            )
+            let status = thumbResult.status
+            let sessionIndex = thumbResult.sessionIndex
+            button.layer.borderColor = self.history.borderColor(for: status).cgColor
+            button.layer.borderWidth = status.borderWidth
+            if status == .empty {
+                button.setBackgroundImage(nil, for: .normal)
+                button.imageView?.isHidden = false
+                button.isEnabled = false
+                button.accessibilityLabel = "\(status.accessibilityPrefix) \(index + 1)"
+                button.backgroundColor = UIColor(red: 1.0, green: 0.995, blue: 0.98, alpha: 1.0)
+                button.transform = .identity
+            } else {
                 let session = self.sessions[sessionIndex]
                 let image = self.sessionStore.thumbnailImage(forSessionId: session.identifier)
                 button.setBackgroundImage(image, for: .normal)
                 button.imageView?.isHidden = image != nil
                 button.isEnabled = true
-                button.accessibilityLabel = "Saved Thumbnail \(sessionIndex + 1)"
-                let isActiveSession = self.activeSession != nil &&
-                    self.activeSession?.identifier == session.identifier
-                let isSelectedSession = selectedSession != nil &&
-                    selectedSession?.identifier == session.identifier
-                let isDirtyActiveSession = isActiveSession && self.activeSessionHasUnsavedChanges
-                if isDirtyActiveSession {
-                    button.accessibilityLabel = "Unsaved Saved Thumbnail \(sessionIndex + 1)"
-                } else if isSelectedSession {
-                    button.accessibilityLabel = "Selected Saved Thumbnail \(sessionIndex + 1)"
-                }
-                var borderColor = UIColor(red: 0.17, green: 0.22, blue: 0.30, alpha: 0.08)
-                if isDirtyActiveSession {
-                    borderColor = UIColor(red: 0.97, green: 0.70, blue: 0.25, alpha: 0.94)
-                } else if isSelectedSession {
-                    borderColor = UIColor(red: 0.50, green: 0.78, blue: 0.56, alpha: 0.90)
-                } else if isActiveSession {
-                    borderColor = UIColor(red: 0.45, green: 0.73, blue: 0.97, alpha: 0.82)
-                }
-                button.layer.borderColor = borderColor.cgColor
-                button.layer.borderWidth = isDirtyActiveSession ? 3.0 : 2.0
-                let emphasized = isActiveSession || isSelectedSession
-                button.transform = emphasized ? CGAffineTransform(scaleX: isDirtyActiveSession ? 1.05 : 1.03, y: isDirtyActiveSession ? 1.05 : 1.03) : .identity
-            } else {
-                button.setBackgroundImage(nil, for: .normal)
-                button.imageView?.isHidden = false
-                button.isEnabled = false
-                button.accessibilityLabel = "Empty Saved Thumbnail \(index + 1)"
-                button.backgroundColor = UIColor(red: 1.0, green: 0.995, blue: 0.98, alpha: 1.0)
-                button.layer.borderColor = UIColor(red: 0.17, green: 0.22, blue: 0.30, alpha: 0.08).cgColor
-                button.layer.borderWidth = 2.0
-                button.transform = .identity
+                button.accessibilityLabel = "\(status.accessibilityPrefix) \(sessionIndex + 1)"
+                button.transform = status.isEmphasized
+                    ? CGAffineTransform(scaleX: status.emphasisScale, y: status.emphasisScale)
+                    : .identity
             }
         }
     }
