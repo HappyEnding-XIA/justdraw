@@ -101,10 +101,11 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
     private(set) lazy var contentPicker: KCContentPickerFeature = {
         KCContentPickerFeature(contentCatalog: self.contentCatalog)
     }()
+    /// 编辑器面板 Feature（浮动面板收起/展开 + 工具状态芯片色块），T023 抽出。
+    private(set) lazy var editorPanels: KCEditorPanelsFeature = KCEditorPanelsFeature()
     var sessions: [KCSessionMetadata] = []
     var activeSession: KCSessionMetadata?
     var selectedHistorySession: KCSessionMetadata?
-    var panelsCollapsed: Bool = false
     var collapsiblePanels: [UIView] = []
     var collapseToggleButton: UIButton!
     var toolStateChip: UIView!
@@ -364,7 +365,7 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
     }
 
     @objc func togglePanelsCollapsed(_ button: UIButton) {
-        self.panelsCollapsed = !self.panelsCollapsed
+        self.editorPanels.toggleCollapsed()
         self.applyPanelsCollapsedAnimated(true)
     }
 
@@ -373,12 +374,11 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
     /// 也不触碰任何工具/颜色/橡皮/贴纸/撤销/保存状态。
     func applyPanelsCollapsedAnimated(_ animated: Bool) {
         self.refreshToolStateChip()
+        // 折叠态下的图标/标签/各视图 alpha·hidden·enabled 决策由编辑器面板 Feature（KCDomain）给出。
+        let state = self.editorPanels.collapseState
 
-        let icon = UIImage(systemName: self.panelsCollapsed
-                           ? "rectangle.expand.vertical"
-                           : "rectangle.compress.vertical")
-        self.collapseToggleButton.setImage(icon, for: .normal)
-        self.collapseToggleButton.accessibilityLabel = self.panelsCollapsed ? "Show Tools" : "Hide Tools"
+        self.collapseToggleButton.setImage(UIImage(systemName: state.toggleIconName), for: .normal)
+        self.collapseToggleButton.accessibilityLabel = state.toggleAccessibilityLabel
 
         // 渐变过程中保留面板在视图层级中（已布局），在完成回调里再切换 hidden。
         // userInteractionEnabled 不可动画，故立即生效——收起的面板会立刻停止
@@ -388,19 +388,24 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
         }
         self.toolStateChip.isHidden = false
 
+        let panelAlpha = state.panelAlpha
+        let panelEnabled = state.panelIsUserInteractionEnabled
+        let chipAlpha = state.chipAlpha
         let update: () -> Void = {
             for panel in self.collapsiblePanels {
-                panel.alpha = self.panelsCollapsed ? 0.0 : 1.0
-                panel.isUserInteractionEnabled = !self.panelsCollapsed
+                panel.alpha = panelAlpha
+                panel.isUserInteractionEnabled = panelEnabled
             }
-            self.toolStateChip.alpha = self.panelsCollapsed ? 1.0 : 0.0
+            self.toolStateChip.alpha = chipAlpha
         }
 
+        let panelHidden = state.panelIsHidden
+        let chipHidden = state.chipIsHidden
         let finalize: () -> Void = {
             for panel in self.collapsiblePanels {
-                panel.isHidden = self.panelsCollapsed
+                panel.isHidden = panelHidden
             }
-            self.toolStateChip.isHidden = !self.panelsCollapsed
+            self.toolStateChip.isHidden = chipHidden
         }
 
         if animated {
@@ -424,15 +429,10 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
             return
         }
 
-        var swatchColor: UIColor = self.canvasView.currentColor ?? UIColor(red: 0.94, green: 0.43, blue: 0.45, alpha: 1.0)
-        switch self.canvasView.currentToolMode {
-        case .eraser:
-            swatchColor = UIColor(white: 1.0, alpha: 1.0)
-        case .sticker:
-            swatchColor = UIColor(red: 0.96, green: 0.85, blue: 0.48, alpha: 1.0)
-        default:
-            break
-        }
+        let swatchColor = self.editorPanels.chipSwatchColor(
+            toolMode: self.canvasView.currentToolMode,
+            currentColor: self.canvasView.currentColor
+        )
 
         let title = KCDrawingEngineAdapter.toolStateChipTitle(
             toolMode: self.canvasView.currentToolMode.rawValue,

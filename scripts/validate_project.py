@@ -219,6 +219,8 @@ def app_feature_checks(
     kc_content_picker_layout_text,
     kc_recent_color_queue_text,
     kc_sticker_category_mapping_text,
+    editor_panels_feature_text,
+    kc_editor_panels_collapse_state_text,
     plist,
     pbx_text,
 ):
@@ -255,13 +257,17 @@ def app_feature_checks(
     checks.append(require_text(main_text, "canvasContainer.topAnchor.constraint(equalTo: self.view.topAnchor)", "Canvas is pinned to the top screen edge"))
     checks.append(require_text(main_text, "canvasContainer.bottomAnchor.constraint(equalTo: self.view.bottomAnchor)", "Canvas is pinned to the bottom screen edge"))
     checks.append(require_count_at_least(main_text, r"floatingPanel", 7, "Floating control panels are used"))
-    checks.append(require_text(main_text, "var panelsCollapsed: Bool", "Toolbar collapse state is tracked"))
+    # T023: collapse state lives in KCEditorPanelsFeature (KCEditorPanelsCollapseState in KCDomain); controller delegates.
+    checks.append(require_text(editor_panels_feature_text, "var panelsCollapsed: Bool", "Toolbar collapse state is tracked in the editor panels feature"))
+    checks.append(require_text(kc_editor_panels_collapse_state_text, "public struct KCEditorPanelsCollapseState", "Collapse-state decisions are extracted to KCDomain"))
     checks.append(require_text(main_text, "var collapsiblePanels", "Collapsible panel groups are tracked for hide/show"))
     checks.append(require_text(main_text, "self.collapsiblePanels = [topLeft, topRight, leftRail, rightScrollView, bottomDock]", "Collapse hides all five floating panel groups at once"))
     checks.append(require_text(main_text, "func buildCollapseControls", "A collapse/expand control is built"))
     checks.append(require_text(main_text, "#selector(togglePanelsCollapsed", "Collapse control is wired to a toggle action"))
-    checks.append(require_regex(main_text, r"func applyPanelsCollapsedAnimated[\s\S]*panel\.isHidden = self\.panelsCollapsed", "Collapse toggles panel visibility without touching tool state"))
+    checks.append(require_text(main_text, "self.editorPanels.toggleCollapsed()", "Collapse toggle delegates to the editor panels feature"))
+    checks.append(require_regex(main_text, r"func applyPanelsCollapsedAnimated[\s\S]*self\.editorPanels\.collapseState[\s\S]*panel\.isHidden = panelHidden", "Collapse applies KCDomain collapse-state decisions without touching tool state"))
     checks.append(require_text(main_text, "refreshToolStateChip", "Collapsed state shows a minimal current-tool indicator"))
+    checks.append(require_text(main_text, "self.editorPanels.chipSwatchColor", "Tool-state chip swatch color is delegated to the editor panels feature"))
     # T021/T022: palettes are sourced from KCContentCatalog and owned by KCContentPickerFeature;
     # the main view controller no longer hardcodes makePalette24/36, it delegates to the feature.
     checks.append(require_text(content_picker_feature_text, "contentCatalog.palette(for: .standard)", "24-color palette is sourced from the content catalog via the content picker feature"))
@@ -505,6 +511,8 @@ def main():
     kc_content_picker_layout_text = (ROOT / "Packages" / "KidCanvasModules" / "Sources" / "KCDomain" / "KCContentPickerLayout.swift").read_text(encoding="utf-8")
     kc_recent_color_queue_text = (ROOT / "Packages" / "KidCanvasModules" / "Sources" / "KCDomain" / "KCRecentColorQueue.swift").read_text(encoding="utf-8")
     kc_sticker_category_mapping_text = (ROOT / "Packages" / "KidCanvasModules" / "Sources" / "KCDomain" / "KCStickerCategoryMapping.swift").read_text(encoding="utf-8")
+    editor_panels_feature_text = (ROOT / "KidCanvas" / "KCEditorPanelsFeature.swift").read_text(encoding="utf-8")
+    kc_editor_panels_collapse_state_text = (ROOT / "Packages" / "KidCanvasModules" / "Sources" / "KCDomain" / "KCEditorPanelsCollapseState.swift").read_text(encoding="utf-8")
     preview_text = (ROOT / "docs" / "product" / "mockups" / "ui-preview.html").read_text(encoding="utf-8")
     checks.extend(app_feature_checks(
         main_text,
@@ -528,6 +536,8 @@ def main():
         kc_content_picker_layout_text,
         kc_recent_color_queue_text,
         kc_sticker_category_mapping_text,
+        editor_panels_feature_text,
+        kc_editor_panels_collapse_state_text,
         plist,
         pbx_text,
     ))
