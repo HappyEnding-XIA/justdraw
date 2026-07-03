@@ -121,6 +121,100 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
     var brushWidthsByStyle: [Int: CGFloat] = [:]
     var eraserSliderValue: CGFloat = 0.0
 
+    // MARK: - 设备布局指标
+
+    var isCompactPhoneLayout: Bool {
+        return UIDevice.current.userInterfaceIdiom == .phone
+    }
+
+    func rightPanelOuterWidth() -> CGFloat {
+        return self.isCompactPhoneLayout ? 238.0 : 272.0
+    }
+
+    func rightPanelWidth() -> CGFloat {
+        return self.isCompactPhoneLayout ? 214.0 : 248.0
+    }
+
+    func rightPanelTopOffset() -> CGFloat {
+        return self.isCompactPhoneLayout ? 128.0 : 150.0
+    }
+
+    func rightPanelTrailingOffset() -> CGFloat {
+        return self.isCompactPhoneLayout ? -24.0 : -40.0
+    }
+
+    func rightPanelBottomGap() -> CGFloat {
+        return self.isCompactPhoneLayout ? -10.0 : -16.0
+    }
+
+    func rightPanelInnerInset() -> CGFloat {
+        return self.isCompactPhoneLayout ? 14.0 : 18.0
+    }
+
+    func rightPanelStackSpacing() -> CGFloat {
+        return self.isCompactPhoneLayout ? 10.0 : 16.0
+    }
+
+    func bottomDockWidth() -> CGFloat {
+        return self.isCompactPhoneLayout ? 430.0 : 560.0
+    }
+
+    func bottomDockHeight() -> CGFloat {
+        return self.isCompactPhoneLayout ? 74.0 : 98.0
+    }
+
+    func bottomDockBottomInset() -> CGFloat {
+        return self.isCompactPhoneLayout ? -12.0 : -22.0
+    }
+
+    func bottomDockTitleWidth() -> CGFloat {
+        return self.isCompactPhoneLayout ? 54.0 : 88.0
+    }
+
+    func bottomDockTitleFontSize() -> CGFloat {
+        return self.isCompactPhoneLayout ? 13.0 : 16.0
+    }
+
+    func bottomDockHorizontalInset() -> CGFloat {
+        return self.isCompactPhoneLayout ? 14.0 : 22.0
+    }
+
+    func bottomDockVerticalInset() -> CGFloat {
+        return self.isCompactPhoneLayout ? 8.0 : 12.0
+    }
+
+    func bottomDockStackSpacing() -> CGFloat {
+        return self.isCompactPhoneLayout ? 8.0 : 12.0
+    }
+
+    func brushCardWidth() -> CGFloat {
+        return self.isCompactPhoneLayout ? 104.0 : 126.0
+    }
+
+    func brushCardHeight() -> CGFloat {
+        return self.isCompactPhoneLayout ? 54.0 : 68.0
+    }
+
+    func brushCardIconSize() -> CGFloat {
+        return self.isCompactPhoneLayout ? 18.0 : 22.0
+    }
+
+    func brushCardHaloSize() -> CGFloat {
+        return self.isCompactPhoneLayout ? 30.0 : 36.0
+    }
+
+    func brushCardLabelFontSize() -> CGFloat {
+        return self.isCompactPhoneLayout ? 12.0 : 14.0
+    }
+
+    func historyThumbSize() -> CGFloat {
+        return self.isCompactPhoneLayout ? 82.0 : 92.0
+    }
+
+    func historyDraftThumbHeight() -> CGFloat {
+        return self.isCompactPhoneLayout ? 74.0 : 86.0
+    }
+
     // MARK: - 视图生命周期
 
     /// 通过 Composition Root 注入依赖创建。避免控制器内部直接 `KCSessionService.shared`。
@@ -219,9 +313,9 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
         rightStack.translatesAutoresizingMaskIntoConstraints = false
         rightScrollView.showsVerticalScrollIndicator = false
         rightScrollView.alwaysBounceVertical = true
-        rightScrollView.clipsToBounds = false
+        rightScrollView.clipsToBounds = true
         rightStack.axis = .vertical
-        rightStack.spacing = 16.0
+        rightStack.spacing = self.rightPanelStackSpacing()
 
         self.view.addSubview(topLeft)
         self.view.addSubview(topRight)
@@ -257,12 +351,13 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
 
             leftRail.leadingAnchor.constraint(equalTo: self.view.leadingAnchor, constant: 38.0),
             leftRail.topAnchor.constraint(equalTo: self.view.topAnchor, constant: 170.0),
-            leftRail.widthAnchor.constraint(equalToConstant: 96.0),
+            leftRail.widthAnchor.constraint(equalToConstant: 80.0),
+            leftRail.heightAnchor.constraint(equalTo: self.view.heightAnchor, multiplier: 0.46),
 
-            rightScrollView.trailingAnchor.constraint(equalTo: self.view.trailingAnchor, constant: -40.0),
-            rightScrollView.topAnchor.constraint(equalTo: self.view.topAnchor, constant: 150.0),
-            rightScrollView.bottomAnchor.constraint(equalTo: bottomDock.topAnchor, constant: -16.0),
-            rightScrollView.widthAnchor.constraint(equalToConstant: 272.0),
+            rightScrollView.trailingAnchor.constraint(equalTo: self.view.trailingAnchor, constant: self.rightPanelTrailingOffset()),
+            rightScrollView.topAnchor.constraint(equalTo: self.view.topAnchor, constant: self.rightPanelTopOffset()),
+            rightScrollView.bottomAnchor.constraint(equalTo: bottomDock.topAnchor, constant: self.rightPanelBottomGap()),
+            rightScrollView.widthAnchor.constraint(equalToConstant: self.rightPanelOuterWidth()),
 
             rightStack.leadingAnchor.constraint(equalTo: rightScrollView.contentLayoutGuide.leadingAnchor, constant: 12.0),
             rightStack.trailingAnchor.constraint(equalTo: rightScrollView.contentLayoutGuide.trailingAnchor, constant: -12.0),
@@ -270,14 +365,14 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
             rightStack.bottomAnchor.constraint(equalTo: rightScrollView.contentLayoutGuide.bottomAnchor, constant: -12.0),
             rightStack.widthAnchor.constraint(equalTo: rightScrollView.frameLayoutGuide.widthAnchor, constant: -24.0),
 
-            colorsPanel.widthAnchor.constraint(equalToConstant: 248.0),
-            sizePanel.widthAnchor.constraint(equalToConstant: 248.0),
-            historyPanel.widthAnchor.constraint(equalToConstant: 248.0),
+            colorsPanel.widthAnchor.constraint(equalToConstant: self.rightPanelWidth()),
+            sizePanel.widthAnchor.constraint(equalToConstant: self.rightPanelWidth()),
+            historyPanel.widthAnchor.constraint(equalToConstant: self.rightPanelWidth()),
 
             bottomDock.centerXAnchor.constraint(equalTo: self.view.centerXAnchor),
-            bottomDock.widthAnchor.constraint(equalToConstant: 560.0),
-            bottomDock.bottomAnchor.constraint(equalTo: self.view.bottomAnchor, constant: -22.0),
-            bottomDock.heightAnchor.constraint(equalToConstant: 98.0)
+            bottomDock.widthAnchor.constraint(equalToConstant: self.bottomDockWidth()),
+            bottomDock.bottomAnchor.constraint(equalTo: self.view.bottomAnchor, constant: self.bottomDockBottomInset()),
+            bottomDock.heightAnchor.constraint(equalToConstant: self.bottomDockHeight())
         ])
 
         self.buildTopLeftPanel(topLeft)
@@ -308,7 +403,7 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
         toggle.layer.shadowRadius = 10.0
         toggle.layer.shadowOffset = CGSize(width: 0, height: 6)
         toggle.setImage(UIImage(systemName: "rectangle.compress.vertical"), for: .normal)
-        toggle.accessibilityLabel = "Hide Tools"
+        toggle.accessibilityLabel = KCL10n.hideToolsTitle
         toggle.addTarget(self, action: #selector(togglePanelsCollapsed(_:)), for: .touchUpInside)
         self.view.addSubview(toggle)
         self.collapseToggleButton = toggle
@@ -380,7 +475,7 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
         let state = self.editorPanels.collapseState
 
         self.collapseToggleButton.setImage(UIImage(systemName: state.toggleIconName), for: .normal)
-        self.collapseToggleButton.accessibilityLabel = state.toggleAccessibilityLabel
+        self.collapseToggleButton.accessibilityLabel = KCL10n.tr(state.toggleAccessibilityLabel)
 
         // 渐变过程中保留面板在视图层级中（已布局），在完成回调里再切换 hidden。
         // userInteractionEnabled 不可动画，故立即生效——收起的面板会立刻停止
@@ -440,7 +535,7 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
             toolMode: self.canvasView.currentToolMode.rawValue,
             brushStyle: self.canvasView.currentBrushStyle.rawValue
         )
-        self.toolStateLabel.text = title
+        self.toolStateLabel.text = KCL10n.tr(title)
         self.toolStateSwatch.backgroundColor = swatchColor
     }
 
@@ -539,21 +634,20 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
         button.backgroundColor = slim
             ? UIColor(red: 0.96, green: 0.85, blue: 0.48, alpha: 1.0)
             : UIColor(white: 1.0, alpha: 0.82)
-        button.layer.cornerRadius = slim ? 18.0 : 24.0
+        button.layer.cornerRadius = 20.0
         button.layer.borderWidth = 1.0
         button.layer.borderColor = UIColor(white: 1.0, alpha: 0.72).cgColor
         button.layer.shadowColor = UIColor(red: 0.47, green: 0.40, blue: 0.29, alpha: 1.0).cgColor
-        button.layer.shadowOpacity = 0.1
-        button.layer.shadowRadius = 10.0
-        button.layer.shadowOffset = CGSize(width: 0, height: 6)
-        let configuration = UIImage.SymbolConfiguration(pointSize: slim ? 18.0 : 22.0, weight: .bold)
+        button.layer.shadowOpacity = 0.08
+        button.layer.shadowRadius = 8.0
+        button.layer.shadowOffset = CGSize(width: 0, height: 4)
+        let configuration = UIImage.SymbolConfiguration(pointSize: 20.0, weight: .bold)
         let image = UIImage(systemName: symbolName, withConfiguration: configuration)
         button.setImage(image, for: .normal)
 
-        let height: CGFloat = slim ? 42.0 : 68.0
         NSLayoutConstraint.activate([
-            button.widthAnchor.constraint(equalToConstant: 68.0),
-            button.heightAnchor.constraint(equalToConstant: height)
+            button.widthAnchor.constraint(equalToConstant: 56.0),
+            button.heightAnchor.constraint(equalToConstant: 56.0)
         ])
         self.registerPressFeedbackForControl(button)
         return button
@@ -610,10 +704,10 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
         let lineArtButton = self.iconButtonWithSymbolName("square.on.circle", accentColor: nil)
         let importButton = self.iconButtonWithSymbolName("photo.on.rectangle", accentColor: nil)
         self.saveButton = self.iconButtonWithSymbolName("square.and.arrow.down.fill", accentColor: UIColor(red: 0.54, green: 0.80, blue: 0.98, alpha: 1.0))
-        self.applyAccessibilityLabel("Open Latest", identifier: "top.open-latest", toControl: historyButton)
-        self.applyAccessibilityLabel("Line Art", identifier: "top.line-art", toControl: lineArtButton)
-        self.applyAccessibilityLabel("Import Photo", identifier: "top.import-photo", toControl: importButton)
-        self.applyAccessibilityLabel("Save", identifier: "top.save", toControl: self.saveButton)
+        self.applyAccessibilityLabel(KCL10n.openLatestTitle, identifier: "top.open-latest", toControl: historyButton)
+        self.applyAccessibilityLabel(KCL10n.lineArtTitle, identifier: "top.line-art", toControl: lineArtButton)
+        self.applyAccessibilityLabel(KCL10n.importPhotoTitle, identifier: "top.import-photo", toControl: importButton)
+        self.applyAccessibilityLabel(KCL10n.saveTitle, identifier: "top.save", toControl: self.saveButton)
 
         historyButton.addTarget(self, action: #selector(didTapOpenLatestSession), for: .touchUpInside)
         lineArtButton.addTarget(self, action: #selector(didTapLineArtPicker), for: .touchUpInside)
@@ -627,32 +721,45 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
     }
 
     func buildLeftRail(_ panel: UIView) {
+        let toolScrollView = UIScrollView()
+        toolScrollView.translatesAutoresizingMaskIntoConstraints = false
+        toolScrollView.showsVerticalScrollIndicator = false
+        toolScrollView.alwaysBounceVertical = true
+        toolScrollView.clipsToBounds = true
+        panel.addSubview(toolScrollView)
+
         let stack = UIStackView()
         stack.translatesAutoresizingMaskIntoConstraints = false
         stack.axis = .vertical
-        stack.spacing = 12.0
-        panel.addSubview(stack)
+        stack.spacing = 10.0
+        toolScrollView.addSubview(stack)
 
         NSLayoutConstraint.activate([
-            stack.leadingAnchor.constraint(equalTo: panel.leadingAnchor, constant: 14.0),
-            stack.trailingAnchor.constraint(equalTo: panel.trailingAnchor, constant: -14.0),
-            stack.topAnchor.constraint(equalTo: panel.topAnchor, constant: 14.0),
-            stack.bottomAnchor.constraint(equalTo: panel.bottomAnchor, constant: -14.0)
+            toolScrollView.leadingAnchor.constraint(equalTo: panel.leadingAnchor, constant: 12.0),
+            toolScrollView.trailingAnchor.constraint(equalTo: panel.trailingAnchor, constant: -12.0),
+            toolScrollView.topAnchor.constraint(equalTo: panel.topAnchor, constant: 12.0),
+            toolScrollView.bottomAnchor.constraint(equalTo: panel.bottomAnchor, constant: -12.0),
+
+            stack.leadingAnchor.constraint(equalTo: toolScrollView.contentLayoutGuide.leadingAnchor),
+            stack.trailingAnchor.constraint(equalTo: toolScrollView.contentLayoutGuide.trailingAnchor),
+            stack.topAnchor.constraint(equalTo: toolScrollView.contentLayoutGuide.topAnchor),
+            stack.bottomAnchor.constraint(equalTo: toolScrollView.contentLayoutGuide.bottomAnchor),
+            stack.widthAnchor.constraint(equalTo: toolScrollView.frameLayoutGuide.widthAnchor)
         ])
 
-        let items: [(symbol: String, mode: KDToolMode, label: String)] = [
-            ("pencil.tip", .brush, "Brush"),
-            ("eraser", .eraser, "Eraser"),
-            ("paintbrush.pointed", .fill, "Fill"),
-            ("star.circle", .sticker, "Sticker"),
-            ("eyedropper.halffull", .picker, "Eyedropper")
+        let items: [(symbol: String, mode: KDToolMode, id: String, label: String)] = [
+            ("pencil.tip", .brush, "brush", KCL10n.toolBrushTitle),
+            ("eraser", .eraser, "eraser", KCL10n.toolEraserTitle),
+            ("paintbrush.pointed", .fill, "fill", KCL10n.toolFillTitle),
+            ("star.circle", .sticker, "sticker", KCL10n.toolStickerTitle),
+            ("eyedropper.halffull", .picker, "eyedropper", KCL10n.toolPickerTitle)
         ]
 
         for item in items {
             let slim = item.mode == .picker
             let button = self.railToolButtonWithSymbolName(item.symbol, slim: slim)
             button.toolMode = item.mode
-            self.applyAccessibilityLabel(item.label, identifier: "tool.\(item.label.lowercased())", toControl: button)
+            self.applyAccessibilityLabel(item.label, identifier: "tool.\(item.id)", toControl: button)
             button.addTarget(self, action: #selector(didTapToolButton(_:)), for: .touchUpInside)
 
             self.toolButtons.append(button)
@@ -661,7 +768,7 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
     }
 
     func buildColorsPanel(_ panel: UIView) {
-        let titleLabel = self.panelTitleLabel("Colors")
+        let titleLabel = self.panelTitleLabel(KCL10n.colorsPanelTitle)
         titleLabel.translatesAutoresizingMaskIntoConstraints = false
         panel.addSubview(titleLabel)
 
@@ -673,8 +780,8 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
 
         self.palette24Button = self.segmentButtonWithTitle("24", active: true)
         self.palette36Button = self.segmentButtonWithTitle("36", active: false)
-        self.applyAccessibilityLabel("24 Colors", identifier: "palette.24", toControl: self.palette24Button)
-        self.applyAccessibilityLabel("36 Colors", identifier: "palette.36", toControl: self.palette36Button)
+        self.applyAccessibilityLabel(KCL10n.palette24Title, identifier: "palette.24", toControl: self.palette24Button)
+        self.applyAccessibilityLabel(KCL10n.palette36Title, identifier: "palette.36", toControl: self.palette36Button)
         self.palette24Button.addTarget(self, action: #selector(didTapPalette24), for: .touchUpInside)
         self.palette36Button.addTarget(self, action: #selector(didTapPalette36), for: .touchUpInside)
         segmentContainer.addSubview(self.palette24Button)
@@ -688,14 +795,14 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
         let customButton = UIButton(type: .system)
         self.customColorButton = customButton
         customButton.translatesAutoresizingMaskIntoConstraints = false
-        customButton.setTitle("Custom", for: .normal)
+        customButton.setTitle(KCL10n.customColorTitle, for: .normal)
         customButton.titleLabel?.font = UIFont.systemFont(ofSize: 13.0, weight: .bold)
         customButton.setTitleColor(UIColor(red: 0.23, green: 0.28, blue: 0.35, alpha: 1.0), for: .normal)
         customButton.backgroundColor = UIColor(white: 1.0, alpha: 0.82)
         customButton.layer.cornerRadius = 18.0
         customButton.layer.borderWidth = 1.0
         customButton.layer.borderColor = UIColor(white: 1.0, alpha: 0.72).cgColor
-        self.applyAccessibilityLabel("Custom Color", identifier: "palette.custom-color", toControl: customButton)
+        self.applyAccessibilityLabel(KCL10n.customColorAccessibility, identifier: "palette.custom-color", toControl: customButton)
         customButton.addTarget(self, action: #selector(didTapCustomColor), for: .touchUpInside)
         self.registerPressFeedbackForControl(customButton)
         panel.addSubview(customButton)
@@ -704,62 +811,59 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
         recentScrollView.translatesAutoresizingMaskIntoConstraints = false
         recentScrollView.showsHorizontalScrollIndicator = false
         recentScrollView.alwaysBounceHorizontal = true
-        recentScrollView.clipsToBounds = false
+        recentScrollView.clipsToBounds = true
         panel.addSubview(recentScrollView)
 
         let recentRow = UIStackView()
         recentRow.translatesAutoresizingMaskIntoConstraints = false
         recentRow.axis = .horizontal
-        recentRow.spacing = 8.0
+        recentRow.spacing = self.paletteColorButtonSpacing()
         recentRow.distribution = .equalSpacing
         recentRow.tag = 702
         recentScrollView.addSubview(recentRow)
         self.recentColorRowStack = recentRow
 
-        let ringView = UIView()
-        ringView.translatesAutoresizingMaskIntoConstraints = false
-        ringView.layer.cornerRadius = 22.0
-        ringView.backgroundColor = UIColor(patternImage: self.colorWheelImage())
-        panel.addSubview(ringView)
-
-        let ringHole = UIView()
-        ringHole.translatesAutoresizingMaskIntoConstraints = false
-        ringHole.backgroundColor = UIColor(white: 1.0, alpha: 0.94)
-        ringHole.layer.cornerRadius = 14.0
-        ringView.addSubview(ringHole)
+        let inset = self.rightPanelInnerInset()
+        let segmentWidth: CGFloat = self.isCompactPhoneLayout ? 132.0 : 146.0
+        let segmentHeight: CGFloat = self.isCompactPhoneLayout ? 38.0 : 42.0
+        let segmentButtonWidth: CGFloat = self.isCompactPhoneLayout ? 60.0 : 68.0
+        let segmentButtonHeight: CGFloat = self.isCompactPhoneLayout ? 28.0 : 32.0
+        let customButtonWidth: CGFloat = self.isCompactPhoneLayout ? 78.0 : 92.0
+        let customButtonHeight: CGFloat = self.isCompactPhoneLayout ? 32.0 : 36.0
+        let colorButtonSize = self.paletteColorButtonSize()
 
         NSLayoutConstraint.activate([
-            titleLabel.leadingAnchor.constraint(equalTo: panel.leadingAnchor, constant: 18.0),
-            titleLabel.topAnchor.constraint(equalTo: panel.topAnchor, constant: 18.0),
+            titleLabel.leadingAnchor.constraint(equalTo: panel.leadingAnchor, constant: inset),
+            titleLabel.topAnchor.constraint(equalTo: panel.topAnchor, constant: inset),
 
-            segmentContainer.leadingAnchor.constraint(equalTo: panel.leadingAnchor, constant: 18.0),
+            segmentContainer.leadingAnchor.constraint(equalTo: panel.leadingAnchor, constant: inset),
             segmentContainer.topAnchor.constraint(equalTo: titleLabel.bottomAnchor, constant: 12.0),
-            segmentContainer.widthAnchor.constraint(equalToConstant: 146.0),
-            segmentContainer.heightAnchor.constraint(equalToConstant: 42.0),
+            segmentContainer.widthAnchor.constraint(equalToConstant: segmentWidth),
+            segmentContainer.heightAnchor.constraint(equalToConstant: segmentHeight),
 
             self.palette24Button.leadingAnchor.constraint(equalTo: segmentContainer.leadingAnchor, constant: 6.0),
             self.palette24Button.centerYAnchor.constraint(equalTo: segmentContainer.centerYAnchor),
-            self.palette24Button.widthAnchor.constraint(equalToConstant: 68.0),
-            self.palette24Button.heightAnchor.constraint(equalToConstant: 32.0),
+            self.palette24Button.widthAnchor.constraint(equalToConstant: segmentButtonWidth),
+            self.palette24Button.heightAnchor.constraint(equalToConstant: segmentButtonHeight),
 
             self.palette36Button.trailingAnchor.constraint(equalTo: segmentContainer.trailingAnchor, constant: -6.0),
             self.palette36Button.centerYAnchor.constraint(equalTo: segmentContainer.centerYAnchor),
-            self.palette36Button.widthAnchor.constraint(equalToConstant: 68.0),
-            self.palette36Button.heightAnchor.constraint(equalToConstant: 32.0),
+            self.palette36Button.widthAnchor.constraint(equalToConstant: segmentButtonWidth),
+            self.palette36Button.heightAnchor.constraint(equalToConstant: segmentButtonHeight),
 
-            grid.leadingAnchor.constraint(equalTo: panel.leadingAnchor, constant: 18.0),
+            grid.leadingAnchor.constraint(equalTo: panel.leadingAnchor, constant: inset),
             grid.topAnchor.constraint(equalTo: segmentContainer.bottomAnchor, constant: 14.0),
             grid.widthAnchor.constraint(equalToConstant: self.paletteGridWidth()),
 
-            customButton.leadingAnchor.constraint(equalTo: panel.leadingAnchor, constant: 18.0),
+            customButton.leadingAnchor.constraint(equalTo: panel.leadingAnchor, constant: inset),
             customButton.topAnchor.constraint(equalTo: grid.bottomAnchor, constant: 12.0),
-            customButton.widthAnchor.constraint(equalToConstant: 92.0),
-            customButton.heightAnchor.constraint(equalToConstant: 36.0),
+            customButton.widthAnchor.constraint(equalToConstant: customButtonWidth),
+            customButton.heightAnchor.constraint(equalToConstant: customButtonHeight),
 
-            recentScrollView.leadingAnchor.constraint(equalTo: customButton.trailingAnchor, constant: 12.0),
-            recentScrollView.trailingAnchor.constraint(equalTo: panel.trailingAnchor, constant: -18.0),
+            recentScrollView.leadingAnchor.constraint(equalTo: customButton.trailingAnchor, constant: self.isCompactPhoneLayout ? 8.0 : 12.0),
+            recentScrollView.trailingAnchor.constraint(equalTo: panel.trailingAnchor, constant: -inset),
             recentScrollView.centerYAnchor.constraint(equalTo: customButton.centerYAnchor),
-            recentScrollView.heightAnchor.constraint(equalToConstant: 30.0),
+            recentScrollView.heightAnchor.constraint(equalToConstant: colorButtonSize),
 
             recentRow.leadingAnchor.constraint(equalTo: recentScrollView.contentLayoutGuide.leadingAnchor),
             recentRow.trailingAnchor.constraint(equalTo: recentScrollView.contentLayoutGuide.trailingAnchor),
@@ -767,16 +871,7 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
             recentRow.bottomAnchor.constraint(equalTo: recentScrollView.contentLayoutGuide.bottomAnchor),
             recentRow.heightAnchor.constraint(equalTo: recentScrollView.frameLayoutGuide.heightAnchor),
 
-            ringView.leadingAnchor.constraint(equalTo: panel.leadingAnchor, constant: 18.0),
-            ringView.trailingAnchor.constraint(equalTo: panel.trailingAnchor, constant: -18.0),
-            ringView.topAnchor.constraint(equalTo: customButton.bottomAnchor, constant: 12.0),
-            ringView.heightAnchor.constraint(equalToConstant: 64.0),
-            ringView.bottomAnchor.constraint(equalTo: panel.bottomAnchor, constant: -18.0),
-
-            ringHole.centerXAnchor.constraint(equalTo: ringView.centerXAnchor),
-            ringHole.centerYAnchor.constraint(equalTo: ringView.centerYAnchor),
-            ringHole.widthAnchor.constraint(equalToConstant: 28.0),
-            ringHole.heightAnchor.constraint(equalToConstant: 28.0)
+            customButton.bottomAnchor.constraint(equalTo: panel.bottomAnchor, constant: -inset)
         ])
         self.paletteGridHeightConstraint = grid.heightAnchor.constraint(equalToConstant: self.paletteGridHeightForColorCount(self.contentPicker.palette24.count))
         self.paletteGridHeightConstraint.isActive = true
@@ -784,7 +879,7 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
     }
 
     func buildSizePanel(_ panel: UIView) {
-        let titleLabel = self.panelTitleLabel("Brush / Sticker")
+        let titleLabel = self.panelTitleLabel(KCL10n.brushStickerPanelTitle)
         titleLabel.translatesAutoresizingMaskIntoConstraints = false
         panel.addSubview(titleLabel)
 
@@ -801,7 +896,7 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
         self.sizeSlider.value = 12.0
         self.sizeSlider.minimumTrackTintColor = UIColor(red: 0.93, green: 0.83, blue: 0.46, alpha: 1.0)
         self.sizeSlider.maximumTrackTintColor = UIColor(red: 0.91, green: 0.66, blue: 0.45, alpha: 0.42)
-        self.sizeSlider.accessibilityLabel = "Brush Size"
+        self.sizeSlider.accessibilityLabel = KCL10n.sizeSliderAccessibility
         self.sizeSlider.accessibilityIdentifier = "size.slider"
         self.sizeSlider.addTarget(self, action: #selector(didChangeSizeSlider(_:)), for: .valueChanged)
         shell.addSubview(self.sizeSlider)
@@ -837,7 +932,7 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
             dots.addArrangedSubview(dot)
         }
 
-        let stickerTitle = self.panelTitleLabel("Stickers")
+        let stickerTitle = self.panelTitleLabel(KCL10n.stickersPanelTitle)
         stickerTitle.translatesAutoresizingMaskIntoConstraints = false
         panel.addSubview(stickerTitle)
 
@@ -854,7 +949,7 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
             let configuration = UIImage.SymbolConfiguration(pointSize: 15.0, weight: .bold)
             let categoryImage = UIImage(systemName: self.stickerCategorySymbolForCategory(category), withConfiguration: configuration) ?? self.safeSystemImageNamed("star.fill")
             button.setImage(categoryImage, for: .normal)
-            button.accessibilityLabel = "\(category) Stickers"
+            button.accessibilityLabel = KCL10n.stickerCategoryAccessibility(category)
             button.accessibilityIdentifier = "sticker.category.\(category.lowercased())"
             button.tintColor = UIColor(red: 0.47, green: 0.52, blue: 0.58, alpha: 1.0)
             button.backgroundColor = UIColor(white: 1.0, alpha: 0.62)
@@ -871,7 +966,7 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
         stickerScrollView.translatesAutoresizingMaskIntoConstraints = false
         stickerScrollView.showsHorizontalScrollIndicator = false
         stickerScrollView.alwaysBounceHorizontal = true
-        stickerScrollView.clipsToBounds = false
+        stickerScrollView.clipsToBounds = true
         panel.addSubview(stickerScrollView)
 
         let stickerRow = UIStackView()
@@ -882,7 +977,7 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
         stickerScrollView.addSubview(stickerRow)
         self.stickerRowStack = stickerRow
 
-        let eraserTitle = self.panelTitleLabel("Eraser")
+        let eraserTitle = self.panelTitleLabel(KCL10n.eraserPanelTitle)
         eraserTitle.translatesAutoresizingMaskIntoConstraints = false
         panel.addSubview(eraserTitle)
 
@@ -896,9 +991,9 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
         self.circleEraserButton = self.smallToolButtonWithSymbolName("circle.fill", accent: false)
         self.cloudEraserButton = self.smallToolButtonWithSymbolName("cloud.fill", accent: false)
         self.starEraserButton = self.smallToolButtonWithSymbolName("star.fill", accent: false)
-        self.applyAccessibilityLabel("Circle Eraser", identifier: "eraser.circle", toControl: self.circleEraserButton)
-        self.applyAccessibilityLabel("Cloud Eraser", identifier: "eraser.cloud", toControl: self.cloudEraserButton)
-        self.applyAccessibilityLabel("Star Eraser", identifier: "eraser.star", toControl: self.starEraserButton)
+        self.applyAccessibilityLabel(KCL10n.circleEraserTitle, identifier: "eraser.circle", toControl: self.circleEraserButton)
+        self.applyAccessibilityLabel(KCL10n.cloudEraserTitle, identifier: "eraser.cloud", toControl: self.cloudEraserButton)
+        self.applyAccessibilityLabel(KCL10n.starEraserTitle, identifier: "eraser.star", toControl: self.starEraserButton)
         self.circleEraserButton.addTarget(self, action: #selector(didTapCircleEraser), for: .touchUpInside)
         self.cloudEraserButton.addTarget(self, action: #selector(didTapCloudEraser), for: .touchUpInside)
         self.starEraserButton.addTarget(self, action: #selector(didTapStarEraser), for: .touchUpInside)
@@ -906,7 +1001,7 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
         eraserRow.addArrangedSubview(self.cloudEraserButton)
         eraserRow.addArrangedSubview(self.starEraserButton)
 
-        let editTitle = self.panelTitleLabel("Sticker Edit")
+        let editTitle = self.panelTitleLabel(KCL10n.stickerEditPanelTitle)
         editTitle.translatesAutoresizingMaskIntoConstraints = false
         panel.addSubview(editTitle)
 
@@ -919,8 +1014,8 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
 
         self.frontStickerButton = self.smallToolButtonWithSymbolName("square.2.layers.3d.top.filled", accent: false)
         self.deleteStickerButton = self.smallToolButtonWithSymbolName("trash.fill", accent: false)
-        self.applyAccessibilityLabel("Bring Sticker Forward", identifier: "sticker.bring-forward", toControl: self.frontStickerButton)
-        self.applyAccessibilityLabel("Delete Sticker", identifier: "sticker.delete", toControl: self.deleteStickerButton)
+        self.applyAccessibilityLabel(KCL10n.bringStickerForwardTitle, identifier: "sticker.bring-forward", toControl: self.frontStickerButton)
+        self.applyAccessibilityLabel(KCL10n.deleteStickerTitle, identifier: "sticker.delete", toControl: self.deleteStickerButton)
         self.frontStickerButton.addTarget(self, action: #selector(didTapBringStickerFront), for: .touchUpInside)
         self.deleteStickerButton.addTarget(self, action: #selector(didTapDeleteSticker), for: .touchUpInside)
         editRow.addArrangedSubview(self.frontStickerButton)
@@ -985,25 +1080,25 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
     }
 
     func buildHistoryPanel(_ panel: UIView) {
-        let titleLabel = self.panelTitleLabel("History")
+        let titleLabel = self.panelTitleLabel(KCL10n.historyPanelTitle)
         titleLabel.translatesAutoresizingMaskIntoConstraints = false
         panel.addSubview(titleLabel)
 
         let draftLabel = UILabel()
         draftLabel.translatesAutoresizingMaskIntoConstraints = false
-        draftLabel.text = "Draft"
+        draftLabel.text = KCL10n.draftTitle
         draftLabel.font = UIFont.systemFont(ofSize: 12.0, weight: .semibold)
         draftLabel.textColor = UIColor(red: 0.47, green: 0.52, blue: 0.58, alpha: 1.0)
         panel.addSubview(draftLabel)
 
         self.draftThumbButton = self.historyThumbButton()
-        self.applyAccessibilityLabel("Draft Thumbnail", identifier: "history.draft", toControl: self.draftThumbButton)
+        self.applyAccessibilityLabel(KCL10n.draftThumbAccessibility, identifier: "history.draft", toControl: self.draftThumbButton)
         self.draftThumbButton.addTarget(self, action: #selector(didTapDraftThumb), for: .touchUpInside)
         panel.addSubview(self.draftThumbButton)
 
         let savedLabel = UILabel()
         savedLabel.translatesAutoresizingMaskIntoConstraints = false
-        savedLabel.text = "Saved"
+        savedLabel.text = KCL10n.savedTitle
         savedLabel.font = UIFont.systemFont(ofSize: 12.0, weight: .semibold)
         savedLabel.textColor = UIColor(red: 0.47, green: 0.52, blue: 0.58, alpha: 1.0)
         panel.addSubview(savedLabel)
@@ -1011,7 +1106,7 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
         for index in 0..<4 {
             let thumb = self.historyThumbButton()
             thumb.tag = index
-            self.applyAccessibilityLabel("Saved Thumbnail \(index + 1)", identifier: "history.saved.\(index + 1)", toControl: thumb)
+            self.applyAccessibilityLabel(KCL10n.savedThumbAccessibility(index + 1), identifier: "history.saved.\(index + 1)", toControl: thumb)
             thumb.addTarget(self, action: #selector(didTapHistoryThumb(_:)), for: .touchUpInside)
             panel.addSubview(thumb)
             self.historyThumbButtons.append(thumb)
@@ -1019,8 +1114,8 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
 
         self.previousHistoryButton = self.smallToolButtonWithSymbolName("chevron.left", accent: false)
         self.nextHistoryButton = self.smallToolButtonWithSymbolName("chevron.right", accent: false)
-        self.applyAccessibilityLabel("Previous History Page", identifier: "history.previous-page", toControl: self.previousHistoryButton)
-        self.applyAccessibilityLabel("Next History Page", identifier: "history.next-page", toControl: self.nextHistoryButton)
+        self.applyAccessibilityLabel(KCL10n.previousHistoryPageTitle, identifier: "history.previous-page", toControl: self.previousHistoryButton)
+        self.applyAccessibilityLabel(KCL10n.nextHistoryPageTitle, identifier: "history.next-page", toControl: self.nextHistoryButton)
         self.previousHistoryButton.translatesAutoresizingMaskIntoConstraints = false
         self.nextHistoryButton.translatesAutoresizingMaskIntoConstraints = false
         self.previousHistoryButton.addTarget(self, action: #selector(didTapPreviousHistoryPage), for: .touchUpInside)
@@ -1028,12 +1123,12 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
         panel.addSubview(self.previousHistoryButton)
         panel.addSubview(self.nextHistoryButton)
 
-        let openButton = self.historyActionButtonWithTitle("Open", accent: false)
-        let importButton = self.historyActionButtonWithTitle("Import", accent: true)
-        self.deleteHistoryButton = self.historyActionButtonWithTitle("Delete", accent: false)
-        self.applyAccessibilityLabel("Open Latest", identifier: "history.open-latest", toControl: openButton)
-        self.applyAccessibilityLabel("Import Photo", identifier: "history.import-photo", toControl: importButton)
-        self.applyAccessibilityLabel("Delete Latest", identifier: "history.delete-latest", toControl: self.deleteHistoryButton)
+        let openButton = self.historyActionButtonWithTitle(KCL10n.openLatestHistoryTitle, accent: false)
+        let importButton = self.historyActionButtonWithTitle(KCL10n.importPhotoHistoryTitle, accent: true)
+        self.deleteHistoryButton = self.historyActionButtonWithTitle(KCL10n.deleteLatestHistoryTitle, accent: false)
+        self.applyAccessibilityLabel(KCL10n.openLatestHistoryTitle, identifier: "history.open-latest", toControl: openButton)
+        self.applyAccessibilityLabel(KCL10n.importPhotoHistoryTitle, identifier: "history.import-photo", toControl: importButton)
+        self.applyAccessibilityLabel(KCL10n.deleteLatestHistoryTitle, identifier: "history.delete-latest", toControl: self.deleteHistoryButton)
         openButton.translatesAutoresizingMaskIntoConstraints = false
         importButton.translatesAutoresizingMaskIntoConstraints = false
         self.deleteHistoryButton.translatesAutoresizingMaskIntoConstraints = false
@@ -1050,73 +1145,80 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
         let thumbTwo = self.historyThumbButtons[1]
         let thumbThree = self.historyThumbButtons[2]
         let thumbFour = self.historyThumbButtons[3]
+        let inset = self.rightPanelInnerInset()
+        let thumbSize = self.historyThumbSize()
+        let actionButtonHeight: CGFloat = self.isCompactPhoneLayout ? 34.0 : 38.0
+        let pageButtonWidth: CGFloat = self.isCompactPhoneLayout ? 42.0 : 46.0
+        let openButtonWidth: CGFloat = self.isCompactPhoneLayout ? 60.0 : 68.0
+        let importButtonWidth: CGFloat = self.isCompactPhoneLayout ? 70.0 : 78.0
+        let deleteButtonWidth: CGFloat = self.isCompactPhoneLayout ? 70.0 : 78.0
 
         NSLayoutConstraint.activate([
-            titleLabel.leadingAnchor.constraint(equalTo: panel.leadingAnchor, constant: 18.0),
-            titleLabel.topAnchor.constraint(equalTo: panel.topAnchor, constant: 18.0),
+            titleLabel.leadingAnchor.constraint(equalTo: panel.leadingAnchor, constant: inset),
+            titleLabel.topAnchor.constraint(equalTo: panel.topAnchor, constant: inset),
 
-            draftLabel.leadingAnchor.constraint(equalTo: panel.leadingAnchor, constant: 18.0),
+            draftLabel.leadingAnchor.constraint(equalTo: panel.leadingAnchor, constant: inset),
             draftLabel.topAnchor.constraint(equalTo: titleLabel.bottomAnchor, constant: 12.0),
 
-            self.draftThumbButton.leadingAnchor.constraint(equalTo: panel.leadingAnchor, constant: 18.0),
-            self.draftThumbButton.trailingAnchor.constraint(equalTo: panel.trailingAnchor, constant: -18.0),
+            self.draftThumbButton.leadingAnchor.constraint(equalTo: panel.leadingAnchor, constant: inset),
+            self.draftThumbButton.trailingAnchor.constraint(equalTo: panel.trailingAnchor, constant: -inset),
             self.draftThumbButton.topAnchor.constraint(equalTo: draftLabel.bottomAnchor, constant: 8.0),
-            self.draftThumbButton.heightAnchor.constraint(equalToConstant: 86.0),
+            self.draftThumbButton.heightAnchor.constraint(equalToConstant: self.historyDraftThumbHeight()),
 
-            savedLabel.leadingAnchor.constraint(equalTo: panel.leadingAnchor, constant: 18.0),
+            savedLabel.leadingAnchor.constraint(equalTo: panel.leadingAnchor, constant: inset),
             savedLabel.topAnchor.constraint(equalTo: self.draftThumbButton.bottomAnchor, constant: 12.0),
 
-            thumbOne.leadingAnchor.constraint(equalTo: panel.leadingAnchor, constant: 18.0),
+            thumbOne.leadingAnchor.constraint(equalTo: panel.leadingAnchor, constant: inset),
             thumbOne.topAnchor.constraint(equalTo: savedLabel.bottomAnchor, constant: 8.0),
-            thumbOne.widthAnchor.constraint(equalToConstant: 92.0),
-            thumbOne.heightAnchor.constraint(equalToConstant: 92.0),
+            thumbOne.widthAnchor.constraint(equalToConstant: thumbSize),
+            thumbOne.heightAnchor.constraint(equalToConstant: thumbSize),
 
-            thumbTwo.trailingAnchor.constraint(equalTo: panel.trailingAnchor, constant: -18.0),
+            thumbTwo.trailingAnchor.constraint(equalTo: panel.trailingAnchor, constant: -inset),
             thumbTwo.topAnchor.constraint(equalTo: savedLabel.bottomAnchor, constant: 8.0),
-            thumbTwo.widthAnchor.constraint(equalToConstant: 92.0),
-            thumbTwo.heightAnchor.constraint(equalToConstant: 92.0),
+            thumbTwo.widthAnchor.constraint(equalToConstant: thumbSize),
+            thumbTwo.heightAnchor.constraint(equalToConstant: thumbSize),
 
-            thumbThree.leadingAnchor.constraint(equalTo: panel.leadingAnchor, constant: 18.0),
+            thumbThree.leadingAnchor.constraint(equalTo: panel.leadingAnchor, constant: inset),
             thumbThree.topAnchor.constraint(equalTo: thumbOne.bottomAnchor, constant: 10.0),
-            thumbThree.widthAnchor.constraint(equalToConstant: 92.0),
-            thumbThree.heightAnchor.constraint(equalToConstant: 92.0),
+            thumbThree.widthAnchor.constraint(equalToConstant: thumbSize),
+            thumbThree.heightAnchor.constraint(equalToConstant: thumbSize),
 
-            thumbFour.trailingAnchor.constraint(equalTo: panel.trailingAnchor, constant: -18.0),
+            thumbFour.trailingAnchor.constraint(equalTo: panel.trailingAnchor, constant: -inset),
             thumbFour.topAnchor.constraint(equalTo: thumbTwo.bottomAnchor, constant: 10.0),
-            thumbFour.widthAnchor.constraint(equalToConstant: 92.0),
-            thumbFour.heightAnchor.constraint(equalToConstant: 92.0),
+            thumbFour.widthAnchor.constraint(equalToConstant: thumbSize),
+            thumbFour.heightAnchor.constraint(equalToConstant: thumbSize),
 
-            self.previousHistoryButton.leadingAnchor.constraint(equalTo: panel.leadingAnchor, constant: 18.0),
+            self.previousHistoryButton.leadingAnchor.constraint(equalTo: panel.leadingAnchor, constant: inset),
             self.previousHistoryButton.topAnchor.constraint(equalTo: thumbThree.bottomAnchor, constant: 12.0),
-            self.previousHistoryButton.widthAnchor.constraint(equalToConstant: 46.0),
+            self.previousHistoryButton.widthAnchor.constraint(equalToConstant: pageButtonWidth),
 
             self.nextHistoryButton.leadingAnchor.constraint(equalTo: self.previousHistoryButton.trailingAnchor, constant: 8.0),
             self.nextHistoryButton.topAnchor.constraint(equalTo: thumbThree.bottomAnchor, constant: 12.0),
-            self.nextHistoryButton.widthAnchor.constraint(equalToConstant: 46.0),
+            self.nextHistoryButton.widthAnchor.constraint(equalToConstant: pageButtonWidth),
 
-            openButton.leadingAnchor.constraint(equalTo: panel.leadingAnchor, constant: 18.0),
+            openButton.leadingAnchor.constraint(equalTo: panel.leadingAnchor, constant: inset),
             openButton.topAnchor.constraint(equalTo: self.previousHistoryButton.bottomAnchor, constant: 10.0),
-            openButton.widthAnchor.constraint(equalToConstant: 68.0),
-            openButton.heightAnchor.constraint(equalToConstant: 38.0),
+            openButton.widthAnchor.constraint(equalToConstant: openButtonWidth),
+            openButton.heightAnchor.constraint(equalToConstant: actionButtonHeight),
 
             importButton.leadingAnchor.constraint(equalTo: openButton.trailingAnchor, constant: 8.0),
             importButton.topAnchor.constraint(equalTo: self.previousHistoryButton.bottomAnchor, constant: 10.0),
-            importButton.widthAnchor.constraint(equalToConstant: 78.0),
-            importButton.heightAnchor.constraint(equalToConstant: 38.0),
+            importButton.widthAnchor.constraint(equalToConstant: importButtonWidth),
+            importButton.heightAnchor.constraint(equalToConstant: actionButtonHeight),
 
-            self.deleteHistoryButton.trailingAnchor.constraint(equalTo: panel.trailingAnchor, constant: -18.0),
-            self.deleteHistoryButton.topAnchor.constraint(equalTo: self.nextHistoryButton.bottomAnchor, constant: 10.0),
-            self.deleteHistoryButton.widthAnchor.constraint(equalToConstant: 78.0),
-            self.deleteHistoryButton.heightAnchor.constraint(equalToConstant: 38.0),
-            self.deleteHistoryButton.bottomAnchor.constraint(equalTo: panel.bottomAnchor, constant: -18.0)
+            self.deleteHistoryButton.trailingAnchor.constraint(equalTo: panel.trailingAnchor, constant: -inset),
+            self.deleteHistoryButton.topAnchor.constraint(equalTo: importButton.bottomAnchor, constant: 8.0),
+            self.deleteHistoryButton.widthAnchor.constraint(equalToConstant: deleteButtonWidth),
+            self.deleteHistoryButton.heightAnchor.constraint(equalToConstant: actionButtonHeight),
+            self.deleteHistoryButton.bottomAnchor.constraint(equalTo: panel.bottomAnchor, constant: -inset)
         ])
     }
 
     func buildBottomDock(_ panel: UIView) {
         let label = UILabel()
         label.translatesAutoresizingMaskIntoConstraints = false
-        label.text = "Brushes"
-        label.font = UIFont.systemFont(ofSize: 16.0, weight: .semibold)
+        label.text = KCL10n.brushesPanelTitle
+        label.font = UIFont.systemFont(ofSize: self.bottomDockTitleFontSize(), weight: .semibold)
         label.textColor = UIColor(red: 0.34, green: 0.39, blue: 0.45, alpha: 1.0)
         panel.addSubview(label)
 
@@ -1124,24 +1226,24 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
         scrollView.translatesAutoresizingMaskIntoConstraints = false
         scrollView.showsHorizontalScrollIndicator = false
         scrollView.alwaysBounceHorizontal = true
-        scrollView.clipsToBounds = false
+        scrollView.clipsToBounds = true
         panel.addSubview(scrollView)
 
         let stack = UIStackView()
         stack.translatesAutoresizingMaskIntoConstraints = false
         stack.axis = .horizontal
-        stack.spacing = 12.0
+        stack.spacing = self.bottomDockStackSpacing()
         scrollView.addSubview(stack)
 
         NSLayoutConstraint.activate([
-            label.leadingAnchor.constraint(equalTo: panel.leadingAnchor, constant: 22.0),
+            label.leadingAnchor.constraint(equalTo: panel.leadingAnchor, constant: self.bottomDockHorizontalInset()),
             label.centerYAnchor.constraint(equalTo: panel.centerYAnchor),
-            label.widthAnchor.constraint(equalToConstant: 88.0),
+            label.widthAnchor.constraint(equalToConstant: self.bottomDockTitleWidth()),
 
             scrollView.leadingAnchor.constraint(equalTo: label.trailingAnchor, constant: 8.0),
-            scrollView.trailingAnchor.constraint(equalTo: panel.trailingAnchor, constant: -18.0),
-            scrollView.topAnchor.constraint(equalTo: panel.topAnchor, constant: 12.0),
-            scrollView.bottomAnchor.constraint(equalTo: panel.bottomAnchor, constant: -12.0),
+            scrollView.trailingAnchor.constraint(equalTo: panel.trailingAnchor, constant: -self.bottomDockHorizontalInset()),
+            scrollView.topAnchor.constraint(equalTo: panel.topAnchor, constant: self.bottomDockVerticalInset()),
+            scrollView.bottomAnchor.constraint(equalTo: panel.bottomAnchor, constant: -self.bottomDockVerticalInset()),
 
             stack.leadingAnchor.constraint(equalTo: scrollView.contentLayoutGuide.leadingAnchor),
             stack.trailingAnchor.constraint(equalTo: scrollView.contentLayoutGuide.trailingAnchor),
@@ -1150,10 +1252,10 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
             stack.heightAnchor.constraint(equalTo: scrollView.frameLayoutGuide.heightAnchor)
         ])
 
-        let brushItems: [(title: String, style: KDBrushStyle, mode: KDToolMode, brush: Bool, symbol: String, accent: UIColor)] = [
-            ("Pencil", .pencil, .brush, true, "pencil.tip", self.brushColorForTitle("Pencil")),
-            ("Pen", .pen, .brush, true, "pencil", self.brushColorForTitle("Pen")),
-            ("Crayon", .crayon, .brush, true, "paintbrush.pointed.fill", self.brushColorForTitle("Crayon"))
+        let brushItems: [(id: String, style: KDBrushStyle, mode: KDToolMode, brush: Bool, symbol: String, accent: UIColor, title: String)] = [
+            ("pencil", .pencil, .brush, true, "pencil.tip", self.brushColor(for: .pencil), KCL10n.pencilTitle),
+            ("pen", .pen, .brush, true, "pencil", self.brushColor(for: .pen), KCL10n.penTitle),
+            ("crayon", .crayon, .brush, true, "paintbrush.pointed.fill", self.brushColor(for: .crayon), KCL10n.crayonTitle)
         ]
 
         for (index, item) in brushItems.enumerated() {
@@ -1162,7 +1264,7 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
             button.toolMode = item.mode
             button.representsBrushStyle = item.brush
             button.tag = index
-            self.applyAccessibilityLabel(item.title, identifier: "dock.\(item.title.lowercased())", toControl: button)
+            self.applyAccessibilityLabel(item.title, identifier: "dock.\(item.id)", toControl: button)
             button.addTarget(self, action: #selector(didTapBrushButton(_:)), for: .touchUpInside)
             stack.addArrangedSubview(button)
             self.brushButtons.append(button)
@@ -1170,8 +1272,8 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
     }
 
     func addCanvasBadges() {
-        let leftBadge = self.badgeLabelWithText("Canvas")
-        let rightBadge = self.badgeLabelWithText("Line Art")
+        let leftBadge = self.badgeLabelWithText(KCL10n.canvasBadge)
+        let rightBadge = self.badgeLabelWithText(KCL10n.lineArtBadge)
         leftBadge.translatesAutoresizingMaskIntoConstraints = false
         rightBadge.translatesAutoresizingMaskIntoConstraints = false
         self.view.addSubview(leftBadge)
@@ -1275,7 +1377,7 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
     }
 
     func stickerAccessibilityLabelForSymbol(_ symbol: String) -> String {
-        return self.contentPicker.accessibilityLabel(forSymbol: symbol)
+        return KCL10n.stickerSymbolAccessibility(self.contentPicker.accessibilityLabel(forSymbol: symbol))
     }
 
     func stickerCategorySymbolForCategory(_ category: String) -> String {
@@ -1286,19 +1388,19 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
         let button = KDBrushButton(type: .system)
         button.translatesAutoresizingMaskIntoConstraints = false
         button.backgroundColor = UIColor(white: 1.0, alpha: 0.84)
-        button.layer.cornerRadius = 28.0
+        button.layer.cornerRadius = self.isCompactPhoneLayout ? 22.0 : 28.0
         button.layer.borderWidth = 1.0
         button.layer.borderColor = UIColor(white: 1.0, alpha: 0.72).cgColor
         button.layer.shadowColor = UIColor(red: 0.47, green: 0.40, blue: 0.29, alpha: 1.0).cgColor
         button.layer.shadowOpacity = 0.12
-        button.layer.shadowRadius = 10.0
-        button.layer.shadowOffset = CGSize(width: 0, height: 6)
-        button.widthAnchor.constraint(equalToConstant: 126.0).isActive = true
-        button.heightAnchor.constraint(equalToConstant: 68.0).isActive = true
+        button.layer.shadowRadius = self.isCompactPhoneLayout ? 7.0 : 10.0
+        button.layer.shadowOffset = CGSize(width: 0, height: self.isCompactPhoneLayout ? 4.0 : 6.0)
+        button.widthAnchor.constraint(equalToConstant: self.brushCardWidth()).isActive = true
+        button.heightAnchor.constraint(equalToConstant: self.brushCardHeight()).isActive = true
 
         let iconView = UIImageView()
         iconView.translatesAutoresizingMaskIntoConstraints = false
-        let configuration = UIImage.SymbolConfiguration(pointSize: 22.0, weight: .bold)
+        let configuration = UIImage.SymbolConfiguration(pointSize: self.brushCardIconSize(), weight: .bold)
         iconView.image = UIImage(systemName: symbolName, withConfiguration: configuration)?.withRenderingMode(.alwaysTemplate)
         iconView.tintColor = accentColor
         iconView.contentMode = .scaleAspectFit
@@ -1306,28 +1408,28 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
         let label = UILabel()
         label.translatesAutoresizingMaskIntoConstraints = false
         label.text = title
-        label.font = UIFont.systemFont(ofSize: 14.0, weight: .semibold)
+        label.font = UIFont.systemFont(ofSize: self.brushCardLabelFontSize(), weight: .semibold)
         label.textColor = UIColor(red: 0.16, green: 0.22, blue: 0.28, alpha: 1.0)
 
         let halo = UIView()
         halo.translatesAutoresizingMaskIntoConstraints = false
         halo.backgroundColor = accentColor.withAlphaComponent(0.16)
-        halo.layer.cornerRadius = 18.0
+        halo.layer.cornerRadius = self.brushCardHaloSize() / 2.0
 
         button.addSubview(halo)
         button.addSubview(iconView)
         button.addSubview(label)
 
         NSLayoutConstraint.activate([
-            halo.leadingAnchor.constraint(equalTo: button.leadingAnchor, constant: 14.0),
+            halo.leadingAnchor.constraint(equalTo: button.leadingAnchor, constant: self.isCompactPhoneLayout ? 10.0 : 14.0),
             halo.centerYAnchor.constraint(equalTo: button.centerYAnchor),
-            halo.widthAnchor.constraint(equalToConstant: 36.0),
-            halo.heightAnchor.constraint(equalToConstant: 36.0),
+            halo.widthAnchor.constraint(equalToConstant: self.brushCardHaloSize()),
+            halo.heightAnchor.constraint(equalToConstant: self.brushCardHaloSize()),
             iconView.centerXAnchor.constraint(equalTo: halo.centerXAnchor),
             iconView.centerYAnchor.constraint(equalTo: halo.centerYAnchor),
-            iconView.widthAnchor.constraint(equalToConstant: 22.0),
-            iconView.heightAnchor.constraint(equalToConstant: 22.0),
-            label.leadingAnchor.constraint(equalTo: halo.trailingAnchor, constant: 14.0),
+            iconView.widthAnchor.constraint(equalToConstant: self.brushCardIconSize()),
+            iconView.heightAnchor.constraint(equalToConstant: self.brushCardIconSize()),
+            label.leadingAnchor.constraint(equalTo: halo.trailingAnchor, constant: self.isCompactPhoneLayout ? 10.0 : 14.0),
             label.centerYAnchor.constraint(equalTo: button.centerYAnchor)
         ])
 
@@ -1335,26 +1437,16 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
         return button
     }
 
-    func brushColorForTitle(_ title: String) -> UIColor {
-        if title == "Pencil" {
+    /// 画笔卡片强调色（按画笔枚举匹配；标题不再参与匹配，便于本地化）。
+    func brushColor(for style: KDBrushStyle) -> UIColor {
+        switch style {
+        case .pencil:
             return UIColor(red: 0.94, green: 0.43, blue: 0.45, alpha: 1.0)
-        }
-        if title == "Pen" {
+        case .pen:
             return UIColor(red: 0.45, green: 0.73, blue: 0.97, alpha: 1.0)
-        }
-        if title == "Crayon" {
+        case .crayon:
             return UIColor(red: 0.93, green: 0.62, blue: 0.41, alpha: 1.0)
         }
-        if title == "Eraser" {
-            return UIColor(white: 0.88, alpha: 1.0)
-        }
-        if title == "Fill" {
-            return UIColor(red: 0.95, green: 0.80, blue: 0.41, alpha: 1.0)
-        }
-        if title == "Picker" {
-            return UIColor(red: 0.55, green: 0.54, blue: 0.95, alpha: 1.0)
-        }
-        return UIColor(red: 0.56, green: 0.84, blue: 0.63, alpha: 1.0)
     }
 
     // MARK: - 线稿项
@@ -1642,51 +1734,25 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
     }
 
     func paletteColorButtonSize() -> CGFloat {
-        return self.contentPicker.paletteColorButtonSize
+        return self.isCompactPhoneLayout ? 26.0 : self.contentPicker.paletteColorButtonSize
     }
 
     func paletteColorButtonSpacing() -> CGFloat {
-        return self.contentPicker.paletteColorButtonSpacing
+        return self.isCompactPhoneLayout ? 6.0 : self.contentPicker.paletteColorButtonSpacing
     }
 
     func paletteGridWidth() -> CGFloat {
-        return self.contentPicker.paletteGridWidth
+        let columns = self.paletteGridColumns()
+        let buttonSize = self.paletteColorButtonSize()
+        let spacing = self.paletteColorButtonSpacing()
+        return CGFloat(columns) * buttonSize + CGFloat(columns - 1) * spacing
     }
 
     func paletteGridHeightForColorCount(_ colorCount: Int) -> CGFloat {
-        return self.contentPicker.paletteGridHeight(forColorCount: colorCount)
-    }
-
-    var colorWheelCachedImage: UIImage?
-    static var colorWheelCacheOnce: Bool = false
-
-    func colorWheelImage() -> UIImage {
-        if KCMainViewController.colorWheelCacheOnce {
-            return self.colorWheelCachedImage!
-        }
-        KCMainViewController.colorWheelCacheOnce = true
-        let size = CGSize(width: 44.0, height: 44.0)
-        let renderer = UIGraphicsImageRenderer(size: size)
-        let image = renderer.image { (_: UIGraphicsImageRendererContext) in
-            let center = CGPoint(x: size.width * 0.5, y: size.height * 0.5)
-            let outerRadius = size.width * 0.5
-            let innerRadius: CGFloat = 14.0
-            let sliceCount = 120
-
-            for index in 0..<sliceCount {
-                let startAngle = (CGFloat(index) / CGFloat(sliceCount)) * CGFloat.pi * 2.0 - CGFloat.pi / 2.0
-                let endAngle = (CGFloat(index + 1) / CGFloat(sliceCount)) * CGFloat.pi * 2.0 - CGFloat.pi / 2.0
-                let segmentColor = UIColor(hue: CGFloat(index) / CGFloat(sliceCount), saturation: 0.9, brightness: 1.0, alpha: 1.0)
-                let segment = UIBezierPath()
-                segment.addArc(withCenter: center, radius: outerRadius, startAngle: startAngle, endAngle: endAngle, clockwise: true)
-                segment.addArc(withCenter: center, radius: innerRadius, startAngle: endAngle, endAngle: startAngle, clockwise: false)
-                segment.close()
-                segmentColor.setFill()
-                segment.fill()
-            }
-        }
-        self.colorWheelCachedImage = image
-        return image
+        let rows = Int(ceil(Double(colorCount) / Double(self.paletteGridColumns())))
+        let buttonSize = self.paletteColorButtonSize()
+        let spacing = self.paletteColorButtonSpacing()
+        return CGFloat(rows) * buttonSize + CGFloat(max(0, rows - 1)) * spacing
     }
 
     func reloadPaletteGrid() {
@@ -1706,11 +1772,11 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
             let colorButton = UIButton(type: .custom)
             colorButton.translatesAutoresizingMaskIntoConstraints = false
             colorButton.backgroundColor = palette[index]
-            colorButton.layer.cornerRadius = 13.0
+            colorButton.layer.cornerRadius = buttonSize / 2.0
             colorButton.layer.borderWidth = 3.0
             colorButton.layer.borderColor = UIColor(white: 1.0, alpha: 0.92).cgColor
             colorButton.tag = index
-            colorButton.accessibilityLabel = "Color \(index + 1)"
+            colorButton.accessibilityLabel = KCL10n.paletteColorTitle(index + 1)
             colorButton.accessibilityIdentifier = "palette.color.\(index + 1)"
             colorButton.addTarget(self, action: #selector(didTapColorButton(_:)), for: .touchUpInside)
             self.registerPressFeedbackForControl(colorButton)
@@ -1748,17 +1814,18 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
             let button = UIButton(type: .custom)
             button.translatesAutoresizingMaskIntoConstraints = false
             button.backgroundColor = self.contentPicker.recentColors[index]
-            button.layer.cornerRadius = 13.0
+            let buttonSize = self.paletteColorButtonSize()
+            button.layer.cornerRadius = buttonSize / 2.0
             button.layer.borderWidth = 3.0
             button.layer.borderColor = UIColor(white: 1.0, alpha: 0.92).cgColor
             button.tag = index
-            button.accessibilityLabel = "Recent Color \(index + 1)"
+            button.accessibilityLabel = KCL10n.recentColorAccessibility(index + 1)
             button.accessibilityIdentifier = "palette.recent.\(index + 1)"
             button.addTarget(self, action: #selector(didTapRecentColorButton(_:)), for: .touchUpInside)
             self.registerPressFeedbackForControl(button)
             NSLayoutConstraint.activate([
-                button.widthAnchor.constraint(equalToConstant: 30.0),
-                button.heightAnchor.constraint(equalToConstant: 30.0)
+                button.widthAnchor.constraint(equalToConstant: buttonSize),
+                button.heightAnchor.constraint(equalToConstant: buttonSize)
             ])
             recentStack.addArrangedSubview(button)
             self.recentColorButtons.append(button)
@@ -1937,7 +2004,7 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
                 button.setBackgroundImage(nil, for: .normal)
                 button.imageView?.isHidden = false
                 button.isEnabled = false
-                button.accessibilityLabel = "\(status.accessibilityPrefix) \(index + 1)"
+                button.accessibilityLabel = "\(KCL10n.historyThumbPrefix(status.accessibilityPrefix)) \(index + 1)"
                 button.backgroundColor = UIColor(red: 1.0, green: 0.995, blue: 0.98, alpha: 1.0)
                 button.transform = .identity
             } else {
@@ -1946,7 +2013,7 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
                 button.setBackgroundImage(image, for: .normal)
                 button.imageView?.isHidden = image != nil
                 button.isEnabled = true
-                button.accessibilityLabel = "\(status.accessibilityPrefix) \(sessionIndex + 1)"
+                button.accessibilityLabel = "\(KCL10n.historyThumbPrefix(status.accessibilityPrefix)) \(sessionIndex + 1)"
                 button.transform = status.isEmphasized
                     ? CGAffineTransform(scaleX: status.emphasisScale, y: status.emphasisScale)
                     : .identity
@@ -2003,8 +2070,8 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
             button.layer.borderColor = (active
                 ? UIColor(white: 1.0, alpha: 0.92)
                 : UIColor(white: 1.0, alpha: 0.72)).cgColor
-            button.layer.shadowOpacity = active ? 0.18 : 0.10
-            button.transform = active ? CGAffineTransform(scaleX: 1.04, y: 1.04) : .identity
+            button.layer.shadowOpacity = active ? 0.14 : 0.08
+            button.transform = .identity
         }
         self.refreshStickerEditButtons()
         self.refreshBrushDockSelection()
@@ -2256,9 +2323,9 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
     }
 
     @objc func didTapNewCanvas() {
-        let alert = UIAlertController(title: "Clear Canvas", message: "Start a fresh drawing?", preferredStyle: .alert)
-        alert.addAction(UIAlertAction(title: "Cancel", style: .cancel, handler: nil))
-        alert.addAction(UIAlertAction(title: "Clear", style: .destructive, handler: { [weak self] (_: UIAlertAction) in
+        let alert = UIAlertController(title: KCL10n.clearCanvasAlertTitle, message: KCL10n.clearCanvasAlertMessage, preferredStyle: .alert)
+        alert.addAction(UIAlertAction(title: KCL10n.cancelTitle, style: .cancel, handler: nil))
+        alert.addAction(UIAlertAction(title: KCL10n.clearTitle, style: .destructive, handler: { [weak self] (_: UIAlertAction) in
             guard let self = self else { return }
             self.activeSession = nil
             self.selectedHistorySession = nil
@@ -2356,11 +2423,11 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
         }
 
         let session = shouldDeleteDraft ? nil : (selectedSession ?? (self.activeSession ?? self.sessions.first))
-        let title = shouldDeleteDraft ? "Delete Draft" : "Delete Session"
-        let message = shouldDeleteDraft ? "Remove this draft artwork?" : "Remove this saved artwork?"
+        let title = KCL10n.deleteAlertTitle(isDraft: shouldDeleteDraft)
+        let message = KCL10n.deleteAlertMessage(isDraft: shouldDeleteDraft)
         let alert = UIAlertController(title: title, message: message, preferredStyle: .alert)
-        alert.addAction(UIAlertAction(title: "Cancel", style: .cancel, handler: nil))
-        alert.addAction(UIAlertAction(title: "Delete", style: .destructive, handler: { [weak self] (_: UIAlertAction) in
+        alert.addAction(UIAlertAction(title: KCL10n.cancelTitle, style: .cancel, handler: nil))
+        alert.addAction(UIAlertAction(title: KCL10n.deleteTitle, style: .destructive, handler: { [weak self] (_: UIAlertAction) in
             guard let self = self else { return }
             if shouldDeleteDraft {
                 self.draftSaveTimer?.invalidate()
@@ -2519,7 +2586,7 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
         button.setImage(self.thumbnailImageForLineArtItem(item), for: .normal)
         button.imageView?.contentMode = .scaleAspectFit
         button.imageEdgeInsets = UIEdgeInsets(top: 14.0, left: 18.0, bottom: 14.0, right: 18.0)
-        self.applyAccessibilityLabel(item.title, identifier: "line-art.\(item.title.lowercased())", toControl: button)
+        self.applyAccessibilityLabel(KCL10n.lineArtTitle(item.title), identifier: "line-art.\(item.title.lowercased())", toControl: button)
         self.registerPressFeedbackForControl(button)
         return button
     }

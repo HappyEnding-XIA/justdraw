@@ -46,10 +46,10 @@ final class KCHistoryThumbStatusTests: XCTestCase {
     }
 
     func testAccessibilityPrefixes() {
-        XCTAssertEqual(KCHistoryThumbStatus.empty.accessibilityPrefix, "Empty Saved Thumbnail")
-        XCTAssertEqual(KCHistoryThumbStatus.dirtyActive.accessibilityPrefix, "Unsaved Saved Thumbnail")
-        XCTAssertEqual(KCHistoryThumbStatus.selected.accessibilityPrefix, "Selected Saved Thumbnail")
-        XCTAssertEqual(KCHistoryThumbStatus.active.accessibilityPrefix, "Saved Thumbnail")
-        XCTAssertEqual(KCHistoryThumbStatus.normal.accessibilityPrefix, "Saved Thumbnail")
+        XCTAssertEqual(KCHistoryThumbStatus.empty.accessibilityPrefix, "history.thumb.empty")
+        XCTAssertEqual(KCHistoryThumbStatus.dirtyActive.accessibilityPrefix, "history.thumb.unsaved")
+        XCTAssertEqual(KCHistoryThumbStatus.selected.accessibilityPrefix, "history.thumb.selected")
+        XCTAssertEqual(KCHistoryThumbStatus.active.accessibilityPrefix, "history.thumb.saved")
+        XCTAssertEqual(KCHistoryThumbStatus.normal.accessibilityPrefix, "history.thumb.saved")
     }
 }

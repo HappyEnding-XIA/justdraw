@@ -24,13 +24,13 @@ final class KCStickerCategoryMappingTests: XCTestCase {
     }
 
     func testAccessibilityLabelForKnownSymbols() {
-        XCTAssertEqual(KCStickerCategoryMapping.accessibilityLabel(forSymbol: "star.fill"), "Star Sticker")
-        XCTAssertEqual(KCStickerCategoryMapping.accessibilityLabel(forSymbol: "rainbow"), "Rainbow Sticker")
-        XCTAssertEqual(KCStickerCategoryMapping.accessibilityLabel(forSymbol: "camera.macro"), "Flower Sticker")
+        XCTAssertEqual(KCStickerCategoryMapping.accessibilityLabel(forSymbol: "star.fill"), "sticker.symbol.star")
+        XCTAssertEqual(KCStickerCategoryMapping.accessibilityLabel(forSymbol: "rainbow"), "sticker.symbol.rainbow")
+        XCTAssertEqual(KCStickerCategoryMapping.accessibilityLabel(forSymbol: "camera.macro"), "sticker.symbol.flower")
     }
 
     func testAccessibilityLabelFallsBackToSticker() {
-        XCTAssertEqual(KCStickerCategoryMapping.accessibilityLabel(forSymbol: "something.unknown"), "Sticker")
+        XCTAssertEqual(KCStickerCategoryMapping.accessibilityLabel(forSymbol: "something.unknown"), "sticker.symbol.default")
     }
 
     func testCategoryForIdentifierResolvesSlug() {

@@ -1,0 +1,4 @@
+/* KidCanvas Info.plist 本地化覆盖（简体中文，默认语言）。 */
+
+"NSPhotoLibraryUsageDescription" = "选择一张照片，在画布上涂色。";
+"NSPhotoLibraryAddUsageDescription" = "把完成的画作保存到相册。";

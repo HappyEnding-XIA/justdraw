@@ -1,0 +1,4 @@
+/* KidCanvas Info.plist localization overrides (English). */
+
+"NSPhotoLibraryUsageDescription" = "Choose a photo to paint on the canvas.";
+"NSPhotoLibraryAddUsageDescription" = "Save finished artwork to the photo library.";

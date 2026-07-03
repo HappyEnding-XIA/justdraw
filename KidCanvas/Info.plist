@@ -58,8 +58,8 @@
 	<key>UIUserInterfaceStyle</key>
 	<string>Light</string>
 	<key>NSPhotoLibraryUsageDescription</key>
-	<string>Choose a photo to paint on the canvas.</string>
+	<string>选择一张照片，在画布上涂色。</string>
 	<key>NSPhotoLibraryAddUsageDescription</key>
-	<string>Save finished artwork to the photo library.</string>
+	<string>把完成的画作保存到相册。</string>
 </dict>
 </plist>

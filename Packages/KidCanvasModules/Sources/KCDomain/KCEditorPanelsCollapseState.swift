@@ -30,9 +30,10 @@ public struct KCEditorPanelsCollapseState: Equatable, Sendable {
         isCollapsed ? "rectangle.expand.vertical" : "rectangle.compress.vertical"
     }
 
-    /// 收起切换按钮的无障碍标签（收起时提示「展开」）。
+    /// 收起切换按钮的无障碍标签的本地化 key（收起时提示「展开」）。
+    /// 只返回稳定 key（ASCII），由 App 层 `KCL10n.tr(...)` 解析（T026）。
     public var toggleAccessibilityLabel: String {
-        isCollapsed ? "Show Tools" : "Hide Tools"
+        isCollapsed ? "action.show-tools.title" : "action.hide-tools.title"
     }
 
     /// 浮动面板的 alpha（收起时透明）。

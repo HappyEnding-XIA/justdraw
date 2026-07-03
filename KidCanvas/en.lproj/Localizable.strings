@@ -1,0 +1,128 @@
+/* KidCanvas user-facing strings (English, secondary language). */
+/* Key set must stay aligned with zh-Hans.lproj/Localizable.strings. */
+
+/* Top toolbar */
+"top.open-latest.title" = "Open Latest";
+"top.line-art.title" = "Line Art";
+"top.import-photo.title" = "Import Photo";
+"top.save.title" = "Save";
+
+/* Left tool rail */
+"tool.brush.title" = "Brush";
+"tool.eraser.title" = "Eraser";
+"tool.fill.title" = "Fill";
+"tool.sticker.title" = "Sticker";
+"tool.picker.title" = "Eyedropper";
+
+/* Panel titles */
+"panel.colors.title" = "Colors";
+"panel.brush-sticker.title" = "Brush / Sticker";
+"panel.stickers.title" = "Stickers";
+"panel.eraser.title" = "Eraser";
+"panel.sticker-edit.title" = "Sticker Edit";
+"panel.history.title" = "History";
+"panel.brushes.title" = "Brushes";
+
+/* Palette */
+"palette.24.title" = "24 Colors";
+"palette.36.title" = "36 Colors";
+"palette.color.title" = "Color %d";
+"palette.recent.accessibility" = "Recent Color %d";
+
+/* Custom color */
+"action.custom-color.title" = "Custom";
+"action.custom-color.accessibility" = "Custom Color";
+
+/* Brush names */
+"brush.pencil.title" = "Pencil";
+"brush.pen.title" = "Pen";
+"brush.crayon.title" = "Crayon";
+
+/* Size */
+"size.slider.accessibility" = "Brush Size";
+
+/* Eraser shapes */
+"eraser.circle.title" = "Circle Eraser";
+"eraser.cloud.title" = "Cloud Eraser";
+"eraser.star.title" = "Star Eraser";
+
+/* Sticker edit */
+"sticker.bring-forward.title" = "Bring Sticker Forward";
+"sticker.delete.title" = "Delete Sticker";
+
+/* Sticker categories */
+"sticker.category.animals.title" = "Animals";
+"sticker.category.nature.title" = "Nature";
+"sticker.category.decor.title" = "Decor";
+"sticker.category.faces.title" = "Faces";
+"sticker.category.accessibility" = "%@ Stickers";
+
+/* Sticker symbol accessibility labels */
+"sticker.symbol.star" = "Star Sticker";
+"sticker.symbol.heart" = "Heart Sticker";
+"sticker.symbol.sun" = "Sun Sticker";
+"sticker.symbol.leaf" = "Leaf Sticker";
+"sticker.symbol.cloud" = "Cloud Sticker";
+"sticker.symbol.moon" = "Moon Sticker";
+"sticker.symbol.rainbow" = "Rainbow Sticker";
+"sticker.symbol.flower" = "Flower Sticker";
+"sticker.symbol.butterfly" = "Butterfly Sticker";
+"sticker.symbol.paw" = "Paw Sticker";
+"sticker.symbol.gift" = "Gift Sticker";
+"sticker.symbol.smile" = "Smile Sticker";
+"sticker.symbol.default" = "Sticker";
+
+/* Collapsed tool-state chip title */
+"chip.title.eraser" = "Eraser";
+"chip.title.fill" = "Fill";
+"chip.title.picker" = "Eyedropper";
+"chip.title.sticker" = "Sticker";
+"chip.title.pencil" = "Pencil";
+"chip.title.pen" = "Pen";
+"chip.title.crayon" = "Crayon";
+
+/* History panel */
+"history.draft.title" = "Draft";
+"history.saved.title" = "Saved";
+"history.open-latest.title" = "Open Latest";
+"history.import-photo.title" = "Import Photo";
+"history.delete-latest.title" = "Delete Latest";
+"history.previous-page.title" = "Previous History Page";
+"history.next-page.title" = "Next History Page";
+"history.draft-thumb.accessibility" = "Draft Thumbnail";
+"history.saved-thumb.accessibility" = "Saved Thumbnail %d";
+"history.thumb.empty" = "Empty Saved Thumbnail";
+"history.thumb.unsaved" = "Unsaved Saved Thumbnail";
+"history.thumb.selected" = "Selected Saved Thumbnail";
+"history.thumb.saved" = "Saved Thumbnail";
+
+/* Canvas badges */
+"badge.canvas" = "Canvas";
+"badge.line-art" = "Line Art";
+
+/* Collapse toggle */
+"action.hide-tools.title" = "Hide Tools";
+"action.show-tools.title" = "Show Tools";
+
+/* Clear canvas alert */
+"alert.clear-canvas.title" = "Clear Canvas";
+"alert.clear-canvas.message" = "Start a fresh drawing?";
+"alert.cancel" = "Cancel";
+"alert.clear" = "Clear";
+
+/* Delete confirmation alert */
+"alert.delete-draft.title" = "Delete Draft";
+"alert.delete-session.title" = "Delete Session";
+"alert.delete-draft.message" = "Remove this draft artwork?";
+"alert.delete-session.message" = "Remove this saved artwork?";
+"alert.delete" = "Delete";
+
+/* Line-art titles (accessibility) */
+"line-art.bunny" = "Bunny";
+"line-art.car" = "Car";
+"line-art.fish" = "Fish";
+"line-art.flower" = "Flower";
+"line-art.house" = "House";
+"line-art.rocket" = "Rocket";
+"line-art.cupcake" = "Cupcake";
+"line-art.dino" = "Dino";

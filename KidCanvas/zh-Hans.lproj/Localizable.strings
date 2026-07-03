@@ -1,0 +1,128 @@
+/* KidCanvas 用户可见文案（简体中文，默认语言）。 */
+/* 命名规范：<域>.<对象>.<属性>；新增文案先在此处与 en.lproj 同时加 key。 */
+
+/* 顶部工具栏 */
+"top.open-latest.title" = "打开最近";
+"top.line-art.title" = "线稿";
+"top.import-photo.title" = "导入照片";
+"top.save.title" = "保存";
+
+/* 左侧工具栏 */
+"tool.brush.title" = "画笔";
+"tool.eraser.title" = "橡皮";
+"tool.fill.title" = "填充";
+"tool.sticker.title" = "贴纸";
+"tool.picker.title" = "取色器";
+
+/* 面板标题 */
+"panel.colors.title" = "颜色";
+"panel.brush-sticker.title" = "画笔 / 贴纸";
+"panel.stickers.title" = "贴纸";
+"panel.eraser.title" = "橡皮";
+"panel.sticker-edit.title" = "贴纸编辑";
+"panel.history.title" = "历史";
+"panel.brushes.title" = "画笔";
+
+/* 色盘 */
+"palette.24.title" = "24 色";
+"palette.36.title" = "36 色";
+"palette.color.title" = "颜色 %d";
+"palette.recent.accessibility" = "最近颜色 %d";
+
+/* 自定义颜色 */
+"action.custom-color.title" = "自定义";
+"action.custom-color.accessibility" = "自定义颜色";
+
+/* 画笔名称 */
+"brush.pencil.title" = "铅笔";
+"brush.pen.title" = "钢笔";
+"brush.crayon.title" = "蜡笔";
+
+/* 粗细 */
+"size.slider.accessibility" = "画笔粗细";
+
+/* 橡皮形状 */
+"eraser.circle.title" = "圆形橡皮";
+"eraser.cloud.title" = "云朵橡皮";
+"eraser.star.title" = "星形橡皮";
+
+/* 贴纸编辑 */
+"sticker.bring-forward.title" = "贴纸前移";
+"sticker.delete.title" = "删除贴纸";
+
+/* 贴纸分类 */
+"sticker.category.animals.title" = "动物";
+"sticker.category.nature.title" = "自然";
+"sticker.category.decor.title" = "装饰";
+"sticker.category.faces.title" = "表情";
+"sticker.category.accessibility" = "%@ 贴纸";
+
+/* 贴纸符号无障碍标签 */
+"sticker.symbol.star" = "星星贴纸";
+"sticker.symbol.heart" = "爱心贴纸";
+"sticker.symbol.sun" = "太阳贴纸";
+"sticker.symbol.leaf" = "树叶贴纸";
+"sticker.symbol.cloud" = "云朵贴纸";
+"sticker.symbol.moon" = "月亮贴纸";
+"sticker.symbol.rainbow" = "彩虹贴纸";
+"sticker.symbol.flower" = "花朵贴纸";
+"sticker.symbol.butterfly" = "蝴蝶贴纸";
+"sticker.symbol.paw" = "爪印贴纸";
+"sticker.symbol.gift" = "礼物贴纸";
+"sticker.symbol.smile" = "笑脸贴纸";
+"sticker.symbol.default" = "贴纸";
+
+/* 折叠态工具芯片标题 */
+"chip.title.eraser" = "橡皮";
+"chip.title.fill" = "填充";
+"chip.title.picker" = "取色器";
+"chip.title.sticker" = "贴纸";
+"chip.title.pencil" = "铅笔";
+"chip.title.pen" = "钢笔";
+"chip.title.crayon" = "蜡笔";
+
+/* 历史面板 */
+"history.draft.title" = "草稿";
+"history.saved.title" = "已保存";
+"history.open-latest.title" = "打开最近";
+"history.import-photo.title" = "导入照片";
+"history.delete-latest.title" = "删除最近";
+"history.previous-page.title" = "上一页";
+"history.next-page.title" = "下一页";
+"history.draft-thumb.accessibility" = "草稿缩略图";
+"history.saved-thumb.accessibility" = "已保存缩略图 %d";
+"history.thumb.empty" = "空已保存缩略图";
+"history.thumb.unsaved" = "未保存缩略图";
+"history.thumb.selected" = "已选中缩略图";
+"history.thumb.saved" = "已保存缩略图";
+
+/* 画布角标 */
+"badge.canvas" = "画布";
+"badge.line-art" = "线稿";
+
+/* 折叠按钮 */
+"action.hide-tools.title" = "隐藏工具";
+"action.show-tools.title" = "显示工具";
+
+/* 清空画布弹窗 */
+"alert.clear-canvas.title" = "清空画布";
+"alert.clear-canvas.message" = "开始一张新画作？";
+"alert.cancel" = "取消";
+"alert.clear" = "清空";
+
+/* 删除确认弹窗 */
+"alert.delete-draft.title" = "删除草稿";
+"alert.delete-session.title" = "删除画作";
+"alert.delete-draft.message" = "移除这份草稿画作？";
+"alert.delete-session.message" = "移除这份已保存的画作？";
+"alert.delete" = "删除";
+
+/* 线稿标题（无障碍） */
+"line-art.bunny" = "兔子";
+"line-art.car" = "小汽车";
+"line-art.fish" = "鱼";
+"line-art.flower" = "花";
+"line-art.house" = "房子";
+"line-art.rocket" = "火箭";
+"line-art.cupcake" = "纸杯蛋糕";
+"line-art.dino" = "恐龙";

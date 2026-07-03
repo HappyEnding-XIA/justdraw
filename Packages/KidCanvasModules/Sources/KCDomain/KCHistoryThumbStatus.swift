@@ -59,13 +59,14 @@ public enum KCHistoryThumbStatus: Equatable, Sendable {
         }
     }
 
-    /// 无障碍标签前缀；控制器在后面拼接序号（已保存用会话序号，空槽用槽位序号）。
+    /// 无障碍标签前缀的本地化 key；控制器在后面拼接序号（已保存用会话序号，空槽用槽位序号），
+    /// 再经 App 层 `KCL10n.historyThumbPrefix(...)` 解析为最终文案（T026）。
     public var accessibilityPrefix: String {
         switch self {
-        case .empty: return "Empty Saved Thumbnail"
-        case .dirtyActive: return "Unsaved Saved Thumbnail"
-        case .selected: return "Selected Saved Thumbnail"
-        case .active, .normal: return "Saved Thumbnail"
+        case .empty: return "history.thumb.empty"
+        case .dirtyActive: return "history.thumb.unsaved"
+        case .selected: return "history.thumb.selected"
+        case .active, .normal: return "history.thumb.saved"
         }
     }
 }

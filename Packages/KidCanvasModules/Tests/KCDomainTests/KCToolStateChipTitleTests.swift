@@ -10,15 +10,15 @@ import XCTest
 
 final class KCToolStateChipTitleTests: XCTestCase {
     func testNonBrushToolsMapToTheirTitles() {
-        XCTAssertEqual(KCToolStateChipTitle.title(tool: .eraser, brush: .pencil), "Eraser")
-        XCTAssertEqual(KCToolStateChipTitle.title(tool: .fill, brush: .pencil), "Fill")
-        XCTAssertEqual(KCToolStateChipTitle.title(tool: .picker, brush: .pencil), "Eyedropper")
-        XCTAssertEqual(KCToolStateChipTitle.title(tool: .sticker, brush: .pencil), "Sticker")
+        XCTAssertEqual(KCToolStateChipTitle.title(tool: .eraser, brush: .pencil), "chip.title.eraser")
+        XCTAssertEqual(KCToolStateChipTitle.title(tool: .fill, brush: .pencil), "chip.title.fill")
+        XCTAssertEqual(KCToolStateChipTitle.title(tool: .picker, brush: .pencil), "chip.title.picker")
+        XCTAssertEqual(KCToolStateChipTitle.title(tool: .sticker, brush: .pencil), "chip.title.sticker")
     }
 
     func testBrushStyleDeterminesTitle() {
-        XCTAssertEqual(KCToolStateChipTitle.title(tool: .brush, brush: .pencil), "Pencil")
-        XCTAssertEqual(KCToolStateChipTitle.title(tool: .brush, brush: .pen), "Pen")
-        XCTAssertEqual(KCToolStateChipTitle.title(tool: .brush, brush: .crayon), "Crayon")
+        XCTAssertEqual(KCToolStateChipTitle.title(tool: .brush, brush: .pencil), "chip.title.pencil")
+        XCTAssertEqual(KCToolStateChipTitle.title(tool: .brush, brush: .pen), "chip.title.pen")
+        XCTAssertEqual(KCToolStateChipTitle.title(tool: .brush, brush: .crayon), "chip.title.crayon")
     }
 }

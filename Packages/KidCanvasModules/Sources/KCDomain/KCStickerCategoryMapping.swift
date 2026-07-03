@@ -28,23 +28,24 @@ public enum KCStickerCategoryMapping {
         }
     }
 
-    /// 贴纸符号 → 无障碍标签；未知符号回退到 "Sticker"。
+    /// 贴纸符号 → 无障碍标签本地化 key；未知符号回退到默认 key `sticker.symbol.default`。
+    /// 只返回稳定 key（ASCII），由 App 层 `KCL10n.stickerSymbolAccessibility(...)` 解析（T026）。
     public static func accessibilityLabel(forSymbol symbol: String) -> String {
         let labels: [String: String] = [
-            "star.fill": "Star Sticker",
-            "heart.fill": "Heart Sticker",
-            "sun.max.fill": "Sun Sticker",
-            "leaf.fill": "Leaf Sticker",
-            "cloud.fill": "Cloud Sticker",
-            "moon.stars.fill": "Moon Sticker",
-            "rainbow": "Rainbow Sticker",
-            "camera.macro": "Flower Sticker",
-            "butterfly.fill": "Butterfly Sticker",
-            "pawprint.fill": "Paw Sticker",
-            "gift.fill": "Gift Sticker",
-            "face.smiling.fill": "Smile Sticker",
+            "star.fill": "sticker.symbol.star",
+            "heart.fill": "sticker.symbol.heart",
+            "sun.max.fill": "sticker.symbol.sun",
+            "leaf.fill": "sticker.symbol.leaf",
+            "cloud.fill": "sticker.symbol.cloud",
+            "moon.stars.fill": "sticker.symbol.moon",
+            "rainbow": "sticker.symbol.rainbow",
+            "camera.macro": "sticker.symbol.flower",
+            "butterfly.fill": "sticker.symbol.butterfly",
+            "pawprint.fill": "sticker.symbol.paw",
+            "gift.fill": "sticker.symbol.gift",
+            "face.smiling.fill": "sticker.symbol.smile",
         ]
-        return labels[symbol] ?? "Sticker"
+        return labels[symbol] ?? "sticker.symbol.default"
     }
 
     /// 把按钮 accessibility identifier 解析回分类标题。

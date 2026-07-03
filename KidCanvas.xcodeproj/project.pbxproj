@@ -19,6 +19,9 @@
 		A10000010000000000000011 /* KCContentPickerFeature.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000011000000000000001D /* KCContentPickerFeature.swift */; };
 		A10000010000000000000012 /* KCEditorPanelsFeature.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000011000000000000001E /* KCEditorPanelsFeature.swift */; };
 		A10000010000000000000013 /* KCHistoryFeature.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000011000000000000001F /* KCHistoryFeature.swift */; };
+		A1FA010000000000C0A10001 /* Localizable.strings in Resources */ = {isa = PBXBuildFile; fileRef = A1FA210000000000C0A10001 /* Localizable.strings */; };
+		A1FA010000000000C0A10002 /* InfoPlist.strings in Resources */ = {isa = PBXBuildFile; fileRef = A1FA210000000000C0A10002 /* InfoPlist.strings */; };
+		A1FA010000000000C0A10003 /* KCLocalizedStrings.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1FA110000000000C0A10005 /* KCLocalizedStrings.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -36,6 +39,11 @@
 		A1000011000000000000001D /* KCContentPickerFeature.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KCContentPickerFeature.swift; sourceTree = "<group>"; };
 		A1000011000000000000001E /* KCEditorPanelsFeature.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KCEditorPanelsFeature.swift; sourceTree = "<group>"; };
 		A1000011000000000000001F /* KCHistoryFeature.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KCHistoryFeature.swift; sourceTree = "<group>"; };
+		A1FA110000000000C0A10005 /* KCLocalizedStrings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KCLocalizedStrings.swift; sourceTree = "<group>"; };
+		A1FA110000000000C0A10001 /* Localizable.strings */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = Localizable.strings; path = "zh-Hans.lproj/Localizable.strings"; sourceTree = "<group>"; };
+		A1FA110000000000C0A10002 /* Localizable.strings */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = Localizable.strings; path = "en.lproj/Localizable.strings"; sourceTree = "<group>"; };
+		A1FA110000000000C0A10003 /* InfoPlist.strings */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = InfoPlist.strings; path = "zh-Hans.lproj/InfoPlist.strings"; sourceTree = "<group>"; };
+		A1FA110000000000C0A10004 /* InfoPlist.strings */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = InfoPlist.strings; path = "en.lproj/InfoPlist.strings"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -72,6 +80,9 @@
 				A1000011000000000000001D /* KCContentPickerFeature.swift */,
 				A1000011000000000000001E /* KCEditorPanelsFeature.swift */,
 				A1000011000000000000001F /* KCHistoryFeature.swift */,
+				A1FA110000000000C0A10005 /* KCLocalizedStrings.swift */,
+				A1FA210000000000C0A10001 /* Localizable.strings */,
+				A1FA210000000000C0A10002 /* InfoPlist.strings */,
 				A1000011000000000000000A /* Info.plist */,
 			);
 			path = KidCanvas;
@@ -128,9 +139,10 @@
 			};
 			buildConfigurationList = A10000510000000000000001 /* Build configuration list for PBXProject "KidCanvas" */;
 			compatibilityVersion = "Xcode 14.0";
-			developmentRegion = en;
+			developmentRegion = zh-Hans;
 			hasScannedForEncodings = 0;
 			knownRegions = (
+				zh-Hans,
 				en,
 				Base,
 			);
@@ -153,6 +165,8 @@
 			buildActionMask = 2147483647;
 			files = (
 				A10000010000000000000008 /* Assets.xcassets in Resources */,
+				A1FA010000000000C0A10001 /* Localizable.strings in Resources */,
+				A1FA010000000000C0A10002 /* InfoPlist.strings in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -174,10 +188,32 @@
 				A10000010000000000000011 /* KCContentPickerFeature.swift in Sources */,
 				A10000010000000000000012 /* KCEditorPanelsFeature.swift in Sources */,
 				A10000010000000000000013 /* KCHistoryFeature.swift in Sources */,
+				A1FA010000000000C0A10003 /* KCLocalizedStrings.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXSourcesBuildPhase section */
+
+/* Begin PBXVariantGroup section */
+		A1FA210000000000C0A10001 /* Localizable.strings */ = {
+			isa = PBXVariantGroup;
+			children = (
+				A1FA110000000000C0A10001 /* Localizable.strings */,
+				A1FA110000000000C0A10002 /* Localizable.strings */,
+			);
+			name = Localizable.strings;
+			sourceTree = "<group>";
+		};
+		A1FA210000000000C0A10002 /* InfoPlist.strings */ = {
+			isa = PBXVariantGroup;
+			children = (
+				A1FA110000000000C0A10003 /* InfoPlist.strings */,
+				A1FA110000000000C0A10004 /* InfoPlist.strings */,
+			);
+			name = InfoPlist.strings;
+			sourceTree = "<group>";
+		};
+/* End PBXVariantGroup section */
 
 /* Begin XCBuildConfiguration section */
 		A10000810000000000000001 /* Debug */ = {

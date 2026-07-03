@@ -30,22 +30,56 @@ def balanced_text(path, pairs):
     return ok(f"{path.relative_to(ROOT)} structure is balanced")
 
 
-def no_chinese_text(paths):
-    pattern = re.compile(r"[\u4e00-\u9fff]")
-    offenders = []
-    for path in paths:
-        if not path.exists():
-            continue
-        text = path.read_text(encoding="utf-8")
-        # Strip comment lines (// ...) before checking, so file header
-        # metadata (e.g. creator name) does not trigger a false positive.
-        code_lines = [line for line in text.splitlines() if not line.strip().startswith("//")]
-        code_text = "\n".join(code_lines)
-        if pattern.search(code_text):
-            offenders.append(path.relative_to(ROOT).as_posix())
-    if offenders:
-        return fail("Chinese characters found in UI/source files: " + ", ".join(offenders))
-    return ok("No Chinese characters in app UI/source files")
+def localization_keys(path):
+    """Return the set of localization keys declared in a .strings file (lines like "key" =)."""
+    if not path.exists():
+        return None
+    text = path.read_text(encoding="utf-8")
+    return set(re.findall(r'^\s*"([^"]+)"\s*=', text, re.M))
+
+
+def localization_checks(zh_localizable, en_localizable, zh_info_plist, en_info_plist, l10n_entry, pbx_text):
+    checks = []
+    # T025: localization resources exist for both the default language (zh-Hans) and English.
+    checks.append(ok("zh-Hans Localizable.strings exists") if zh_localizable.exists() else fail("zh-Hans Localizable.strings is missing"))
+    checks.append(ok("en Localizable.strings exists") if en_localizable.exists() else fail("en Localizable.strings is missing"))
+    checks.append(ok("zh-Hans InfoPlist.strings exists") if zh_info_plist.exists() else fail("zh-Hans InfoPlist.strings is missing"))
+    checks.append(ok("en InfoPlist.strings exists") if en_info_plist.exists() else fail("en InfoPlist.strings is missing"))
+    checks.append(ok("KCLocalizedStrings entry exists") if l10n_entry.exists() else fail("KCLocalizedStrings entry is missing"))
+
+    zh_keys = localization_keys(zh_localizable)
+    en_keys = localization_keys(en_localizable)
+    if zh_keys is not None:
+        checks.append(ok("zh-Hans Localizable.strings declares keys") if zh_keys else fail("zh-Hans Localizable.strings declares no keys"))
+    if en_keys is not None:
+        checks.append(ok("en Localizable.strings declares keys") if en_keys else fail("en Localizable.strings declares no keys"))
+    if zh_keys is not None and en_keys is not None:
+        only_zh = sorted(zh_keys - en_keys)
+        only_en = sorted(en_keys - zh_keys)
+        checks.append(ok("zh-Hans and en Localizable.strings keys are aligned")
+                      if not only_zh and not only_en
+                      else fail("Localizable.strings keys misaligned \u2014 only zh-Hans: %s; only en: %s" % (only_zh[:6], only_en[:6])))
+
+    # The Swift UI entry must route through NSLocalizedString rather than hardcoding values.
+    if l10n_entry.exists():
+        entry_text = l10n_entry.read_text(encoding="utf-8")
+        checks.append(require_text(entry_text, "NSLocalizedString", "Localization entry routes through NSLocalizedString"))
+
+    # InfoPlist.strings must localize the photo permission keys in both languages.
+    for locale_label, info_path in [("zh-Hans", zh_info_plist), ("en", en_info_plist)]:
+        if info_path.exists():
+            info_text = info_path.read_text(encoding="utf-8")
+            checks.append(require_text(info_text, "NSPhotoLibraryUsageDescription", f"{locale_label} InfoPlist.strings localizes the photo import permission"))
+            checks.append(require_text(info_text, "NSPhotoLibraryAddUsageDescription", f"{locale_label} InfoPlist.strings localizes the photo save permission"))
+
+    # Project wiring: development region is Chinese (default language), both locales are known,
+    # and the string catalogs are wired into the Resources build phase as variant groups.
+    checks.append(require_text(pbx_text, "developmentRegion = zh-Hans", "Project development region is zh-Hans (Chinese is the default language)"))
+    checks.append(require_text(pbx_text, "PBXVariantGroup", "Localization resources use variant groups"))
+    checks.append(require_text(pbx_text, "Localizable.strings in Resources", "Localizable.strings is in the Resources build phase"))
+    checks.append(require_text(pbx_text, "InfoPlist.strings in Resources", "InfoPlist.strings is in the Resources build phase"))
+    checks.append(require_regex(pbx_text, r"knownRegions = \([\s\S]*?zh-Hans[\s\S]*?en", "zh-Hans and en are both known regions"))
+    return checks
 
 
 def preview_checks(preview_text):
@@ -249,8 +283,6 @@ def app_feature_checks(
     checks.append(ok("Bundle identifier is not the example placeholder") if bundle_ids and all("example" not in bundle_id for bundle_id in bundle_ids) else fail("Bundle identifier still uses the example placeholder"))
     checks.append(ok("Photo import permission exists") if plist.get("NSPhotoLibraryUsageDescription") else fail("Photo import permission is missing"))
     checks.append(ok("Photo save permission exists") if plist.get("NSPhotoLibraryAddUsageDescription") else fail("Photo save permission is missing"))
-    checks.append(ok("Photo import permission mentions painting") if "paint" in plist.get("NSPhotoLibraryUsageDescription", "").lower() else fail("Photo import permission should explain painting use"))
-    checks.append(ok("Photo save permission mentions artwork") if "artwork" in plist.get("NSPhotoLibraryAddUsageDescription", "").lower() else fail("Photo save permission should explain artwork save use"))
     checks.append(ok("App locks to light appearance in Info.plist") if plist.get("UIUserInterfaceStyle") == "Light" else fail("UIUserInterfaceStyle is not locked to Light"))
     checks.append(require_text(scene_text, "window.overrideUserInterfaceStyle = .light", "Window locks to light appearance"))
     checks.append(require_text(scene_text, "mainViewController.overrideUserInterfaceStyle = .light", "Root view controller locks to light appearance"))
@@ -264,6 +296,21 @@ def app_feature_checks(
     checks.append(require_text(kc_editor_panels_collapse_state_text, "public struct KCEditorPanelsCollapseState", "Collapse-state decisions are extracted to KCDomain"))
     checks.append(require_text(main_text, "var collapsiblePanels", "Collapsible panel groups are tracked for hide/show"))
     checks.append(require_text(main_text, "self.collapsiblePanels = [topLeft, topRight, leftRail, rightScrollView, bottomDock]", "Collapse hides all five floating panel groups at once"))
+    checks.append(require_regex(main_text, r"leftRail\.widthAnchor\.constraint\(equalToConstant: 80\.0\)", "Left tool rail uses compact iPhone-friendly width"))
+    checks.append(require_regex(main_text, r"leftRail\.heightAnchor\.constraint\(equalTo: self\.view\.heightAnchor, multiplier: 0\.46\)", "Left tool rail height is viewport-relative for iPhone landscape"))
+    checks.append(require_regex(main_text, r"func buildLeftRail[\s\S]*let toolScrollView = UIScrollView\(\)[\s\S]*toolScrollView\.alwaysBounceVertical = true[\s\S]*toolScrollView\.addSubview\(stack\)", "Left tool rail is vertically scrollable on compact iPhone screens"))
+    checks.append(require_regex(main_text, r"func buildLeftRail[\s\S]*toolScrollView\.clipsToBounds = true[\s\S]*toolScrollView\.addSubview\(stack\)", "Left tool rail clips scrolling tools inside its capsule"))
+    checks.append(require_regex(main_text, r"func railToolButtonWithSymbolName[\s\S]*button\.widthAnchor\.constraint\(equalToConstant: 56\.0\)[\s\S]*button\.heightAnchor\.constraint\(equalToConstant: 56\.0\)", "Left tool buttons use compact stable dimensions"))
+    checks.append(require_regex(main_text, r"func selectToolMode[\s\S]*button\.transform = \.identity", "Left tool selection does not scale buttons outside the rail"))
+    checks.append(require_regex(main_text, r"func rightPanelWidth\(\) -> CGFloat[\s\S]*return self\.isCompactPhoneLayout \? 214\.0 : 248\.0", "Right panel uses compact iPhone width without changing iPad width"))
+    checks.append(require_regex(main_text, r"func rightPanelOuterWidth\(\) -> CGFloat[\s\S]*return self\.isCompactPhoneLayout \? 238\.0 : 272\.0", "Right panel scroll container has compact iPhone width"))
+    checks.append(require_regex(main_text, r"rightScrollView\.clipsToBounds = true", "Right menu clips content inside its scroll container"))
+    checks.append(require_regex(main_text, r"func bottomDockWidth\(\) -> CGFloat[\s\S]*return self\.isCompactPhoneLayout \? 430\.0 : 560\.0", "Bottom brush dock uses compact iPhone width without changing iPad width"))
+    checks.append(require_regex(main_text, r"func bottomDockHeight\(\) -> CGFloat[\s\S]*return self\.isCompactPhoneLayout \? 74\.0 : 98\.0", "Bottom brush dock uses compact iPhone height"))
+    checks.append(require_regex(main_text, r"func brushCardWidth\(\) -> CGFloat[\s\S]*return self\.isCompactPhoneLayout \? 104\.0 : 126\.0", "Bottom brush cards shrink on iPhone"))
+    checks.append(require_regex(main_text, r"func paletteColorButtonSize\(\) -> CGFloat[\s\S]*return self\.isCompactPhoneLayout \? 26\.0 : self\.contentPicker\.paletteColorButtonSize", "Color swatches shrink inside compact iPhone right menu"))
+    checks.append(require_regex(main_text, r"func buildBottomDock[\s\S]*scrollView\.clipsToBounds = true[\s\S]*panel\.addSubview\(scrollView\)", "Bottom brush dock clips horizontal scroll content"))
+    checks.append(require_regex(main_text, r"func buildSizePanel[\s\S]*stickerScrollView\.clipsToBounds = true[\s\S]*panel\.addSubview\(stickerScrollView\)", "Right sticker row clips content inside the panel"))
     checks.append(require_text(main_text, "func buildCollapseControls", "A collapse/expand control is built"))
     checks.append(require_text(main_text, "#selector(togglePanelsCollapsed", "Collapse control is wired to a toggle action"))
     checks.append(require_text(main_text, "self.editorPanels.toggleCollapsed()", "Collapse toggle delegates to the editor panels feature"))
@@ -283,7 +330,14 @@ def app_feature_checks(
     checks.append(require_text(main_text, "var customColorButton", "Custom color button is retained for popover anchoring"))
     checks.append(require_text(main_text, "popover?.sourceView = self.customColorButton ?? self.view", "Custom color picker anchors to the Custom button"))
     checks.append(require_text(main_text, "var recentColorRowStack", "Recent colors have a retained row for dynamic updates"))
+    # T027: the Custom color area has a single clear entry (the Custom pill) and no tiled
+    # rainbow band; the color picker stays anchored to that single entry and recent colors row remains.
+    checks.append(forbid_text(main_text, "UIColor(patternImage:", "Custom color area uses a single entry (no tiled rainbow pattern)"))
+    checks.append(forbid_text(main_text, "colorWheelImage", "Decorative rainbow band removed from the custom color area"))
+    checks.append(forbid_text(main_text, "ringView", "Custom color area no longer renders repeated rainbow rings"))
+    checks.append(require_regex(main_text, r"customButton\.bottomAnchor\.constraint\(equalTo: panel\.bottomAnchor", "Custom color area pins its single entry to the panel bottom (no rainbow band)"))
     checks.append(require_regex(main_text, r"let recentScrollView[\s\S]*showsHorizontalScrollIndicator = false[\s\S]*recentScrollView\.addSubview\(recentRow\)", "Recent colors are presented in a horizontal scroll row"))
+    checks.append(require_regex(main_text, r"let recentScrollView[\s\S]*recentScrollView\.clipsToBounds = true[\s\S]*recentScrollView\.addSubview\(recentRow\)", "Recent colors are clipped inside the color panel"))
     # T022: recent-color dedupe/cap logic moved to KCDomain KCRecentColorQueue (tested); controller delegates via the feature.
     checks.append(require_text(kc_recent_color_queue_text, "defaultLimit: Int = 8", "Recent colors keep up to eight colors (KCDomain KCRecentColorQueue)"))
     checks.append(require_text(content_picker_feature_text, "KCRecentColorQueue.inserting(", "Content picker feature delegates recent-color insertion to KCDomain"))
@@ -341,7 +395,20 @@ def app_feature_checks(
     checks.append(forbid_text(main_text, "KDLineArtItem.item(title:", "Line-art titles are no longer hardcoded via .item(title:) in the main view controller"))
     checks.append(require_text(content_picker_feature_text, "stickerSymbolsByCategory", "Built-in stickers are organized by category in the content picker feature"))
     checks.append(require_text(main_text, "func stickerCategorySymbolForCategory", "Sticker category controls use compact icon labels"))
-    checks.append(require_regex(main_text, r'button\.setImage\(categoryImage, for: \.normal\)[\s\S]*button\.accessibilityLabel = "\\\(category\) Stickers"', "Sticker category buttons are icon-first while retaining accessibility labels"))
+    checks.append(require_regex(main_text, r'button\.setImage\(categoryImage, for: \.normal\)[\s\S]*button\.accessibilityLabel = KCL10n\.stickerCategoryAccessibility\(category\)', "Sticker category buttons are icon-first with localized accessibility labels"))
+    # T026: tool menus/titles/hints are localized through KCL10n; the key English hardcodes
+    # must not return to user-visible UI paths, and the controller must route through KCL10n.
+    checks.append(require_regex(main_text, r"KCL10n\.", "Main view controller routes user-visible text through the KCL10n localization entry"))
+    checks.append(forbid_text(main_text, 'panelTitleLabel("Colors")', "Colors panel title is localized (no hardcoded English)"))
+    checks.append(forbid_text(main_text, 'panelTitleLabel("Stickers")', "Stickers panel title is localized (no hardcoded English)"))
+    checks.append(forbid_text(main_text, 'panelTitleLabel("Eraser")', "Eraser panel title is localized (no hardcoded English)"))
+    checks.append(forbid_text(main_text, 'panelTitleLabel("History")', "History panel title is localized (no hardcoded English)"))
+    checks.append(forbid_text(main_text, 'panelTitleLabel("Brush / Sticker")', "Brush/Sticker panel title is localized (no hardcoded English)"))
+    checks.append(forbid_text(main_text, 'setTitle("Custom"', "Custom color button title is localized (no hardcoded English)"))
+    checks.append(forbid_text(main_text, 'text = "Brushes"', "Bottom dock Brushes label is localized (no hardcoded English)"))
+    checks.append(forbid_text(main_text, 'text = "Draft"', "Draft label is localized (no hardcoded English)"))
+    checks.append(forbid_text(main_text, 'text = "Saved"', "Saved label is localized (no hardcoded English)"))
+    checks.append(forbid_text(main_text, 'brushColorForTitle', "Brush color selection matches on the brush enum, not a localized title"))
     checks.append(require_text(main_text, "func reloadStickerButtons", "Sticker panel reloads built-in stickers for the selected category"))
     checks.append(require_text(main_text, "func stickerCategoryFromButton", "Sticker category buttons resolve categories from stable identifiers"))
     checks.append(require_regex(main_text, r"func didTapStickerCategoryButton[\s\S]*self\.contentPicker\.selectStickerCategory\(category\)[\s\S]*reloadStickerButtons", "Sticker category buttons switch the visible sticker set"))
@@ -554,12 +621,14 @@ def main():
     ))
     checks.extend(preview_checks(preview_text))
 
-    checks.append(no_chinese_text([
-        ROOT / "KidCanvas" / "KCMainViewController.swift",
-        ROOT / "KidCanvas" / "KCDrawingCanvasView.swift",
-        ROOT / "KidCanvas" / "Info.plist",
-        ROOT / "docs" / "product" / "mockups" / "ui-preview.html",
-    ]))
+    checks.extend(localization_checks(
+        ROOT / "KidCanvas" / "zh-Hans.lproj" / "Localizable.strings",
+        ROOT / "KidCanvas" / "en.lproj" / "Localizable.strings",
+        ROOT / "KidCanvas" / "zh-Hans.lproj" / "InfoPlist.strings",
+        ROOT / "KidCanvas" / "en.lproj" / "InfoPlist.strings",
+        ROOT / "KidCanvas" / "KCLocalizedStrings.swift",
+        pbx_text,
+    ))
 
     if all(checks):
         print("Validation passed.")
