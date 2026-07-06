@@ -256,6 +256,7 @@ def app_feature_checks(
     device_layout_metrics_text,
     editor_ui_factory_text,
     brush_dock_feature_text,
+    eraser_controls_feature_text,
     kc_content_picker_layout_text,
     kc_recent_color_queue_text,
     kc_sticker_category_mapping_text,
@@ -327,6 +328,18 @@ def app_feature_checks(
     checks.append(forbid_text(main_text, "func brushColor(for style: KDBrushStyle) -> UIColor", "Brush accent color decisions live outside the main view controller"))
     checks.append(forbid_text(main_text, "button.backgroundColor = active ? UIColor(red: 0.66, green: 0.89, blue: 0.72", "Brush Dock selected background is no longer written in the main view controller"))
     checks.append(forbid_text(main_text, "button.layer.shadowOpacity = active ? 0.20 : 0.12", "Brush Dock selected shadow is no longer written in the main view controller"))
+    checks.append(require_text(pbx_text, "KCEraserControlsFeature.swift in Sources", "Eraser controls feature is included in the app target sources"))
+    checks.append(require_text(eraser_controls_feature_text, "final class KCEraserControlsFeature", "Eraser controls are extracted to KCEraserControlsFeature"))
+    checks.append(require_text(eraser_controls_feature_text, "func previewPath(for shape: KDEraserShape, center: CGPoint, size: CGFloat) -> UIBezierPath", "Eraser preview path creation lives in KCEraserControlsFeature"))
+    checks.append(require_text(eraser_controls_feature_text, "func isShape(_ shape: KDEraserShape, activeFor currentShape: KDEraserShape) -> Bool", "Eraser shape active-state matching lives in KCEraserControlsFeature"))
+    checks.append(require_text(eraser_controls_feature_text, "func applyShapeButtonAppearance(to button: UIButton, active: Bool)", "Eraser shape button selected-state styling lives in KCEraserControlsFeature"))
+    checks.append(require_text(main_text, "private(set) lazy var eraserControlsFeature: KCEraserControlsFeature", "Main view controller owns an Eraser Controls feature instance"))
+    checks.append(require_text(main_text, "self.eraserControlsFeature.previewPath(", "Main view controller delegates eraser preview path creation"))
+    checks.append(require_text(main_text, "self.eraserControlsFeature.applyShapeButtonAppearance(to: item.button, active: active)", "Main view controller delegates eraser shape button selected-state styling"))
+    checks.append(forbid_text(main_text, "func previewPathForEraserShape", "Eraser preview path creation is no longer owned by the main view controller"))
+    checks.append(forbid_text(main_text, "let buttons: [UIButton] = [self.circleEraserButton, self.cloudEraserButton, self.starEraserButton]", "Eraser shape buttons no longer use anonymous array/index matching in the main view controller"))
+    checks.append(forbid_text(main_text, "for index in 0..<buttons.count", "Eraser shape button refresh no longer depends on indexes in the main view controller"))
+    checks.append(forbid_text(main_text, "index == self.canvasView.currentEraserShape.rawValue", "Eraser shape active-state matching no longer depends on button array indexes in the main view controller"))
     # T023: collapse state lives in KCEditorPanelsFeature (KCEditorPanelsCollapseState in KCDomain); controller delegates.
     checks.append(require_text(editor_panels_feature_text, "var panelsCollapsed: Bool", "Toolbar collapse state is tracked in the editor panels feature"))
     checks.append(require_text(kc_editor_panels_collapse_state_text, "public struct KCEditorPanelsCollapseState", "Collapse-state decisions are extracted to KCDomain"))
@@ -690,6 +703,7 @@ def main():
     device_layout_metrics_text = (ROOT / "KidCanvas" / "KCDeviceLayoutMetrics.swift").read_text(encoding="utf-8")
     editor_ui_factory_text = (ROOT / "KidCanvas" / "KCEditorUIFactory.swift").read_text(encoding="utf-8")
     brush_dock_feature_text = (ROOT / "KidCanvas" / "KCBrushDockFeature.swift").read_text(encoding="utf-8")
+    eraser_controls_feature_text = (ROOT / "KidCanvas" / "KCEraserControlsFeature.swift").read_text(encoding="utf-8")
     kc_content_picker_layout_text = (ROOT / "Packages" / "KidCanvasModules" / "Sources" / "KCDomain" / "KCContentPickerLayout.swift").read_text(encoding="utf-8")
     kc_recent_color_queue_text = (ROOT / "Packages" / "KidCanvasModules" / "Sources" / "KCDomain" / "KCRecentColorQueue.swift").read_text(encoding="utf-8")
     kc_sticker_category_mapping_text = (ROOT / "Packages" / "KidCanvasModules" / "Sources" / "KCDomain" / "KCStickerCategoryMapping.swift").read_text(encoding="utf-8")
@@ -723,6 +737,7 @@ def main():
         device_layout_metrics_text,
         editor_ui_factory_text,
         brush_dock_feature_text,
+        eraser_controls_feature_text,
         kc_content_picker_layout_text,
         kc_recent_color_queue_text,
         kc_sticker_category_mapping_text,

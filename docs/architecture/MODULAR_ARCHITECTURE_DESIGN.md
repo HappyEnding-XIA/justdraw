@@ -173,6 +173,7 @@ Feature 拆分进度（App 层 Feature 类型 + KCDomain 纯逻辑）：
 - **T041 `KCEditorUIFactory`（App 层）**：从 `KCMainViewController` 抽出浮动面板、图标按钮、小工具按钮、分段按钮、历史缩略图按钮、画笔卡片等通用 UIKit 控件样式创建；控制器仍保留事件 target、按压反馈注册和面板业务组装。
 - **T042 `KCBrushDockFeature`（App 层）**：从 `KCMainViewController.buildBottomDock(_:)` 抽出底部画笔项配置、SF Symbol、本地化标题和强调色决策；控制器仍保留按钮创建、target/action、无障碍标识和工具状态协调。
 - **T043 `KCBrushDockFeature` 扩展（App 层）**：继续从 `KCMainViewController.refreshBrushDockSelection()` 抽出底部画笔 Dock 的按钮匹配判断和选中态样式；控制器只负责遍历按钮、调用 Feature 和滚动到当前按钮。
+- **T044 `KCEraserControlsFeature`（App 层）**：从 `KCMainViewController` 抽出橡皮擦尺寸预览路径和 circle/cloud/star 形状按钮选中态；真实擦除路径仍由 `KCDrawingEngine` 提供，Feature 只负责控件预览与按钮外观。
 - **T013 `KCHistoryPaging`、T017 `KCToolStateChipTitle`（KCDomain）**：更早的最小边界抽取。
 
 ### 5.3 Core / Infrastructure 能力层
@@ -226,6 +227,7 @@ Feature 拆分进度（App 层 Feature 类型 + KCDomain 纯逻辑）：
 | `KCDeviceLayoutMetrics` | Feature | iPhone/iPad 布局指标与尺寸决策 |
 | `KCEditorUIFactory` | Feature | 编辑器通用 UIKit 控件样式创建 |
 | `KCBrushDockFeature` | Feature | 底部画笔 Dock 配置、强调色与选中态决策 |
+| `KCEraserControlsFeature` | Feature | 橡皮擦预览路径与形状按钮选中态 |
 | `KidCanvasApp` | App | 启动、装配、依赖注入 |
 
 ### 6.2 `KCCommon`
@@ -441,6 +443,7 @@ Packages/
       KCDeviceLayoutMetrics/
       KCEditorUIFactory/
       KCBrushDockFeature/
+      KCEraserControlsFeature/
     Tests/
       KCCommonTests/
       KCDomainTests/
@@ -536,7 +539,7 @@ flowchart TD
 | `main.m` | `KidCanvasApp` |
 | `KDAppDelegate.*` | `KidCanvasApp` |
 | `KDSceneDelegate.*` | `KidCanvasApp` |
-| `KDMainViewController.*` | `KCCanvasFeature` + `KCEditorPanelsFeature` + `KCHistoryFeature` + `KCLineArtFeature` + `KCDeviceLayoutMetrics` + `KCEditorUIFactory` + `KCBrushDockFeature` |
+| `KDMainViewController.*` | `KCCanvasFeature` + `KCEditorPanelsFeature` + `KCHistoryFeature` + `KCLineArtFeature` + `KCDeviceLayoutMetrics` + `KCEditorUIFactory` + `KCBrushDockFeature` + `KCEraserControlsFeature` |
 | `KDDrawingCanvasView.*` | `KCDrawingEngine` |
 | `KDArtworkSession.*` | `KCDomain` |
 | `KDSessionStore.*` | `KCSessionPersistence` |

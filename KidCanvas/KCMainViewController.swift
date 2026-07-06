@@ -97,6 +97,8 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
     }()
     /// 画笔 Dock Feature（底部画笔项配置），T042 抽出。
     private(set) lazy var brushDockFeature: KCBrushDockFeature = KCBrushDockFeature()
+    /// 橡皮擦控件 Feature（尺寸预览 + 形状按钮选中态），T044 抽出。
+    private(set) lazy var eraserControlsFeature: KCEraserControlsFeature = KCEraserControlsFeature()
     var sessions: [KCSessionMetadata] = []
     var activeSession: KCSessionMetadata?
     var selectedHistorySession: KCSessionMetadata?
@@ -1674,7 +1676,11 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
 
         if self.canvasView.currentToolMode == .eraser {
             previewDiameter = min(38.0, max(16.0, CGFloat(self.sizeSlider.value) * 1.08))
-            path = self.previewPathForEraserShape(self.canvasView.currentEraserShape, center: center, size: previewDiameter)
+            path = self.eraserControlsFeature.previewPath(
+                for: self.canvasView.currentEraserShape,
+                center: center,
+                size: previewDiameter
+            )
             fillColor = UIColor(white: 1.0, alpha: 1.0)
             strokeColor = UIColor(red: 0.50, green: 0.56, blue: 0.62, alpha: 0.55)
         } else {
@@ -1695,37 +1701,6 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
         self.sizePreviewShapeLayer.fillColor = fillColor.withAlphaComponent(alpha).cgColor
         self.sizePreviewShapeLayer.strokeColor = strokeColor.cgColor
         self.sizePreviewShapeLayer.lineWidth = self.canvasView.currentToolMode == .eraser ? 2.0 : 0.0
-    }
-
-    func previewPathForEraserShape(_ shape: KDEraserShape, center: CGPoint, size: CGFloat) -> UIBezierPath {
-        let radius = size / 2.0
-        if shape == .circle {
-            return UIBezierPath(ovalIn: CGRect(x: center.x - radius, y: center.y - radius, width: size, height: size))
-        }
-
-        if shape == .cloud {
-            let path = UIBezierPath()
-            path.append(UIBezierPath(ovalIn: CGRect(x: center.x - radius * 1.05, y: center.y - radius * 0.32, width: radius * 0.95, height: radius * 0.74)))
-            path.append(UIBezierPath(ovalIn: CGRect(x: center.x - radius * 0.42, y: center.y - radius * 0.78, width: radius * 1.02, height: radius * 0.98)))
-            path.append(UIBezierPath(ovalIn: CGRect(x: center.x + radius * 0.18, y: center.y - radius * 0.28, width: radius * 0.90, height: radius * 0.70)))
-            return path
-        }
-
-        let star = UIBezierPath()
-        let points = 5
-        let innerRadius = radius * 0.45
-        for i in 0..<(points * 2) {
-            let angle = (-CGFloat.pi / 2.0) + CGFloat(i) * (CGFloat.pi / CGFloat(points))
-            let currentRadius = (i % 2 == 0) ? radius : innerRadius
-            let point = CGPoint(x: center.x + currentRadius * cos(angle), y: center.y + currentRadius * sin(angle))
-            if i == 0 {
-                star.move(to: point)
-            } else {
-                star.addLine(to: point)
-            }
-        }
-        star.close()
-        return star
     }
 
     func refreshBrushDockSelection() {
@@ -2401,17 +2376,14 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
     // MARK: - 刷新辅助方法
 
     func refreshEraserShapeButtons() {
-        let buttons: [UIButton] = [self.circleEraserButton, self.cloudEraserButton, self.starEraserButton]
-        for index in 0..<buttons.count {
-            let button = buttons[index]
-            let active = index == self.canvasView.currentEraserShape.rawValue
-            button.backgroundColor = active
-                ? UIColor(red: 0.97, green: 0.86, blue: 0.48, alpha: 1.0)
-                : UIColor(white: 1.0, alpha: 0.82)
-            button.layer.borderColor = (active
-                ? UIColor(white: 1.0, alpha: 0.92)
-                : UIColor(white: 1.0, alpha: 0.72)).cgColor
-            button.transform = active ? CGAffineTransform(scaleX: 1.05, y: 1.05) : .identity
+        let buttonShapes: [(button: UIButton, shape: KDEraserShape)] = [
+            (self.circleEraserButton, .circle),
+            (self.cloudEraserButton, .cloud),
+            (self.starEraserButton, .star)
+        ]
+        for item in buttonShapes {
+            let active = self.eraserControlsFeature.isShape(item.shape, activeFor: self.canvasView.currentEraserShape)
+            self.eraserControlsFeature.applyShapeButtonAppearance(to: item.button, active: active)
         }
         self.refreshSizePreview()
     }
