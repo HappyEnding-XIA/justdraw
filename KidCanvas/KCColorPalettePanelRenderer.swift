@@ -61,8 +61,9 @@ final class KCColorPalettePanelRenderer {
 
         let segmentContainer = UIView()
         segmentContainer.translatesAutoresizingMaskIntoConstraints = false
-        segmentContainer.backgroundColor = UIColor(white: 1.0, alpha: 0.76)
+        segmentContainer.backgroundColor = KCEditorVisualStyle.pillBackgroundColor
         segmentContainer.layer.cornerRadius = 18.0
+        segmentContainer.layer.cornerCurve = .continuous
         panel.addSubview(segmentContainer)
 
         let palette24Button = makeSegmentButton("24", true)
@@ -85,11 +86,8 @@ final class KCColorPalettePanelRenderer {
         customButton.translatesAutoresizingMaskIntoConstraints = false
         customButton.setTitle(configuration.customColorTitle, for: .normal)
         customButton.titleLabel?.font = UIFont.systemFont(ofSize: 13.0, weight: .bold)
-        customButton.setTitleColor(UIColor(red: 0.23, green: 0.28, blue: 0.35, alpha: 1.0), for: .normal)
-        customButton.backgroundColor = UIColor(white: 1.0, alpha: 0.82)
-        customButton.layer.cornerRadius = 18.0
-        customButton.layer.borderWidth = 1.0
-        customButton.layer.borderColor = UIColor(white: 1.0, alpha: 0.72).cgColor
+        customButton.setTitleColor(KCEditorVisualStyle.inkColor, for: .normal)
+        KCEditorVisualStyle.applyCompactButtonAppearance(to: customButton, accent: false, cornerRadius: 18.0)
         customButton.accessibilityLabel = configuration.customColorAccessibility
         customButton.accessibilityIdentifier = "palette.custom-color"
         customButton.addTarget(target, action: customColorAction, for: .touchUpInside)
@@ -310,11 +308,12 @@ final class KCColorPalettePanelRenderer {
     private func applySegmentAppearance(to button: UIButton, active: Bool) {
         button.setTitleColor(
             active
-                ? UIColor(red: 0.39, green: 0.26, blue: 0.0, alpha: 1.0)
-                : UIColor(red: 0.49, green: 0.53, blue: 0.59, alpha: 1.0),
+                ? KCEditorVisualStyle.accentInkColor
+                : KCEditorVisualStyle.mutedInkColor,
             for: .normal
         )
-        button.backgroundColor = active ? UIColor(red: 0.97, green: 0.86, blue: 0.48, alpha: 1.0) : UIColor.clear
+        button.backgroundColor = active ? KCEditorVisualStyle.accentColor : UIColor.clear
         button.layer.borderWidth = active ? 1.0 : 0.0
+        button.layer.borderColor = active ? KCEditorVisualStyle.activeBorderColor : KCEditorVisualStyle.borderColor
     }
 }

@@ -11,7 +11,7 @@ App 层画笔 / 印章 / 橡皮编辑面板组装器：承接尺寸 slider、尺
 - 创建印章横向滚动列表，并提供 `reloadStickerButtons(...)` 刷新入口。
 - 创建橡皮擦 circle/cloud/star 形状按钮。
 - 创建印章前置和删除按钮，并提供启用/禁用态样式刷新入口。
-- 统一维护印章分类、印章按钮、印章编辑按钮的背景色、tint、边框、阴影和禁用态表现，并复用 `KCEditorVisualStyle` 的 App 级视觉 token。
+- 统一维护印章分类、印章素材按钮、印章编辑按钮的背景色、tint、边框、阴影、选中态和禁用态表现，并复用 `KCEditorVisualStyle` 的 App 级状态视觉 helper。
 
 ## 2. 边界
 
@@ -27,13 +27,15 @@ App 层画笔 / 印章 / 橡皮编辑面板组装器：承接尺寸 slider、尺
 - `buildSizePanel(_:)` 委托 `renderPanel(...)` 创建面板，并保存返回的 slider、预览 layer、印章行、橡皮按钮和印章编辑按钮引用。
 - `reloadStickerButtons()` 委托 `reloadStickerButtons(...)` 重建印章按钮列表，主控制器继续负责当前印章选择和画布状态协调。
 - `refreshStickerCategoryButtons()` 委托 `applyStickerCategorySelection(...)` 应用分类选中态。
+- `selectStickerSymbol(_:)` 委托 `applyStickerSymbolSelection(...)` 应用印章素材按钮选中态，避免主控制器硬编码按钮颜色或缩放。
 - `refreshStickerEditButtons()` 委托 `applyStickerEditButtonsEnabled(...)` 应用印章编辑按钮可用态。
-- `applyPillSelectionAppearance(...)` 和 `applyStampButtonAppearance(...)` 作为 T056 视觉精修的本地样式入口，内部复用 `KCEditorVisualStyle`，避免分类/印章/编辑按钮各自散落样式或复制 token。
+- `applyPillSelectionAppearance(...)` 和 `applyStampButtonAppearance(...)` 作为 T056/T061 视觉精修的本地样式入口，内部复用 `KCEditorVisualStyle.applySelectableButtonAppearance(...)` / `applyActionButtonAvailability(...)`，避免分类/印章/编辑按钮各自散落样式或复制 token。
 
 ## 4. 验收规则
 
 - 不允许在 `KCMainViewController.buildSizePanel(_:)` 重新手写尺寸 slider、印章滚动行、橡皮按钮或印章编辑按钮组装。
 - 不允许把画布状态、选中印章状态、undo/redo 或印章手势下沉到本组装器。
-- 不允许新增印章分类/印章列表/编辑按钮样式时绕过本组装器的样式 helper，或在本文件复制一套独立颜色/阴影 token。
+- 不允许新增印章分类/印章列表/编辑按钮样式时绕过本组装器的样式 helper，或在本文件复制一套独立颜色/阴影/禁用态 token。
+- 不允许在 `KCMainViewController.selectStickerSymbol(_:)` 重新手写印章素材按钮的背景、边框、阴影或缩放。
 - 印章列表刷新后仍必须由主控制器调用 `selectStickerSymbol(_:)` 完成当前印章选择协调。
 - iPhone 与 iPad build、`swift test` 和 validator 必须通过。

@@ -17,10 +17,14 @@ enum KCEditorVisualStyle {
     static let compactBackgroundColor = UIColor(white: 1.0, alpha: 0.80)
     static let pillBackgroundColor = UIColor(white: 1.0, alpha: 0.68)
     static let disabledBackgroundColor = UIColor(white: 1.0, alpha: 0.58)
+    static let saveActionColor = UIColor(red: 0.54, green: 0.80, blue: 0.98, alpha: 1.0)
     static let borderColor = UIColor(white: 1.0, alpha: 0.78).cgColor
     static let activeBorderColor = UIColor(white: 1.0, alpha: 0.94).cgColor
     static let subtleBorderColor = UIColor(red: 0.17, green: 0.22, blue: 0.30, alpha: 0.08).cgColor
     static let shadowColor = UIColor(red: 0.37, green: 0.32, blue: 0.24, alpha: 1.0).cgColor
+    static let inactiveShadowOpacity: Float = 0.05
+    static let activeShadowOpacity: Float = 0.09
+    static let disabledAlpha: CGFloat = 0.56
 
     static func applyFloatingPanelChrome(to panel: UIView, blurView: UIVisualEffectView) {
         panel.backgroundColor = UIColor.clear
@@ -77,6 +81,40 @@ enum KCEditorVisualStyle {
             shadowOffset: CGSize(width: 0.0, height: 2.0)
         )
         button.tintColor = accent ? accentInkColor : inkColor
+    }
+
+    static func applySelectableButtonAppearance(
+        to button: UIButton,
+        active: Bool,
+        baseBackgroundColor: UIColor = raisedBackgroundColor,
+        selectedBackgroundColor: UIColor = accentColor,
+        inactiveTintColor: UIColor = inkColor,
+        activeTintColor: UIColor = accentInkColor,
+        activeShadowRadius: CGFloat = 8.0,
+        inactiveShadowRadius: CGFloat = 5.5
+    ) {
+        button.backgroundColor = active ? selectedBackgroundColor : baseBackgroundColor
+        button.tintColor = active ? activeTintColor : inactiveTintColor
+        button.layer.borderWidth = 1.0
+        button.layer.borderColor = active ? activeBorderColor : borderColor
+        button.layer.cornerCurve = .continuous
+        button.layer.shadowColor = shadowColor
+        button.layer.shadowOpacity = active ? activeShadowOpacity : inactiveShadowOpacity
+        button.layer.shadowRadius = active ? activeShadowRadius : inactiveShadowRadius
+        button.layer.shadowOffset = CGSize(width: 0.0, height: active ? 4.0 : 2.0)
+        button.transform = .identity
+    }
+
+    static func applyActionButtonAvailability(to button: UIButton, enabled: Bool, accentWhenEnabled: UIColor? = nil) {
+        button.isEnabled = enabled
+        button.alpha = enabled ? 1.0 : disabledAlpha
+        button.backgroundColor = enabled ? (accentWhenEnabled ?? compactBackgroundColor) : disabledBackgroundColor
+        button.tintColor = enabled ? inkColor : mutedInkColor
+        button.layer.borderWidth = 1.0
+        button.layer.borderColor = enabled ? borderColor : subtleBorderColor
+        button.layer.shadowOpacity = enabled ? inactiveShadowOpacity : 0.0
+        button.layer.shadowRadius = enabled ? 5.5 : 0.0
+        button.layer.shadowOffset = CGSize(width: 0.0, height: 2.0)
     }
 }
 

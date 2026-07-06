@@ -11,6 +11,10 @@
 "top.import-photo.title" = "Import Photo";
 "top.save.title" = "Save";
 
+/* Save feedback */
+"toast.save.success" = "Saved";
+"toast.save.failed" = "Unable to Save";
+
 /* Left tool rail */
 "tool.brush.title" = "Brush";
 "tool.eraser.title" = "Eraser";

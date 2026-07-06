@@ -11,6 +11,10 @@
 "top.import-photo.title" = "导入照片";
 "top.save.title" = "保存";
 
+/* 保存反馈 */
+"toast.save.success" = "已保存";
+"toast.save.failed" = "无法保存";
+
 /* 左侧工具栏 */
 "tool.brush.title" = "画笔";
 "tool.eraser.title" = "橡皮";

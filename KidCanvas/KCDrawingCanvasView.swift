@@ -113,6 +113,9 @@ final class KCDrawingCanvasView: UIView, UIGestureRecognizerDelegate {
     private weak var selectedStickerView: KDStickerView?
 
     private static let maximumHistoryStates = 48
+    private static let stickerCornerRadius: CGFloat = 18.0
+    private static let stickerIdleShadowOpacity: Float = 0.16
+    private static let stickerSelectedShadowOpacity: Float = 0.26
 
     override init(frame: CGRect) {
         super.init(frame: frame)
@@ -677,10 +680,7 @@ final class KCDrawingCanvasView: UIView, UIGestureRecognizerDelegate {
         sticker.isUserInteractionEnabled = true
         sticker.bounds = CGRect(x: 0, y: 0, width: 72, height: 72)
         sticker.contentMode = .scaleAspectFit
-        sticker.layer.shadowColor = UIColor(red: 0.18, green: 0.22, blue: 0.28, alpha: 1.0).cgColor
-        sticker.layer.shadowOpacity = 0.16
-        sticker.layer.shadowRadius = 8.0
-        sticker.layer.shadowOffset = CGSize(width: 0.0, height: 4.0)
+        applyStickerIdleAppearance(to: sticker)
 
         let pan = UIPanGestureRecognizer(target: self, action: #selector(handleStickerPan(_:)))
         pan.delegate = self
@@ -821,16 +821,38 @@ final class KCDrawingCanvasView: UIView, UIGestureRecognizerDelegate {
     private func selectStickerView(_ sticker: KDStickerView) {
         deselectSticker()
         selectedStickerView = sticker
-        sticker.layer.borderWidth = 2.0
-        sticker.layer.borderColor = UIColor(red: 0.42, green: 0.74, blue: 0.97, alpha: 0.65).cgColor
-        sticker.layer.cornerRadius = 16.0
+        applyStickerSelectedAppearance(to: sticker)
         notifySelectionChanged()
     }
 
     private func deselectSticker() {
-        selectedStickerView?.layer.borderWidth = 0.0
+        if let selectedStickerView {
+            applyStickerIdleAppearance(to: selectedStickerView)
+        }
         selectedStickerView = nil
         notifySelectionChanged()
+    }
+
+    private func applyStickerIdleAppearance(to sticker: KDStickerView) {
+        sticker.layer.cornerRadius = Self.stickerCornerRadius
+        sticker.layer.cornerCurve = .continuous
+        sticker.layer.borderWidth = 0.0
+        sticker.layer.borderColor = UIColor.clear.cgColor
+        sticker.layer.shadowColor = KCEditorVisualStyle.shadowColor
+        sticker.layer.shadowOpacity = Self.stickerIdleShadowOpacity
+        sticker.layer.shadowRadius = 8.0
+        sticker.layer.shadowOffset = CGSize(width: 0.0, height: 4.0)
+    }
+
+    private func applyStickerSelectedAppearance(to sticker: KDStickerView) {
+        sticker.layer.cornerRadius = Self.stickerCornerRadius
+        sticker.layer.cornerCurve = .continuous
+        sticker.layer.borderWidth = 3.0
+        sticker.layer.borderColor = KCEditorVisualStyle.saveActionColor.withAlphaComponent(0.88).cgColor
+        sticker.layer.shadowColor = KCEditorVisualStyle.saveActionColor.cgColor
+        sticker.layer.shadowOpacity = Self.stickerSelectedShadowOpacity
+        sticker.layer.shadowRadius = 12.0
+        sticker.layer.shadowOffset = CGSize(width: 0.0, height: 5.0)
     }
 
     private func notifySelectionChanged() {

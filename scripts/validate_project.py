@@ -69,6 +69,8 @@ def localization_checks(zh_localizable, en_localizable, zh_info_plist, en_info_p
             "static var newCanvasTitle: String",
             "static var undoTitle: String",
             "static var redoTitle: String",
+            "static var saveSuccessToastTitle: String",
+            "static var saveFailedToastTitle: String",
         ]:
             checks.append(require_text(entry_text, top_toolbar_entry, f"Localization entry exposes top toolbar text: {top_toolbar_entry}"))
 
@@ -125,6 +127,23 @@ def localization_checks(zh_localizable, en_localizable, zh_info_plist, en_info_p
         locale_text = path.read_text(encoding="utf-8")
         for expected_line in expected_lines:
             checks.append(require_text(locale_text, expected_line, f"{locale_label} top toolbar text is localized: {expected_line}"))
+
+    expected_save_toast_strings = [
+        (zh_localizable, "zh-Hans", [
+            '"toast.save.success" = "已保存";',
+            '"toast.save.failed" = "无法保存";',
+        ]),
+        (en_localizable, "en", [
+            '"toast.save.success" = "Saved";',
+            '"toast.save.failed" = "Unable to Save";',
+        ]),
+    ]
+    for path, locale_label, expected_lines in expected_save_toast_strings:
+        if not path.exists():
+            continue
+        locale_text = path.read_text(encoding="utf-8")
+        for expected_line in expected_lines:
+            checks.append(require_text(locale_text, expected_line, f"{locale_label} save toast text is localized: {expected_line}"))
 
     # InfoPlist.strings must localize the photo permission keys in both languages.
     for locale_label, info_path in [("zh-Hans", zh_info_plist), ("en", en_info_plist)]:
@@ -189,16 +208,25 @@ def product_stamp_naming_checks():
 def delivery_acceptance_checks():
     checks = []
     checklist_path = ROOT / "docs" / "testing" / "DELIVERY_ACCEPTANCE_CHECKLIST.md"
+    runtime_docs_path = ROOT / "docs" / "testing" / "RUNTIME_SMOKE_TEST.md"
     docs_index_path = ROOT / "docs" / "README.md"
+    runtime_acceptance_path = ROOT / "scripts" / "runtime_acceptance_test.sh"
 
     if not checklist_path.exists():
         return [fail("Delivery acceptance checklist exists")]
 
     checklist_text = checklist_path.read_text(encoding="utf-8")
+    runtime_docs_text = runtime_docs_path.read_text(encoding="utf-8") if runtime_docs_path.exists() else ""
     docs_index_text = docs_index_path.read_text(encoding="utf-8")
+    runtime_acceptance_text = runtime_acceptance_path.read_text(encoding="utf-8") if runtime_acceptance_path.exists() else ""
 
     checks.append(ok("Delivery acceptance checklist exists"))
     checks.append(require_text(docs_index_text, "./testing/DELIVERY_ACCEPTANCE_CHECKLIST.md", "Docs index links the delivery acceptance checklist"))
+    checks.append(ok("Runtime acceptance script exists") if runtime_acceptance_path.exists() else fail("Runtime acceptance script exists"))
+    checks.append(ok("Runtime acceptance script is executable") if runtime_acceptance_path.exists() and (runtime_acceptance_path.stat().st_mode & 0o111) else fail("Runtime acceptance script is executable"))
+    checks.append(require_text(runtime_acceptance_text, "--kc-runtime-empty-save-check", "Runtime acceptance script launches the empty-save Debug probe"))
+    checks.append(require_text(runtime_acceptance_text, "kc_runtime_acceptance_empty_save.json", "Runtime acceptance script reads the empty-save JSON result"))
+    checks.append(require_text(runtime_acceptance_text, "result.get(\"passed\")", "Runtime acceptance script fails when the JSON result is not passing"))
 
     required_flows = [
         "F01 | 启动",
@@ -216,6 +244,9 @@ def delivery_acceptance_checks():
     ]
     for flow in required_flows:
         checks.append(require_text(checklist_text, flow, f"Delivery checklist covers core flow: {flow}"))
+    checks.append(require_text(checklist_text, "空画布点保存应显示“无法保存”", "Delivery checklist requires localized save-failure feedback"))
+    checks.append(require_text(checklist_text, "画一笔后保存应显示“已保存”", "Delivery checklist requires localized save-success feedback"))
+    checks.append(require_text(checklist_text, "相册权限弹窗", "Delivery checklist records photo permission prompt validation"))
 
     required_commands = [
         "python3 scripts/validate_project.py",
@@ -224,6 +255,8 @@ def delivery_acceptance_checks():
         "xcodebuild -project KidCanvas.xcodeproj -scheme KidCanvas -destination 'platform=iOS Simulator,name=iPad Pro 11 M4' build -quiet",
         'scripts/runtime_smoke_test.sh "iPhone 17 Pro"',
         'scripts/runtime_smoke_test.sh "iPad Pro 11 M4"',
+        'scripts/runtime_acceptance_test.sh "iPhone 17 Pro"',
+        'scripts/runtime_acceptance_test.sh "iPad Pro 11 M4"',
         "git diff --check",
     ]
     for command in required_commands:
@@ -231,6 +264,8 @@ def delivery_acceptance_checks():
 
     checks.append(require_text(checklist_text, "人工触控", "Delivery checklist separates manual touch acceptance from automated checks"))
     checks.append(require_text(checklist_text, "文档同步", "Delivery checklist requires documentation sync in delivery records"))
+    checks.append(require_text(runtime_docs_text, "runtime_acceptance_test.sh", "Runtime testing docs cover runtime acceptance"))
+    checks.append(require_text(runtime_docs_text, "空画布保存反馈", "Runtime testing docs explain the empty-canvas save acceptance"))
     return checks
 
 
@@ -599,6 +634,7 @@ def app_feature_checks(
     checks.append(ok("Project targets iPhone and iPad") if 'TARGETED_DEVICE_FAMILY = "1,2"' in pbx_text else fail("Project is not configured for iPhone and iPad"))
     checks.append(ok("ARC is enabled") if "CLANG_ENABLE_OBJC_ARC = YES" in pbx_text else fail("ARC is not enabled"))
     checks.append(ok("Deployment target is iOS 16") if "IPHONEOS_DEPLOYMENT_TARGET = 16.0" in pbx_text else fail("Deployment target is not iOS 16"))
+    checks.append(require_text(pbx_text, 'SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";', "Debug Swift compilation conditions keep DEBUG-only probes available"))
     checks.append(ok("Manual Info.plist is configured") if "GENERATE_INFOPLIST_FILE = NO" in pbx_text and "INFOPLIST_FILE = KidCanvas/Info.plist" in pbx_text else fail("Manual Info.plist build settings are not configured"))
     bundle_ids = re.findall(r"PRODUCT_BUNDLE_IDENTIFIER = ([^;]+);", pbx_text)
     checks.append(ok("Bundle identifier is configured") if bundle_ids else fail("Bundle identifier is missing"))
@@ -631,6 +667,9 @@ def app_feature_checks(
     checks.append(require_text(editor_ui_factory_text, "applyRaisedButtonAppearance", "Raised button styling is centralized"))
     checks.append(require_text(editor_ui_factory_text, "applyCompactButtonAppearance", "Compact button styling is centralized"))
     checks.append(require_text(editor_ui_factory_text, "applySmallToolButtonAppearance", "Small tool button styling is centralized without overlapping helper calls"))
+    checks.append(require_text(editor_ui_factory_text, "applySelectableButtonAppearance", "Selectable editor button styling is centralized"))
+    checks.append(require_text(editor_ui_factory_text, "applyActionButtonAvailability", "Editor action button availability styling is centralized"))
+    checks.append(require_text(editor_ui_factory_text, "saveActionColor", "Save action color token is centralized"))
     checks.append(require_text(editor_ui_factory_text, "KCEditorVisualStyle.applyFloatingPanelChrome", "Floating panels use centralized chrome styling"))
     checks.append(require_count_at_least(editor_ui_factory_text, r"KCEditorVisualStyle\.applyRaisedButtonAppearance", 4, "Primary editor buttons reuse raised-button styling"))
     checks.append(require_count_at_least(editor_ui_factory_text, r"KCEditorVisualStyle\.applyCompactButtonAppearance", 1, "Compact editor controls reuse compact-button styling"))
@@ -638,8 +677,8 @@ def app_feature_checks(
     checks.append(require_text(brush_sticker_panel_text, "func applyPillSelectionAppearance", "Brush/stamp panel centralizes pill selection styling"))
     checks.append(require_text(brush_sticker_panel_text, "func applyStampButtonAppearance", "Brush/stamp panel centralizes stamp button styling"))
     checks.append(require_text(brush_sticker_panel_text, "button.layer.cornerCurve = .continuous", "Brush/stamp panel buttons use continuous corners"))
-    checks.append(require_text(brush_sticker_panel_text, "KCEditorVisualStyle.accentColor", "Brush/stamp panel reuses shared editor visual tokens"))
-    checks.append(require_text(brush_sticker_panel_text, "KCEditorVisualStyle.shadowColor", "Brush/stamp panel reuses shared shadow token"))
+    checks.append(require_text(brush_sticker_panel_text, "KCEditorVisualStyle.applySelectableButtonAppearance", "Brush/stamp panel reuses shared selectable button styling"))
+    checks.append(require_text(brush_sticker_panel_text, "KCEditorVisualStyle.applyActionButtonAvailability", "Brush/stamp panel reuses shared disabled button styling"))
     checks.append(forbid_text(brush_sticker_panel_text, "activePillBackgroundColor", "Brush/stamp panel does not duplicate active pill color tokens"))
     checks.append(forbid_text(brush_sticker_panel_text, "inactiveButtonBackgroundColor", "Brush/stamp panel does not duplicate button color tokens"))
     checks.append(require_text(main_text, "private var editorUIFactory: KCEditorUIFactory", "Main view controller delegates common UI creation to KCEditorUIFactory"))
@@ -666,8 +705,16 @@ def app_feature_checks(
     checks.append(require_text(toast_presenter_text, "func showSaveToast(success: Bool, in view: UIView, anchorView: UIView) -> UIView", "Save toast presentation lives in KCToastPresenter"))
     checks.append(require_text(toast_presenter_text, "func dismiss(_ toastView: UIView?)", "Save toast dismissal lives in KCToastPresenter"))
     checks.append(require_text(toast_presenter_text, "UIVisualEffectView(effect: UIBlurEffect(style: .systemThinMaterialLight))", "Toast keeps the existing blur style"))
+    checks.append(require_text(toast_presenter_text, "KCL10n.saveSuccessToastTitle", "Save success toast uses localized text"))
+    checks.append(require_text(toast_presenter_text, "KCL10n.saveFailedToastTitle", "Save failure toast uses localized text"))
+    checks.append(require_text(toast_presenter_text, "toast.accessibilityLabel = titleLabel.text", "Save toast exposes localized accessibility text"))
     checks.append(require_text(main_text, "self.toastPresenter.showSaveToast(success: success, in: self.view, anchorView: self.saveButton)", "Main view controller delegates save toast presentation"))
     checks.append(require_text(main_text, "self.toastPresenter.dismiss(self.saveToastView)", "Main view controller delegates save toast dismissal"))
+    checks.append(require_text(main_text, "#if DEBUG", "Runtime acceptance probe is Debug-only"))
+    checks.append(require_text(main_text, "--kc-runtime-empty-save-check", "Runtime acceptance probe is gated by an explicit launch argument"))
+    checks.append(require_text(main_text, "kc_runtime_acceptance_empty_save.json", "Runtime acceptance probe writes the empty-save JSON result"))
+    checks.append(require_text(main_text, "saveButtonEnabledBeforeTap", "Runtime acceptance probe verifies empty-canvas save remains tappable"))
+    checks.append(require_text(main_text, "failureToastVisible", "Runtime acceptance probe verifies the localized save-failure toast"))
     checks.append(forbid_text(main_text, "let toast = UIVisualEffectView", "Save toast view construction is no longer owned by the main view controller"))
     checks.append(forbid_text(main_text, "UIImage.SymbolConfiguration(pointSize: 24.0", "Save toast icon construction is no longer owned by the main view controller"))
     checks.append(require_text(pbx_text, "KCColorPalettePanelRenderer.swift in Sources", "Color palette panel renderer is included in the app target sources"))
@@ -679,6 +726,9 @@ def app_feature_checks(
     checks.append(require_text(color_palette_renderer_text, "func reloadRecentColorRow", "Recent color row rendering lives in KCColorPalettePanelRenderer"))
     checks.append(require_text(color_palette_renderer_text, "func updateSegmentButtons", "Palette segment selected-state styling lives in KCColorPalettePanelRenderer"))
     checks.append(require_text(color_palette_renderer_text, "func applyActiveColor", "Current color highlighting lives in KCColorPalettePanelRenderer"))
+    checks.append(require_text(color_palette_renderer_text, "KCEditorVisualStyle.applyCompactButtonAppearance", "Custom color button reuses shared compact styling"))
+    checks.append(require_text(color_palette_renderer_text, "KCEditorVisualStyle.accentColor", "Palette segment selected state reuses shared accent token"))
+    checks.append(require_text(color_palette_renderer_text, "KCEditorVisualStyle.pillBackgroundColor", "Palette segment container reuses shared pill background token"))
     checks.append(require_text(main_text, "private(set) lazy var colorPaletteRenderer: KCColorPalettePanelRenderer", "Main view controller owns a color palette renderer instance"))
     checks.append(require_text(main_text, "self.colorPaletteRenderer.renderPanel", "Main view controller delegates color panel construction"))
     checks.append(require_text(main_text, "self.colorPaletteRenderer.reloadPaletteGrid", "Main view controller delegates palette grid rendering"))
@@ -696,16 +746,20 @@ def app_feature_checks(
     checks.append(require_text(brush_sticker_panel_text, "func renderPanel", "Brush/sticker panel assembly lives in KCBrushStickerPanelView"))
     checks.append(require_text(brush_sticker_panel_text, "func reloadStickerButtons", "Sticker list rendering lives in KCBrushStickerPanelView"))
     checks.append(require_text(brush_sticker_panel_text, "func applyStickerCategorySelection", "Sticker category selected-state styling lives in KCBrushStickerPanelView"))
+    checks.append(require_text(brush_sticker_panel_text, "func applyStickerSymbolSelection", "Sticker symbol selected-state styling lives in KCBrushStickerPanelView"))
     checks.append(require_text(brush_sticker_panel_text, "func applyStickerEditButtonsEnabled", "Sticker edit button enabled styling lives in KCBrushStickerPanelView"))
     checks.append(require_text(main_text, "private(set) lazy var brushStickerPanelView: KCBrushStickerPanelView", "Main view controller owns a brush/sticker panel view instance"))
     checks.append(require_text(main_text, "self.brushStickerPanelView.renderPanel", "Main view controller delegates brush/sticker panel assembly"))
     checks.append(require_text(main_text, "self.brushStickerPanelView.reloadStickerButtons", "Main view controller delegates sticker list rendering"))
     checks.append(require_text(main_text, "self.brushStickerPanelView.applyStickerCategorySelection", "Main view controller delegates sticker category selected-state styling"))
+    checks.append(require_text(main_text, "self.brushStickerPanelView.applyStickerSymbolSelection", "Main view controller delegates sticker symbol selected-state styling"))
     checks.append(require_text(main_text, "self.brushStickerPanelView.applyStickerEditButtonsEnabled", "Main view controller delegates sticker edit button styling"))
     checks.append(forbid_text(main_text, "self.sizeSlider = UISlider()", "Size slider construction is no longer owned by the main view controller"))
     checks.append(forbid_text(main_text, "let stickerScrollView = UIScrollView()", "Sticker scroll view assembly is no longer owned by the main view controller"))
     checks.append(forbid_text(main_text, "self.circleEraserButton = self.smallToolButtonWithSymbolName", "Eraser shape button assembly is no longer owned by the main view controller"))
     checks.append(forbid_text(main_text, "self.frontStickerButton = self.smallToolButtonWithSymbolName", "Sticker edit button assembly is no longer owned by the main view controller"))
+    checks.append(forbid_text(main_text, "button.transform = active ? CGAffineTransform(scaleX: 1.05", "Sticker symbol selection does not resize buttons or shift layout in the main controller"))
+    checks.append(forbid_text(main_text, "UIColor(red: 0.86, green: 0.94, blue: 1.0", "Sticker symbol selection color is no longer hardcoded in the main controller"))
     checks.append(require_text(pbx_text, "KCBrushDockFeature.swift in Sources", "Brush Dock feature is included in the app target sources"))
     checks.append(require_text(brush_dock_feature_text, "final class KCBrushDockFeature", "Brush Dock configuration is extracted to KCBrushDockFeature"))
     checks.append(require_text(brush_dock_feature_text, "struct KCBrushDockItem: Equatable", "Brush Dock item DTO is explicit and comparable"))
@@ -713,10 +767,10 @@ def app_feature_checks(
     checks.append(require_text(brush_dock_feature_text, "func brushColor(for style: KDBrushStyle) -> UIColor", "Brush accent colors live in KCBrushDockFeature"))
     checks.append(require_text(brush_dock_feature_text, "func isButton(_ button: KDBrushButton, activeForToolMode toolMode: KDToolMode, brushStyle: KDBrushStyle) -> Bool", "Brush Dock selection matching lives in KCBrushDockFeature"))
     checks.append(require_text(brush_dock_feature_text, "func applySelectionAppearance(to button: KDBrushButton, active: Bool)", "Brush Dock selected-state styling lives in KCBrushDockFeature"))
-    checks.append(require_text(brush_dock_feature_text, "KCEditorVisualStyle.accentColor", "Brush Dock selected background reuses shared editor visual token"))
-    checks.append(require_text(brush_dock_feature_text, "KCEditorVisualStyle.borderColor", "Brush Dock inactive border reuses shared editor visual token"))
+    checks.append(require_text(brush_dock_feature_text, "KCEditorVisualStyle.applySelectableButtonAppearance", "Brush Dock selected-state chrome reuses shared editor visual token"))
     checks.append(forbid_text(brush_dock_feature_text, "activeBackgroundColor", "Brush Dock does not duplicate selected background token"))
     checks.append(forbid_text(brush_dock_feature_text, "inactiveBorderColor", "Brush Dock does not duplicate inactive border token"))
+    checks.append(forbid_text(brush_dock_feature_text, "CGAffineTransform(scaleX", "Brush Dock selection does not resize buttons or shift layout"))
     checks.append(require_text(brush_dock_feature_text, 'id: "pencil"', "Brush Dock feature declares the pencil item"))
     checks.append(require_text(brush_dock_feature_text, 'id: "pen"', "Brush Dock feature declares the pen item"))
     checks.append(require_text(brush_dock_feature_text, 'id: "crayon"', "Brush Dock feature declares the crayon item"))
@@ -733,6 +787,10 @@ def app_feature_checks(
     checks.append(require_text(eraser_controls_feature_text, "func previewPath(for shape: KDEraserShape, center: CGPoint, size: CGFloat) -> UIBezierPath", "Eraser preview path creation lives in KCEraserControlsFeature"))
     checks.append(require_text(eraser_controls_feature_text, "func isShape(_ shape: KDEraserShape, activeFor currentShape: KDEraserShape) -> Bool", "Eraser shape active-state matching lives in KCEraserControlsFeature"))
     checks.append(require_text(eraser_controls_feature_text, "func applyShapeButtonAppearance(to button: UIButton, active: Bool)", "Eraser shape button selected-state styling lives in KCEraserControlsFeature"))
+    checks.append(require_text(eraser_controls_feature_text, "KCEditorVisualStyle.applySelectableButtonAppearance", "Eraser shape buttons reuse shared selectable button styling"))
+    checks.append(forbid_text(eraser_controls_feature_text, "activeBackgroundColor", "Eraser controls do not duplicate selected background token"))
+    checks.append(forbid_text(eraser_controls_feature_text, "inactiveBorderColor", "Eraser controls do not duplicate inactive border token"))
+    checks.append(forbid_text(eraser_controls_feature_text, "CGAffineTransform(scaleX", "Eraser shape selection does not resize buttons or shift layout"))
     checks.append(require_text(main_text, "private(set) lazy var eraserControlsFeature: KCEraserControlsFeature", "Main view controller owns an Eraser Controls feature instance"))
     checks.append(require_text(main_text, "self.eraserControlsFeature.previewPath(", "Main view controller delegates eraser preview path creation"))
     checks.append(require_text(main_text, "self.eraserControlsFeature.applyShapeButtonAppearance(to: item.button, active: active)", "Main view controller delegates eraser shape button selected-state styling"))
@@ -757,8 +815,7 @@ def app_feature_checks(
     checks.append(require_text(tool_rail_feature_text, "func accentColor(for mode: KDToolMode) -> UIColor?", "Tool Rail accent colors live in KCToolRailFeature"))
     checks.append(require_text(tool_rail_feature_text, "func isButton(_ button: KDToolButton, activeFor toolMode: KDToolMode) -> Bool", "Tool Rail active-state matching lives in KCToolRailFeature"))
     checks.append(require_text(tool_rail_feature_text, "func applySelectionAppearance(to button: KDToolButton, active: Bool)", "Tool Rail selected-state styling lives in KCToolRailFeature"))
-    checks.append(require_text(tool_rail_feature_text, "KCEditorVisualStyle.accentColor", "Tool Rail selected background reuses shared editor visual token"))
-    checks.append(require_text(tool_rail_feature_text, "KCEditorVisualStyle.borderColor", "Tool Rail inactive border reuses shared editor visual token"))
+    checks.append(require_text(tool_rail_feature_text, "KCEditorVisualStyle.applySelectableButtonAppearance", "Tool Rail selected-state chrome reuses shared editor visual token"))
     checks.append(forbid_text(tool_rail_feature_text, "activeBackgroundColor", "Tool Rail does not duplicate selected background token"))
     checks.append(forbid_text(tool_rail_feature_text, "inactiveBorderColor", "Tool Rail does not duplicate inactive border token"))
     checks.append(require_text(tool_rail_feature_text, 'id: "brush"', "Tool Rail feature declares the brush item"))
@@ -774,7 +831,8 @@ def app_feature_checks(
     checks.append(forbid_text(main_text, "let items: [(symbol: String, mode: KDToolMode, id: String, label: String)]", "Tool Rail tuple configuration is no longer hardcoded in the main view controller"))
     checks.append(forbid_text(main_text, "button.backgroundColor = active\n                ? UIColor(red: 0.66, green: 0.89, blue: 0.72", "Tool Rail selected background is no longer written in the main view controller"))
     checks.append(forbid_text(main_text, "button.layer.shadowOpacity = active ? 0.14 : 0.08", "Tool Rail selected shadow is no longer written in the main view controller"))
-    checks.append(require_text(tool_rail_feature_text, "button.transform = .identity", "Left tool selection does not scale buttons outside the rail"))
+    checks.append(require_text(editor_ui_factory_text, "button.transform = .identity", "Shared selectable styling keeps button frames stable"))
+    checks.append(forbid_text(tool_rail_feature_text, "CGAffineTransform(scaleX", "Left tool selection does not scale buttons outside the rail"))
     checks.append(require_text(pbx_text, "KCDeviceLayoutMetrics.swift in Sources", "Device layout metrics are included in the app target sources"))
     checks.append(require_text(device_layout_metrics_text, "struct KCDeviceLayoutMetrics", "Device layout metrics are extracted from the main view controller"))
     checks.append(require_text(device_layout_metrics_text, "userInterfaceIdiom == .phone", "Device layout metrics detect compact phone layout"))
@@ -979,8 +1037,8 @@ def app_feature_checks(
     checks.append(require_text(main_text, "func normalizedImage", "Album import rejects invalid image dimensions"))
     checks.append(require_text(main_text, "UIImageWriteToSavedPhotosAlbum", "Save to Photos exists"))
     checks.append(require_regex(main_text, r"func didTapSaveSession[\s\S]*hasVisibleContent[\s\S]*showSaveToastWithSuccess\(false\)", "Save action refuses empty canvas before creating history or Photos output", re.S))
-    checks.append(require_text(canvas_feature_text, "saveButton.isEnabled = state.canSave", "Save button is disabled for empty canvas"))
-    checks.append(require_regex(canvas_feature_text, r"saveButton\.tintColor = saveButton\.isEnabled[\s\S]*0\.55[\s\S]*0\.60[\s\S]*0\.67", "Disabled save button icon is visually muted"))
+    checks.append(require_text(canvas_feature_text, "saveButton.isEnabled = true", "Save button remains tappable so empty-canvas save can show localized feedback"))
+    checks.append(require_regex(canvas_feature_text, r"KCEditorVisualStyle\.applyActionButtonAvailability\([\s\S]*to: saveButton[\s\S]*enabled: state\.canSave[\s\S]*saveButton\.isEnabled = true", "Empty-canvas save is visually muted but remains tappable for feedback"))
     checks.append(require_text(session_store_bridge_text, "generateThumbnail", "History thumbnails are generated"))
     checks.append(require_text(kc_session_store_text, '"draft.png"', "Draft session persistence exists"))
     checks.append(require_text(session_store_bridge_text, "func saveDraftImage", "Draft save reports write success"))
@@ -1033,7 +1091,11 @@ def app_feature_checks(
     checks.append(require_text(canvas_feature_text, "func applyActionButtonAppearance(", "Canvas Feature applies undo/redo/save button appearance"))
     checks.append(require_text(canvas_feature_text, "undoButton.isEnabled = state.canUndo", "Canvas Feature applies undo availability"))
     checks.append(require_text(canvas_feature_text, "redoButton.isEnabled = state.canRedo", "Canvas Feature applies redo availability"))
-    checks.append(require_text(canvas_feature_text, "saveButton.isEnabled = state.canSave", "Canvas Feature applies save availability"))
+    checks.append(require_text(canvas_feature_text, "saveButton.isEnabled = true", "Canvas Feature keeps save action tappable for empty-canvas feedback"))
+    checks.append(require_text(canvas_feature_text, "KCEditorVisualStyle.applyActionButtonAvailability", "Canvas action buttons reuse shared availability styling"))
+    checks.append(require_text(canvas_feature_text, "KCEditorVisualStyle.saveActionColor", "Save button uses centralized action color token"))
+    checks.append(forbid_text(canvas_feature_text, "UIColor(white: 1.0, alpha: 0.76)", "Canvas action buttons do not duplicate enabled background color"))
+    checks.append(forbid_text(canvas_feature_text, "UIColor(red: 0.54, green: 0.80, blue: 0.98", "Canvas action buttons do not duplicate save action color"))
     checks.append(require_text(main_text, "private(set) lazy var canvasFeature: KCCanvasFeature", "Main view controller owns a Canvas Feature instance"))
     checks.append(require_text(main_text, "self.canvasFeature.makeCanvasView(delegate: self)", "Main view controller delegates canvas creation to KCCanvasFeature"))
     checks.append(require_regex(main_text, r"func refreshActionButtons[\s\S]*self\.canvasFeature\.actionState\(for: self\.canvasView\)[\s\S]*self\.canvasFeature\.applyActionButtonAppearance", "Save button availability is delegated to KCCanvasFeature"))
@@ -1055,6 +1117,10 @@ def app_feature_checks(
     checks.append(require_text(canvas_text, "func constrainStickerView", "Sticker views are constrained after insert/restore"))
     checks.append(require_text(canvas_text, "func constrainStickerCenter", "Sticker centers are constrained to the canvas"))
     checks.append(require_regex(canvas_text, r"func handleStickerPinch[\s\S]*constrainStickerScale[\s\S]*constrainStickerCenter", "Sticker pinch keeps scale and position bounded"))
+    checks.append(require_text(canvas_text, "func applyStickerSelectedAppearance", "Sticker selected-state feedback is centralized in the canvas view"))
+    checks.append(require_text(canvas_text, "KCEditorVisualStyle.saveActionColor", "Sticker selected-state border reuses shared editor accent token"))
+    checks.append(require_regex(canvas_text, r"func selectStickerView[\s\S]*applyStickerSelectedAppearance", "Selecting a sticker applies visible selected-state feedback"))
+    checks.append(require_regex(canvas_text, r"func deselectSticker[\s\S]*applyStickerIdleAppearance", "Deselecting a sticker restores idle feedback"))
     checks.append(require_text(history_paging_text, "public struct KCHistoryPaging", "History paging Feature model is implemented in Swift"))
     checks.append(require_text(history_paging_text, "public var maxPageIndex: Int", "History paging computes the max page index"))
     checks.append(require_text(history_paging_text, "public func sessionIndex(forThumb thumbIndex: Int) -> Int", "History paging maps a thumbnail to a session index"))
@@ -1096,6 +1162,7 @@ def main():
     checks.append(balanced_text(pbxproj, [("braces", "{", "}")]))
     checks.append(ok("Assets.xcassets is referenced by project") if "Assets.xcassets in Resources" in pbx_text else fail("Assets.xcassets is not in Resources"))
     checks.append(ok("AppIcon build setting is enabled") if "ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon" in pbx_text else fail("AppIcon build setting is missing"))
+    checks.append(require_text(pbx_text, 'SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";', "Debug Swift compilation conditions define DEBUG"))
     checks.extend(app_icon_assets_exist(ROOT / "KidCanvas" / "Assets.xcassets" / "AppIcon.appiconset" / "Contents.json"))
     checks.append(project_file_references_exist(pbx_text))
     checks.append(source_files_in_build_phase(pbx_text))

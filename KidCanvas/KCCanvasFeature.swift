@@ -43,6 +43,7 @@ final class KCCanvasFeature {
     }
 
     /// 应用 undo / redo / save 动作按钮外观。控制器只负责传入状态和按钮实例。
+    /// 保存按钮在空画布时保持可点击，用于触发“无法保存”的本地化反馈。
     func applyActionButtonAppearance(
         state: ActionState,
         undoButton: UIButton,
@@ -53,21 +54,14 @@ final class KCCanvasFeature {
         redoButton.isEnabled = state.canRedo
         saveButton.isEnabled = state.canSave
 
-        undoButton.alpha = undoButton.isEnabled ? 1.0 : 0.55
-        redoButton.alpha = redoButton.isEnabled ? 1.0 : 0.55
-        saveButton.alpha = saveButton.isEnabled ? 1.0 : 0.6
-        undoButton.backgroundColor = undoButton.isEnabled
-            ? UIColor(white: 1.0, alpha: 0.76)
-            : UIColor(white: 1.0, alpha: 0.62)
-        redoButton.backgroundColor = redoButton.isEnabled
-            ? UIColor(white: 1.0, alpha: 0.76)
-            : UIColor(white: 1.0, alpha: 0.62)
-        saveButton.backgroundColor = saveButton.isEnabled
-            ? UIColor(red: 0.54, green: 0.80, blue: 0.98, alpha: 1.0)
-            : UIColor(white: 1.0, alpha: 0.72)
-        saveButton.tintColor = saveButton.isEnabled
-            ? UIColor(red: 0.19, green: 0.26, blue: 0.33, alpha: 1.0)
-            : UIColor(red: 0.55, green: 0.60, blue: 0.67, alpha: 0.7)
+        KCEditorVisualStyle.applyActionButtonAvailability(to: undoButton, enabled: state.canUndo)
+        KCEditorVisualStyle.applyActionButtonAvailability(to: redoButton, enabled: state.canRedo)
+        KCEditorVisualStyle.applyActionButtonAvailability(
+            to: saveButton,
+            enabled: state.canSave,
+            accentWhenEnabled: KCEditorVisualStyle.saveActionColor
+        )
+        saveButton.isEnabled = true
     }
 
     func hasVisibleContent(_ canvasView: KCDrawingCanvasView) -> Bool {

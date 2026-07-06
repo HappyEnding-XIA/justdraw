@@ -13,12 +13,12 @@
 | F03 | 橡皮 | 橡皮可切换 circle/cloud/star；尺寸预览和擦除可用 | `validate_project.py` + `swift test` | 擦除已有笔触 |
 | F04 | 填色 | 填色工具存在并通过 Swift flood fill 执行 | `validate_project.py` + `swift test` | 点按封闭区域填色 |
 | F05 | 取色 | 取色器通过 Swift 采样返回颜色，并更新当前颜色 | `validate_project.py` + `swift test` | 从画布取色后继续绘制 |
-| F06 | 印章 | 左侧显示“印章”；可添加、捏合缩放、前移、删除 | `validate_project.py` + `swift test` | 添加印章并捏合缩放 |
+| F06 | 印章 | 左侧显示“印章”；可添加、选中反馈清楚、拖动、捏合缩放、旋转、前移、删除、撤销/重做 | `validate_project.py` + `swift test` | 添加印章后依次点验选中、拖动、捏合、旋转、前移、删除、撤销/重做 |
 | F07 | 颜色面板 | 24/36 色盘、最近色、当前色高亮可用 | `validate_project.py` + `swift test` | 切换色盘并选择颜色 |
 | F08 | 自定义色 | Custom 仅保留单一入口；弹出系统取色器 | `validate_project.py` | 选择自定义颜色 |
-| F09 | 保存 | 空画布不可保存；有内容后保存到历史和相册 | `validate_project.py` | 画一笔后保存并观察 Toast |
+| F09 | 保存 | 空画布不可保存；有内容后保存到历史和系统相册；成功/失败 Toast 使用本地化文字，默认中文 | `validate_project.py` | 空画布点保存应显示“无法保存”；画一笔后保存应显示“已保存”并进入历史/相册 |
 | F10 | 历史 | 草稿、历史缩略图、打开、删除、翻页状态可用 | `validate_project.py` + `swift test` | 保存后打开/删除历史 |
-| F11 | 相册导入 | 可从相册导入图片，并重置为干净画布会话 | `validate_project.py` | 选择一张照片导入 |
+| F11 | 相册导入 | 可从相册导入图片，并重置为干净画布会话；权限说明中英文资源齐全 | `validate_project.py` | 首次进入相册确认权限弹窗为中文；选择一张照片导入后继续绘制 |
 | F12 | 线稿 | 线稿入口、弹窗、模板加载可用 | `validate_project.py` + `swift test` | 打开线稿并进入绘制 |
 
 ## 2. 必跑命令
@@ -41,6 +41,8 @@ xcodebuild -project KidCanvas.xcodeproj -scheme KidCanvas -destination 'platform
 
 scripts/runtime_smoke_test.sh "iPhone 17 Pro"
 scripts/runtime_smoke_test.sh "iPad Pro 11 M4"
+scripts/runtime_acceptance_test.sh "iPhone 17 Pro"
+scripts/runtime_acceptance_test.sh "iPad Pro 11 M4"
 git diff --check
 ```
 
@@ -70,6 +72,13 @@ git diff --check
 - 进程存活检查。
 - 首屏截图生成与非空检查。
 
+`runtime_acceptance_test.sh` 已覆盖：
+
+- Debug-only 运行时交互探针可启动。
+- 空画布保存按钮保持可点击。
+- 空画布保存不创建历史、不写入相册路径。
+- 空画布保存显示本地化“无法保存”Toast。
+
 ## 4. 人工验收建议
 
 自动化不能完全替代手指/鼠标交互，交付前建议按以下顺序快速点一遍：
@@ -80,9 +89,9 @@ git diff --check
 4. 橡皮：切换三种形状并擦除已有内容。
 5. 颜色：切换 24/36 色盘，选择颜色，打开 Custom 取自定义色。
 6. 填色/取色：填色后用取色器取回颜色，再继续画线。
-7. 印章：添加印章，捏合放大/缩小，点击前移和删除。
-8. 保存/历史：空画布保存应失败；有内容保存应出现 Toast，并在历史中可打开/删除。
-9. 相册/线稿：导入照片、加载线稿后确认画布可继续绘制。
+7. 印章：添加印章后确认蓝色选中描边与编辑按钮启用；拖动、捏合放大/缩小、双指旋转；点击前移和删除；再用撤销/重做确认印章变化可恢复。
+8. 保存/历史：空画布保存应失败并显示“无法保存”；有内容保存应显示“已保存”，并在历史中可打开/删除；如模拟器 Photos 无法确认写入系统相册，需要记录环境限制和替代证据。
+9. 相册/线稿：导入照片时检查相册权限弹窗；选择照片后应替换画布并作为干净会话继续绘制；加载线稿后确认画布可继续绘制。
 
 ## 5. 交付记录模板
 

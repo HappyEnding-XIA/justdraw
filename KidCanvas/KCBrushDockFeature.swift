@@ -65,12 +65,13 @@ final class KCBrushDockFeature {
 
     /// 应用底部画笔 Dock 的选中态样式，控制器只负责滚动和事件协调。
     func applySelectionAppearance(to button: KDBrushButton, active: Bool) {
-        button.backgroundColor = active ? KCEditorVisualStyle.accentColor : KCEditorVisualStyle.raisedBackgroundColor
-        button.tintColor = active ? KCEditorVisualStyle.accentInkColor : KCEditorVisualStyle.inkColor
-        button.layer.borderColor = active ? KCEditorVisualStyle.activeBorderColor : KCEditorVisualStyle.borderColor
-        button.layer.shadowOpacity = active ? 0.14 : 0.08
-        button.layer.shadowRadius = active ? 10.0 : 7.0
-        button.transform = active ? CGAffineTransform(scaleX: 1.02, y: 1.02) : .identity
+        KCEditorVisualStyle.applySelectableButtonAppearance(
+            to: button,
+            active: active,
+            baseBackgroundColor: KCEditorVisualStyle.raisedBackgroundColor,
+            activeShadowRadius: 9.0,
+            inactiveShadowRadius: 6.0
+        )
     }
 }
 

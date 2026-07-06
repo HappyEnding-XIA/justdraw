@@ -321,6 +321,13 @@ final class KCBrushStickerPanelView {
         }
     }
 
+    func applyStickerSymbolSelection(to buttons: [UIButton], selectedSymbol: String?) {
+        for button in buttons {
+            let active = button.accessibilityIdentifier == selectedSymbol
+            applyStampButtonAppearance(to: button, active: active, enabled: true)
+        }
+    }
+
     func applyStickerEditButtonsEnabled(frontButton: UIButton, deleteButton: UIButton, enabled: Bool) {
         frontButton.isEnabled = enabled
         deleteButton.isEnabled = enabled
@@ -331,32 +338,31 @@ final class KCBrushStickerPanelView {
     }
 
     private func applyPillSelectionAppearance(to button: UIButton, active: Bool) {
-        button.backgroundColor = active ? KCEditorVisualStyle.accentColor : KCEditorVisualStyle.pillBackgroundColor
-        button.tintColor = active ? KCEditorVisualStyle.accentInkColor : KCEditorVisualStyle.mutedInkColor
         button.layer.cornerRadius = 15.0
         button.layer.cornerCurve = .continuous
-        button.layer.borderWidth = 1.0
-        button.layer.borderColor = active ? KCEditorVisualStyle.activeBorderColor : KCEditorVisualStyle.borderColor
-        button.layer.shadowColor = KCEditorVisualStyle.shadowColor
-        button.layer.shadowOpacity = active ? 0.07 : 0.03
-        button.layer.shadowRadius = active ? 6.0 : 3.0
-        button.layer.shadowOffset = CGSize(width: 0.0, height: active ? 3.0 : 1.0)
+        KCEditorVisualStyle.applySelectableButtonAppearance(
+            to: button,
+            active: active,
+            baseBackgroundColor: KCEditorVisualStyle.pillBackgroundColor,
+            inactiveTintColor: KCEditorVisualStyle.mutedInkColor,
+            activeShadowRadius: 6.0,
+            inactiveShadowRadius: 3.0
+        )
     }
 
     private func applyStampButtonAppearance(to button: UIButton, active: Bool, enabled: Bool) {
-        button.tintColor = enabled
-            ? (active ? KCEditorVisualStyle.accentInkColor : KCEditorVisualStyle.inkColor)
-            : KCEditorVisualStyle.mutedInkColor
-        button.backgroundColor = enabled
-            ? (active ? KCEditorVisualStyle.accentColor : KCEditorVisualStyle.compactBackgroundColor)
-            : KCEditorVisualStyle.disabledBackgroundColor
         button.layer.cornerRadius = 18.0
         button.layer.cornerCurve = .continuous
-        button.layer.borderWidth = 1.0
-        button.layer.borderColor = active ? KCEditorVisualStyle.activeBorderColor : KCEditorVisualStyle.borderColor
-        button.layer.shadowColor = KCEditorVisualStyle.shadowColor
-        button.layer.shadowOpacity = enabled ? 0.05 : 0.0
-        button.layer.shadowRadius = 5.0
-        button.layer.shadowOffset = CGSize(width: 0.0, height: 2.0)
+        if enabled {
+            KCEditorVisualStyle.applySelectableButtonAppearance(
+                to: button,
+                active: active,
+                baseBackgroundColor: KCEditorVisualStyle.compactBackgroundColor,
+                activeShadowRadius: 6.0,
+                inactiveShadowRadius: 4.0
+            )
+        } else {
+            KCEditorVisualStyle.applyActionButtonAvailability(to: button, enabled: false)
+        }
     }
 }

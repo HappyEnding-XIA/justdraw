@@ -32,14 +32,11 @@ final class KCToolRailFeature {
 
     /// 应用左侧工具栏选中态样式，控制器只负责遍历按钮和协调工具切换。
     func applySelectionAppearance(to button: KDToolButton, active: Bool) {
-        button.backgroundColor = active
-            ? KCEditorVisualStyle.accentColor
-            : (self.accentColor(for: button.toolMode) ?? KCEditorVisualStyle.raisedBackgroundColor)
-        button.tintColor = active ? KCEditorVisualStyle.accentInkColor : KCEditorVisualStyle.inkColor
-        button.layer.borderColor = active ? KCEditorVisualStyle.activeBorderColor : KCEditorVisualStyle.borderColor
-        button.layer.shadowOpacity = active ? 0.12 : 0.06
-        button.layer.shadowRadius = active ? 8.0 : 6.0
-        button.transform = .identity
+        KCEditorVisualStyle.applySelectableButtonAppearance(
+            to: button,
+            active: active,
+            baseBackgroundColor: self.accentColor(for: button.toolMode) ?? KCEditorVisualStyle.raisedBackgroundColor
+        )
     }
 }
 

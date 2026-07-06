@@ -40,6 +40,8 @@ enum KCL10n {
     static var lineArtTitle: String { tr("top.line-art.title") }
     static var importPhotoTitle: String { tr("top.import-photo.title") }
     static var saveTitle: String { tr("top.save.title") }
+    static var saveSuccessToastTitle: String { tr("toast.save.success") }
+    static var saveFailedToastTitle: String { tr("toast.save.failed") }
 
     // MARK: - 左侧工具栏
 

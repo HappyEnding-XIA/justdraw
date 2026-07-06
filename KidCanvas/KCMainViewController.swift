@@ -126,6 +126,9 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
     var activeSessionHasUnsavedChanges: Bool = false
     var brushWidthsByStyle: [Int: CGFloat] = [:]
     var eraserSliderValue: CGFloat = 0.0
+#if DEBUG
+    private var runtimeAcceptanceProbeDidRun = false
+#endif
 
     // MARK: - 设备布局指标
 
@@ -291,6 +294,13 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
     override func viewDidLayoutSubviews() {
         super.viewDidLayoutSubviews()
         self.refreshSizePreview()
+    }
+
+    override func viewDidAppear(_ animated: Bool) {
+        super.viewDidAppear(animated)
+#if DEBUG
+        self.runRuntimeAcceptanceProbeIfNeeded()
+#endif
     }
 
     override var prefersHomeIndicatorAutoHidden: Bool {
@@ -1479,17 +1489,7 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
             resolved = self.currentStickerSymbols().first
         }
         self.canvasView.currentStickerSymbol = resolved ?? ""
-        for button in self.stickerButtons {
-            let active = button.accessibilityIdentifier == resolved
-            button.layer.borderWidth = active ? 2.0 : 1.0
-            button.layer.borderColor = (active
-                ? UIColor(red: 0.45, green: 0.73, blue: 0.97, alpha: 0.55)
-                : UIColor(white: 1.0, alpha: 0.72)).cgColor
-            button.backgroundColor = active
-                ? UIColor(red: 0.86, green: 0.94, blue: 1.0, alpha: 0.94)
-                : UIColor(white: 1.0, alpha: 0.76)
-            button.transform = active ? CGAffineTransform(scaleX: 1.05, y: 1.05) : .identity
-        }
+        self.brushStickerPanelView.applyStickerSymbolSelection(to: self.stickerButtons, selectedSymbol: resolved)
     }
 
     // MARK: - 按钮动作
@@ -2016,6 +2016,69 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
         self.toastPresenter.dismiss(self.saveToastView)
         self.saveToastView = self.toastPresenter.showSaveToast(success: success, in: self.view, anchorView: self.saveButton)
     }
+
+#if DEBUG
+    // MARK: - 运行时验收探针
+
+    private func runRuntimeAcceptanceProbeIfNeeded() {
+        if self.runtimeAcceptanceProbeDidRun {
+            return
+        }
+        guard ProcessInfo.processInfo.arguments.contains("--kc-runtime-empty-save-check") else {
+            return
+        }
+        self.runtimeAcceptanceProbeDidRun = true
+
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { [weak self] in
+            self?.runEmptySaveAcceptanceProbe()
+        }
+    }
+
+    private func runEmptySaveAcceptanceProbe() {
+        self.activeSession = nil
+        self.selectedHistorySession = nil
+        self.activeSessionHasUnsavedChanges = false
+        self.draftSaveTimer?.invalidate()
+        self.draftSaveTimer = nil
+        self.suppressNextDraftSave = true
+        self.canvasView.startBlankCanvas()
+        self.sessionStore.clearDraft()
+        self.refreshHistoryUI()
+        self.refreshActionButtons()
+
+        let historyCountBefore = self.sessions.count
+        let hasVisibleContentBefore = self.canvasFeature.hasVisibleContent(self.canvasView)
+        let saveButtonEnabledBeforeTap = self.saveButton.isEnabled
+        self.didTapSaveSession()
+        let failureToastVisible = self.saveToastView?.accessibilityLabel == KCL10n.saveFailedToastTitle
+        let result: [String: Any] = [
+            "probe": "empty-save",
+            "passed": !hasVisibleContentBefore
+                && saveButtonEnabledBeforeTap
+                && failureToastVisible
+                && self.sessions.count == historyCountBefore,
+            "hasVisibleContentBefore": hasVisibleContentBefore,
+            "saveButtonEnabledBeforeTap": saveButtonEnabledBeforeTap,
+            "failureToastVisible": failureToastVisible,
+            "historyCountBefore": historyCountBefore,
+            "historyCountAfter": self.sessions.count,
+            "expectedToast": KCL10n.saveFailedToastTitle
+        ]
+        self.writeRuntimeAcceptanceResult(result)
+    }
+
+    private func writeRuntimeAcceptanceResult(_ result: [String: Any]) {
+        guard let documentsURL = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first else {
+            return
+        }
+        let resultURL = documentsURL.appendingPathComponent("kc_runtime_acceptance_empty_save.json")
+        guard JSONSerialization.isValidJSONObject(result),
+              let data = try? JSONSerialization.data(withJSONObject: result, options: [.prettyPrinted, .sortedKeys]) else {
+            return
+        }
+        try? data.write(to: resultURL, options: [.atomic])
+    }
+#endif
 
     // MARK: - 草稿自动保存
 

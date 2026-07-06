@@ -9,11 +9,6 @@ import UIKit
 
 /// App 层橡皮擦控件 Feature：集中橡皮擦尺寸预览路径和形状按钮选中态样式。
 final class KCEraserControlsFeature {
-    private let activeBackgroundColor = UIColor(red: 0.97, green: 0.86, blue: 0.48, alpha: 1.0)
-    private let inactiveBackgroundColor = UIColor(white: 1.0, alpha: 0.82)
-    private let activeBorderColor = UIColor(white: 1.0, alpha: 0.92)
-    private let inactiveBorderColor = UIColor(white: 1.0, alpha: 0.72)
-
     func previewPath(for shape: KDEraserShape, center: CGPoint, size: CGFloat) -> UIBezierPath {
         let radius = size / 2.0
         switch shape {
@@ -36,9 +31,13 @@ final class KCEraserControlsFeature {
 
     /// 应用橡皮擦形状按钮选中态样式，控制器只负责按钮集合和事件协调。
     func applyShapeButtonAppearance(to button: UIButton, active: Bool) {
-        button.backgroundColor = active ? self.activeBackgroundColor : self.inactiveBackgroundColor
-        button.layer.borderColor = (active ? self.activeBorderColor : self.inactiveBorderColor).cgColor
-        button.transform = active ? CGAffineTransform(scaleX: 1.05, y: 1.05) : .identity
+        KCEditorVisualStyle.applySelectableButtonAppearance(
+            to: button,
+            active: active,
+            baseBackgroundColor: KCEditorVisualStyle.compactBackgroundColor,
+            activeShadowRadius: 6.0,
+            inactiveShadowRadius: 4.0
+        )
     }
 
     private func starPath(center: CGPoint, radius: CGFloat) -> UIBezierPath {

@@ -22,22 +22,41 @@ final class KCToastPresenter {
         toast.transform = CGAffineTransform(scaleX: 0.82, y: 0.82)
         view.addSubview(toast)
 
-        let configuration = UIImage.SymbolConfiguration(pointSize: 24.0, weight: .bold)
+        let configuration = UIImage.SymbolConfiguration(pointSize: 20.0, weight: .bold)
         let symbolName = success ? "checkmark" : "exclamationmark.triangle.fill"
         let iconView = UIImageView(image: UIImage(systemName: symbolName, withConfiguration: configuration))
         iconView.translatesAutoresizingMaskIntoConstraints = false
         iconView.tintColor = success
             ? UIColor(red: 0.23, green: 0.58, blue: 0.34, alpha: 1.0)
             : UIColor(red: 0.83, green: 0.36, blue: 0.24, alpha: 1.0)
-        toast.contentView.addSubview(iconView)
+
+        let titleLabel = UILabel()
+        titleLabel.translatesAutoresizingMaskIntoConstraints = false
+        titleLabel.text = success ? KCL10n.saveSuccessToastTitle : KCL10n.saveFailedToastTitle
+        titleLabel.textColor = UIColor(red: 0.19, green: 0.24, blue: 0.29, alpha: 1.0)
+        titleLabel.font = UIFont.systemFont(ofSize: 14.0, weight: .semibold)
+        titleLabel.adjustsFontSizeToFitWidth = true
+        titleLabel.minimumScaleFactor = 0.78
+        titleLabel.lineBreakMode = .byTruncatingTail
+
+        let stackView = UIStackView(arrangedSubviews: [iconView, titleLabel])
+        stackView.translatesAutoresizingMaskIntoConstraints = false
+        stackView.axis = .horizontal
+        stackView.alignment = .center
+        stackView.spacing = 8.0
+        toast.contentView.addSubview(stackView)
+        toast.accessibilityLabel = titleLabel.text
 
         NSLayoutConstraint.activate([
             toast.centerXAnchor.constraint(equalTo: anchorView.centerXAnchor),
             toast.topAnchor.constraint(equalTo: anchorView.bottomAnchor, constant: 14.0),
-            toast.widthAnchor.constraint(equalToConstant: 64.0),
+            toast.widthAnchor.constraint(greaterThanOrEqualToConstant: 96.0),
+            toast.widthAnchor.constraint(lessThanOrEqualToConstant: 156.0),
             toast.heightAnchor.constraint(equalToConstant: 52.0),
-            iconView.centerXAnchor.constraint(equalTo: toast.contentView.centerXAnchor),
-            iconView.centerYAnchor.constraint(equalTo: toast.contentView.centerYAnchor)
+            stackView.centerXAnchor.constraint(equalTo: toast.contentView.centerXAnchor),
+            stackView.centerYAnchor.constraint(equalTo: toast.contentView.centerYAnchor),
+            stackView.leadingAnchor.constraint(greaterThanOrEqualTo: toast.contentView.leadingAnchor, constant: 14.0),
+            stackView.trailingAnchor.constraint(lessThanOrEqualTo: toast.contentView.trailingAnchor, constant: -14.0)
         ])
 
         UIView.animate(

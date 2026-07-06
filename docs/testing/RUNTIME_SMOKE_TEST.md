@@ -1,6 +1,8 @@
 # 运行时烟测（Runtime Smoke Test）
 
 > 静态验收（`swift test` + `validate_project.py` + `xcodebuild build`）通过后，用 `scripts/runtime_smoke_test.sh` 验证 app 能真正在模拟器里启动并稳定运行。静态验收只能证明"能编译"，运行时烟测证明"能启动、不崩溃、UI 能渲染"。
+>
+> 交互类回归可使用 `scripts/runtime_acceptance_test.sh`。该脚本通过 Debug-only launch argument 触发 App 内部验收探针，并从模拟器沙盒读取 JSON 结果；当前覆盖空画布保存反馈。
 
 ## 何时必须跑
 
@@ -16,6 +18,10 @@ scripts/runtime_smoke_test.sh
 
 # 指定设备
 scripts/runtime_smoke_test.sh "iPad Pro 11 M4"
+
+# 空画布保存反馈交互验收
+scripts/runtime_acceptance_test.sh "iPhone 17 Pro"
+scripts/runtime_acceptance_test.sh "iPad Pro 11 M4"
 ```
 
 脚本流程：清理 `._*` → 按设备名解析 UDID → 启动设备 → Debug 构建 → 安装 → 启动 → 轮询进程存活 → 等待 UI 渲染 → 重试截图直到文件大小达到阈值 → 截图到 `/tmp/kc_smoke_<device>.png`。
@@ -30,6 +36,7 @@ scripts/runtime_smoke_test.sh "iPad Pro 11 M4"
 - `SCREENSHOT_RETRY_INTERVAL`：截图过小时的重试间隔秒数，默认 `1`。
 - `SCREENSHOT_MIN_BYTES`：截图最小文件大小阈值，默认 `20000`。
 - `LAUNCH_TIMEOUT_SECONDS`：`simctl launch` 最大等待秒数，默认 `30`。
+- `runtime_acceptance_test.sh` 额外支持 `WAIT_SECONDS`：等待 App 写出验收 JSON 的最长秒数，默认 `10`。
 
 以上数值型环境变量都必须是大于 0 的整数，否则脚本会以退出码 `8` 结束。
 
@@ -45,6 +52,13 @@ scripts/runtime_smoke_test.sh "iPad Pro 11 M4"
 | 6 | 启动后进程未存活（崩溃）|
 | 7 | 截图为空或过小，UI 可能尚未渲染完成 |
 | 8 | 环境变量配置非法 |
+
+`runtime_acceptance_test.sh` 的补充退出码：
+
+| 码 | 含义 |
+|---|---|
+| 6 | 未生成验收 JSON |
+| 7 | 验收 JSON 中 `passed` 为 false |
 
 ## 故障排查
 
