@@ -112,96 +112,100 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
 
     // MARK: - 设备布局指标
 
+    private var layoutMetrics: KCDeviceLayoutMetrics {
+        KCDeviceLayoutMetrics(userInterfaceIdiom: UIDevice.current.userInterfaceIdiom)
+    }
+
     var isCompactPhoneLayout: Bool {
-        return UIDevice.current.userInterfaceIdiom == .phone
+        return self.layoutMetrics.isCompactPhoneLayout
     }
 
     func rightPanelOuterWidth() -> CGFloat {
-        return self.isCompactPhoneLayout ? 238.0 : 272.0
+        return self.layoutMetrics.rightPanelOuterWidth
     }
 
     func rightPanelWidth() -> CGFloat {
-        return self.isCompactPhoneLayout ? 214.0 : 248.0
+        return self.layoutMetrics.rightPanelWidth
     }
 
     func rightPanelTopOffset() -> CGFloat {
-        return self.isCompactPhoneLayout ? 128.0 : 150.0
+        return self.layoutMetrics.rightPanelTopOffset
     }
 
     func rightPanelTrailingOffset() -> CGFloat {
-        return self.isCompactPhoneLayout ? -24.0 : -40.0
+        return self.layoutMetrics.rightPanelTrailingOffset
     }
 
     func rightPanelBottomGap() -> CGFloat {
-        return self.isCompactPhoneLayout ? -10.0 : -16.0
+        return self.layoutMetrics.rightPanelBottomGap
     }
 
     func rightPanelInnerInset() -> CGFloat {
-        return self.isCompactPhoneLayout ? 14.0 : 18.0
+        return self.layoutMetrics.rightPanelInnerInset
     }
 
     func rightPanelStackSpacing() -> CGFloat {
-        return self.isCompactPhoneLayout ? 10.0 : 16.0
+        return self.layoutMetrics.rightPanelStackSpacing
     }
 
     func bottomDockWidth() -> CGFloat {
-        return self.isCompactPhoneLayout ? 430.0 : 560.0
+        return self.layoutMetrics.bottomDockWidth
     }
 
     func bottomDockHeight() -> CGFloat {
-        return self.isCompactPhoneLayout ? 74.0 : 98.0
+        return self.layoutMetrics.bottomDockHeight
     }
 
     func bottomDockBottomInset() -> CGFloat {
-        return self.isCompactPhoneLayout ? -12.0 : -22.0
+        return self.layoutMetrics.bottomDockBottomInset
     }
 
     func bottomDockTitleWidth() -> CGFloat {
-        return self.isCompactPhoneLayout ? 54.0 : 88.0
+        return self.layoutMetrics.bottomDockTitleWidth
     }
 
     func bottomDockTitleFontSize() -> CGFloat {
-        return self.isCompactPhoneLayout ? 13.0 : 16.0
+        return self.layoutMetrics.bottomDockTitleFontSize
     }
 
     func bottomDockHorizontalInset() -> CGFloat {
-        return self.isCompactPhoneLayout ? 14.0 : 22.0
+        return self.layoutMetrics.bottomDockHorizontalInset
     }
 
     func bottomDockVerticalInset() -> CGFloat {
-        return self.isCompactPhoneLayout ? 8.0 : 12.0
+        return self.layoutMetrics.bottomDockVerticalInset
     }
 
     func bottomDockStackSpacing() -> CGFloat {
-        return self.isCompactPhoneLayout ? 8.0 : 12.0
+        return self.layoutMetrics.bottomDockStackSpacing
     }
 
     func brushCardWidth() -> CGFloat {
-        return self.isCompactPhoneLayout ? 104.0 : 126.0
+        return self.layoutMetrics.brushCardWidth
     }
 
     func brushCardHeight() -> CGFloat {
-        return self.isCompactPhoneLayout ? 54.0 : 68.0
+        return self.layoutMetrics.brushCardHeight
     }
 
     func brushCardIconSize() -> CGFloat {
-        return self.isCompactPhoneLayout ? 18.0 : 22.0
+        return self.layoutMetrics.brushCardIconSize
     }
 
     func brushCardHaloSize() -> CGFloat {
-        return self.isCompactPhoneLayout ? 30.0 : 36.0
+        return self.layoutMetrics.brushCardHaloSize
     }
 
     func brushCardLabelFontSize() -> CGFloat {
-        return self.isCompactPhoneLayout ? 12.0 : 14.0
+        return self.layoutMetrics.brushCardLabelFontSize
     }
 
     func historyThumbSize() -> CGFloat {
-        return self.isCompactPhoneLayout ? 82.0 : 92.0
+        return self.layoutMetrics.historyThumbSize
     }
 
     func historyDraftThumbHeight() -> CGFloat {
-        return self.isCompactPhoneLayout ? 74.0 : 86.0
+        return self.layoutMetrics.historyDraftThumbHeight
     }
 
     // MARK: - 视图生命周期

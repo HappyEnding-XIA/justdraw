@@ -253,6 +253,7 @@ def app_feature_checks(
     content_picker_feature_text,
     canvas_feature_text,
     line_art_feature_text,
+    device_layout_metrics_text,
     kc_content_picker_layout_text,
     kc_recent_color_queue_text,
     kc_sticker_category_mapping_text,
@@ -305,12 +306,20 @@ def app_feature_checks(
     checks.append(require_regex(main_text, r"func buildLeftRail[\s\S]*toolScrollView\.clipsToBounds = true[\s\S]*toolScrollView\.addSubview\(stack\)", "Left tool rail clips scrolling tools inside its capsule"))
     checks.append(require_regex(main_text, r"func railToolButtonWithSymbolName[\s\S]*button\.widthAnchor\.constraint\(equalToConstant: 56\.0\)[\s\S]*button\.heightAnchor\.constraint\(equalToConstant: 56\.0\)", "Left tool buttons use compact stable dimensions"))
     checks.append(require_regex(main_text, r"func selectToolMode[\s\S]*button\.transform = \.identity", "Left tool selection does not scale buttons outside the rail"))
-    checks.append(require_regex(main_text, r"func rightPanelWidth\(\) -> CGFloat[\s\S]*return self\.isCompactPhoneLayout \? 214\.0 : 248\.0", "Right panel uses compact iPhone width without changing iPad width"))
-    checks.append(require_regex(main_text, r"func rightPanelOuterWidth\(\) -> CGFloat[\s\S]*return self\.isCompactPhoneLayout \? 238\.0 : 272\.0", "Right panel scroll container has compact iPhone width"))
+    checks.append(require_text(pbx_text, "KCDeviceLayoutMetrics.swift in Sources", "Device layout metrics are included in the app target sources"))
+    checks.append(require_text(device_layout_metrics_text, "struct KCDeviceLayoutMetrics", "Device layout metrics are extracted from the main view controller"))
+    checks.append(require_text(device_layout_metrics_text, "userInterfaceIdiom == .phone", "Device layout metrics detect compact phone layout"))
+    checks.append(require_regex(device_layout_metrics_text, r"var rightPanelWidth: CGFloat[\s\S]*214\.0 : 248\.0", "Right panel uses compact iPhone width without changing iPad width"))
+    checks.append(require_regex(device_layout_metrics_text, r"var rightPanelOuterWidth: CGFloat[\s\S]*238\.0 : 272\.0", "Right panel scroll container has compact iPhone width"))
+    checks.append(require_regex(device_layout_metrics_text, r"var bottomDockWidth: CGFloat[\s\S]*430\.0 : 560\.0", "Bottom brush dock uses compact iPhone width without changing iPad width"))
+    checks.append(require_regex(device_layout_metrics_text, r"var bottomDockHeight: CGFloat[\s\S]*74\.0 : 98\.0", "Bottom brush dock uses compact iPhone height"))
+    checks.append(require_regex(device_layout_metrics_text, r"var brushCardWidth: CGFloat[\s\S]*104\.0 : 126\.0", "Bottom brush cards shrink on iPhone"))
+    checks.append(require_regex(device_layout_metrics_text, r"var historyThumbSize: CGFloat[\s\S]*82\.0 : 92\.0", "History thumbnails keep compact iPhone sizing"))
+    checks.append(require_text(main_text, "private var layoutMetrics: KCDeviceLayoutMetrics", "Main view controller delegates device sizing to KCDeviceLayoutMetrics"))
+    checks.append(require_text(main_text, "return self.layoutMetrics.rightPanelWidth", "Right panel width is delegated to KCDeviceLayoutMetrics"))
+    checks.append(require_text(main_text, "return self.layoutMetrics.bottomDockWidth", "Bottom dock width is delegated to KCDeviceLayoutMetrics"))
+    checks.append(require_text(main_text, "return self.layoutMetrics.brushCardWidth", "Brush card width is delegated to KCDeviceLayoutMetrics"))
     checks.append(require_regex(main_text, r"rightScrollView\.clipsToBounds = true", "Right menu clips content inside its scroll container"))
-    checks.append(require_regex(main_text, r"func bottomDockWidth\(\) -> CGFloat[\s\S]*return self\.isCompactPhoneLayout \? 430\.0 : 560\.0", "Bottom brush dock uses compact iPhone width without changing iPad width"))
-    checks.append(require_regex(main_text, r"func bottomDockHeight\(\) -> CGFloat[\s\S]*return self\.isCompactPhoneLayout \? 74\.0 : 98\.0", "Bottom brush dock uses compact iPhone height"))
-    checks.append(require_regex(main_text, r"func brushCardWidth\(\) -> CGFloat[\s\S]*return self\.isCompactPhoneLayout \? 104\.0 : 126\.0", "Bottom brush cards shrink on iPhone"))
     checks.append(require_regex(main_text, r"func paletteColorButtonSize\(\) -> CGFloat[\s\S]*return self\.isCompactPhoneLayout \? 26\.0 : self\.contentPicker\.paletteColorButtonSize", "Color swatches shrink inside compact iPhone right menu"))
     checks.append(require_regex(main_text, r"func buildBottomDock[\s\S]*scrollView\.clipsToBounds = true[\s\S]*panel\.addSubview\(scrollView\)", "Bottom brush dock clips horizontal scroll content"))
     checks.append(require_regex(main_text, r"func buildSizePanel[\s\S]*stickerScrollView\.clipsToBounds = true[\s\S]*panel\.addSubview\(stickerScrollView\)", "Right sticker row clips content inside the panel"))
@@ -646,6 +655,7 @@ def main():
     content_picker_feature_text = (ROOT / "KidCanvas" / "KCContentPickerFeature.swift").read_text(encoding="utf-8")
     canvas_feature_text = (ROOT / "KidCanvas" / "KCCanvasFeature.swift").read_text(encoding="utf-8")
     line_art_feature_text = (ROOT / "KidCanvas" / "KCLineArtFeature.swift").read_text(encoding="utf-8")
+    device_layout_metrics_text = (ROOT / "KidCanvas" / "KCDeviceLayoutMetrics.swift").read_text(encoding="utf-8")
     kc_content_picker_layout_text = (ROOT / "Packages" / "KidCanvasModules" / "Sources" / "KCDomain" / "KCContentPickerLayout.swift").read_text(encoding="utf-8")
     kc_recent_color_queue_text = (ROOT / "Packages" / "KidCanvasModules" / "Sources" / "KCDomain" / "KCRecentColorQueue.swift").read_text(encoding="utf-8")
     kc_sticker_category_mapping_text = (ROOT / "Packages" / "KidCanvasModules" / "Sources" / "KCDomain" / "KCStickerCategoryMapping.swift").read_text(encoding="utf-8")
@@ -676,6 +686,7 @@ def main():
         content_picker_feature_text,
         canvas_feature_text,
         line_art_feature_text,
+        device_layout_metrics_text,
         kc_content_picker_layout_text,
         kc_recent_color_queue_text,
         kc_sticker_category_mapping_text,
