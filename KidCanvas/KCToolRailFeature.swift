@@ -9,11 +9,7 @@ import UIKit
 
 /// App 层左侧工具栏 Feature：集中工具项配置、强调色和选中态样式。
 final class KCToolRailFeature {
-    private let activeBackgroundColor = UIColor(red: 0.66, green: 0.89, blue: 0.72, alpha: 1.0)
-    private let defaultBackgroundColor = UIColor(white: 1.0, alpha: 0.82)
     private let pickerBackgroundColor = UIColor(red: 0.96, green: 0.85, blue: 0.48, alpha: 1.0)
-    private let activeBorderColor = UIColor(white: 1.0, alpha: 0.92)
-    private let inactiveBorderColor = UIColor(white: 1.0, alpha: 0.72)
 
     func toolItems() -> [KCToolRailItem] {
         [
@@ -37,9 +33,10 @@ final class KCToolRailFeature {
     /// 应用左侧工具栏选中态样式，控制器只负责遍历按钮和协调工具切换。
     func applySelectionAppearance(to button: KDToolButton, active: Bool) {
         button.backgroundColor = active
-            ? self.activeBackgroundColor
-            : (self.accentColor(for: button.toolMode) ?? self.defaultBackgroundColor)
-        button.layer.borderColor = (active ? self.activeBorderColor : self.inactiveBorderColor).cgColor
+            ? KCEditorVisualStyle.accentColor
+            : (self.accentColor(for: button.toolMode) ?? KCEditorVisualStyle.raisedBackgroundColor)
+        button.tintColor = active ? KCEditorVisualStyle.accentInkColor : KCEditorVisualStyle.inkColor
+        button.layer.borderColor = active ? KCEditorVisualStyle.activeBorderColor : KCEditorVisualStyle.borderColor
         button.layer.shadowOpacity = active ? 0.12 : 0.06
         button.layer.shadowRadius = active ? 8.0 : 6.0
         button.transform = .identity

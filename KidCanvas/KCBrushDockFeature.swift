@@ -9,11 +9,6 @@ import UIKit
 
 /// App 层画笔 Dock Feature：集中底部画笔项配置，控制器只负责创建按钮和绑定事件。
 final class KCBrushDockFeature {
-    private let activeBackgroundColor = UIColor(red: 0.66, green: 0.89, blue: 0.72, alpha: 1.0)
-    private let inactiveBackgroundColor = UIColor(white: 1.0, alpha: 0.84)
-    private let activeBorderColor = UIColor(white: 1.0, alpha: 0.94)
-    private let inactiveBorderColor = UIColor(white: 1.0, alpha: 0.72)
-
     func brushItems() -> [KCBrushDockItem] {
         [
             KCBrushDockItem(
@@ -70,8 +65,9 @@ final class KCBrushDockFeature {
 
     /// 应用底部画笔 Dock 的选中态样式，控制器只负责滚动和事件协调。
     func applySelectionAppearance(to button: KDBrushButton, active: Bool) {
-        button.backgroundColor = active ? self.activeBackgroundColor : self.inactiveBackgroundColor
-        button.layer.borderColor = (active ? self.activeBorderColor : self.inactiveBorderColor).cgColor
+        button.backgroundColor = active ? KCEditorVisualStyle.accentColor : KCEditorVisualStyle.raisedBackgroundColor
+        button.tintColor = active ? KCEditorVisualStyle.accentInkColor : KCEditorVisualStyle.inkColor
+        button.layer.borderColor = active ? KCEditorVisualStyle.activeBorderColor : KCEditorVisualStyle.borderColor
         button.layer.shadowOpacity = active ? 0.14 : 0.08
         button.layer.shadowRadius = active ? 10.0 : 7.0
         button.transform = active ? CGAffineTransform(scaleX: 1.02, y: 1.02) : .identity
