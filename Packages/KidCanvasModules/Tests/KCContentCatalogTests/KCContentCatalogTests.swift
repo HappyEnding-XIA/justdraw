@@ -83,7 +83,7 @@ final class ContentCatalogTests: XCTestCase {
         XCTAssertEqual(decoded.colors.first?.hex, palette.colors.first?.hex)
     }
 
-    // MARK: - T020 JSON resource 加载
+    // MARK: - T020/T037 JSON resource 加载
 
     func testDecodedContentReturnsNilForMalformedJSON() {
         // JSON 解析失败时返回 nil，loaded 会改用硬编码 fallback。
@@ -96,13 +96,36 @@ final class ContentCatalogTests: XCTestCase {
         XCTAssertNil(KCContentCatalogDefaults.decodedContent(from: Data("{}".utf8)))
     }
 
-    func testDecodedContentParsesValidDocument() throws {
-        // 合法 JSON（贴纸/线稿均非空）应成功解码。
-        let json = Data(#"""
+    func testDecodedContentReturnsNilWhenPalettesAreMissingOrInvalid() {
+        // T037：色盘也进入 JSON 后，缺失或数量不完整都不能被当作合法内容。
+        let missingPalettes = Data(#"""
             {"stickerGroups":[{"id":"a","title":"A","symbols":["x"]}],
              "lineArtTemplates":[{"id":"b","title":"B","category":"C"}]}
             """#.utf8)
+        XCTAssertNil(KCContentCatalogDefaults.decodedContent(from: missingPalettes))
+
+        let invalidPaletteCount = Data(#"""
+            {"palettes":[{"id":"palette.24","title":"24 Colors","colors":["#000000"]},
+                         {"id":"palette.36","title":"36 Colors","colors":["#000000"]}],
+             "stickerGroups":[{"id":"a","title":"A","symbols":["x"]}],
+             "lineArtTemplates":[{"id":"b","title":"B","category":"C"}]}
+            """#.utf8)
+        XCTAssertNil(KCContentCatalogDefaults.decodedContent(from: invalidPaletteCount))
+    }
+
+    func testDecodedContentParsesValidDocument() throws {
+        // 合法 JSON（色盘、贴纸、线稿均非空且色盘数量正确）应成功解码。
+        let palette24 = (0..<24).map { String(format: "\"#%06X\"", $0) }.joined(separator: ",")
+        let palette36 = palette24 + "," + (24..<36).map { String(format: "\"#%06X\"", $0) }.joined(separator: ",")
+        let json = Data("""
+            {"palettes":[{"id":"palette.24","title":"24 Colors","colors":[\(palette24)]},
+                         {"id":"palette.36","title":"36 Colors","colors":[\(palette36)]}],
+             "stickerGroups":[{"id":"a","title":"A","symbols":["x"]}],
+             "lineArtTemplates":[{"id":"b","title":"B","category":"C"}]}
+            """.utf8)
         let doc = try XCTUnwrap(KCContentCatalogDefaults.decodedContent(from: json))
+        XCTAssertEqual(doc.palette(id: "palette.24")?.colors.count, 24)
+        XCTAssertEqual(doc.palette(id: "palette.36")?.colors.count, 36)
         XCTAssertEqual(doc.stickerGroups.first?.id, "a")
         XCTAssertEqual(doc.lineArtTemplates.first?.id, "b")
     }
@@ -114,6 +137,17 @@ final class ContentCatalogTests: XCTestCase {
             KCContentCatalogDefaults.lineArtTemplates.map(\.id),
             ["bunny", "car", "fish", "flower", "house", "rocket", "cupcake", "dino"]
         )
+    }
+
+    func testBundledPalettesAreLoadedFromContentDocumentShape() {
+        // T037：公开色盘 API 的 id、数量和扩展色盘前缀关系由 JSON 文档形状守护。
+        let catalog = KCBundledContentCatalog()
+        XCTAssertEqual(catalog.standardPalette.id, "palette.24")
+        XCTAssertEqual(catalog.extendedPalette.id, "palette.36")
+        XCTAssertEqual(catalog.standardPalette.colors.count, 24)
+        XCTAssertEqual(catalog.extendedPalette.colors.count, 36)
+        XCTAssertEqual(Array(catalog.extendedPalette.colors.prefix(24)), catalog.standardPalette.colors)
+        XCTAssertEqual(catalog.extendedPalette.colors.last?.hex, "#0D0D0D")
     }
 
     // MARK: - T021 App 接入约束（守护控制器对 catalog 的消费方式）

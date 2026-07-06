@@ -323,6 +323,26 @@ def app_feature_checks(
     checks.append(require_text(content_picker_feature_text, "contentCatalog.palette(for: .standard)", "24-color palette is sourced from the content catalog via the content picker feature"))
     checks.append(require_text(content_picker_feature_text, "contentCatalog.palette(for: .extended)", "36-color palette is sourced from the content catalog via the content picker feature"))
     checks.append(require_text(content_picker_feature_text, "UIColor(kcHex:", "Palette KCHexColor values are bridged to UIColor in the content picker feature"))
+    try:
+        content_doc = json.loads(catalog_text)
+    except json.JSONDecodeError as exc:
+        content_doc = {}
+        checks.append(fail(f"Content catalog JSON is invalid: {exc}"))
+    palettes = content_doc.get("palettes", []) if isinstance(content_doc, dict) else []
+    palette_by_id = {
+        palette.get("id"): palette
+        for palette in palettes
+        if isinstance(palette, dict)
+    }
+    palette24 = palette_by_id.get("palette.24", {}).get("colors", [])
+    palette36 = palette_by_id.get("palette.36", {}).get("colors", [])
+    checks.append(ok("24-color palette is stored in the content JSON resource")
+                  if len(palette24) == 24 else fail("content.json palette.24 must contain 24 colors"))
+    checks.append(ok("36-color palette is stored in the content JSON resource")
+                  if len(palette36) == 36 else fail("content.json palette.36 must contain 36 colors"))
+    checks.append(ok("Extended palette keeps the 24-color palette as its prefix")
+                  if len(palette24) == 24 and palette36[:24] == palette24
+                  else fail("content.json palette.36 must start with palette.24 colors"))
     checks.append(require_text(main_text, "self.contentPicker", "Main view controller delegates content selection to KCContentPickerFeature"))
     checks.append(forbid_text(main_text, "func makePalette24", "24-color palette is no longer hardcoded in the main view controller"))
     checks.append(forbid_text(main_text, "func makePalette36", "36-color palette is no longer hardcoded in the main view controller"))

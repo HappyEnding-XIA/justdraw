@@ -336,10 +336,10 @@ Feature 拆分进度（App 层 Feature 类型 + KCDomain 纯逻辑）：
 - 使用 package 资源管理
 - 通过 JSON + asset catalog / pdf / png 管理内容
 
-实现现状（T020/T021）：
+实现现状（T020/T021/T037）：
 
-- 贴纸分组与线稿模板的**元数据**外置为 package resource `Resources/content.json`，由 `KCContentCatalogDefaults.decodedContent(from:)` 解码；JSON 缺失或损坏时回退到逐字一致的硬编码 `Fallback`。
-- 调色板（24/36 色）以 `KCHexColor` 形式内置在 `KCContentCatalogDefaults.palette24/palette36`，尚未外置为 JSON。
+- 色盘、贴纸分组与线稿模板的**元数据**外置为 package resource `Resources/content.json`，由 `KCContentCatalogDefaults.decodedContent(from:)` 解码；JSON 缺失、损坏或色盘数量不完整时回退到逐字一致的硬编码 `Fallback`。
+- 调色板（24/36 色）以 `KCHexColor` 形式从 JSON 解码，`palette.36` 的前 24 色必须与 `palette.24` 一致。
 - 打包入口 `KCBundledContentCatalog`（Sendable）一次性暴露色盘 + 贴纸分组 + 线稿模板，供 App 层注入。
 - App 主路径通过 `KCAppCompositionRoot` 装配 `KCBundledContentCatalog` 并构造注入 `KCMainViewController`；控制器据此派生色盘、贴纸分类、线稿顺序与标题，不再硬编码这些内容。线稿的程序化绘制闭包仍保留在 App 层（UIKit/Core Graphics），由 catalog id 映射到对应闭包。
 - 详见 `docs/modules/KCContentCatalog.md`。
@@ -615,7 +615,7 @@ flowchart TD
 | 技术债 | 当前决策 | 后续触发条件 | 验收口径 |
 |:---|:---|:---|:---|
 | `KCDrawingEngineAdapter` 实例化 / 协议化 / DI 化 | 已完成（T036）。App 通过 `KCDrawingEngineProviding` 协议依赖绘制能力，默认 adapter 由 Composition Root 注入 | 后续如出现多绘制实现或 mock 需求，在协议下扩展实现 | 保持 `KCDrawingEngineProviding` 协议、Composition Root 注入、双端构建与现有绘制测试通过 |
-| 色盘 JSON 化 | 暂缓。App 已通过 `KCContentCatalog` 消费色盘，色盘仍是模块内集中数据源 | 需要运营配置、多语言色盘命名、或远端内容下发 | JSON 资源解析测试覆盖，颜色顺序与现有 UI 无回归 |
+| 色盘 JSON 化 | 已完成（T037）。24/36 色盘已进入 `KCContentCatalog` package resource，App 仍通过 `KCBundledContentCatalog` 消费 | 需要运营配置、多语言色盘命名、或远端内容下发时，在现有 JSON schema 上扩展 | JSON 资源解析测试覆盖，颜色顺序与现有 UI 无回归 |
 | 线稿绘制闭包迁移到 DrawingEngine | 暂缓。涉及视觉/像素回归 | 画布 Feature 边界稳定后，单独迁移程序化线稿绘制 | 线稿数量、id、顺序不变，截图/像素或人工视觉验收通过 |
 | 继续拆 `KCMainViewController` | 持续推进，按最小边界拆分 | 控制器新增职责前，优先评估能否进入 Feature | validator 覆盖新边界，iPhone/iPad build 与 runtime smoke 通过 |
 

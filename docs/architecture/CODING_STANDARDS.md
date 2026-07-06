@@ -514,17 +514,12 @@ SwiftUI 页面拆分标准：
 - package resources
 - asset catalog
 
-迁移中间态：
+资源主路径：
 
-- 允许 `KCContentCatalog` 暂时保留已模块化、可测试的硬编码内容数据
-- 迁移中间态必须集中在 Catalog 模块内，不得散落到 ViewController、Feature 或 App 层
-- 硬编码内容文件必须标注后续迁移意图：
-
-```swift
-// TODO(content): move to JSON/package resource.
-```
-
-- 迁移稳定后，贴纸、线稿、调色板等内容应统一迁移到 JSON、package resources 或 asset catalog
+- `KCContentCatalog` 的色盘、贴纸、线稿元数据必须优先来自 JSON / package resources
+- 硬编码内容只允许作为资源缺失、为空或解码失败时的集中 fallback
+- fallback 必须集中在 Catalog 模块内，不得散落到 ViewController、Feature 或 App 层
+- 新增内容字段时必须同步 JSON schema、解析测试和模块文档
 
 ### 10.3 资源命名
 
