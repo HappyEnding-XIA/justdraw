@@ -2,7 +2,7 @@
 
 KidCanvas is a drawing app project for kids on iPhone and iPad. This repository contains the current prototype, product documentation, architecture documentation, and the migration plan toward a `Swift-first + SPM modular` codebase.
 
-中文版本: [README.md](/Volumes/xiaoda_SSD/KidCanvas/justdraw/README.md)
+中文版本: [README.md](README.md)
 
 ## Current Status
 
@@ -14,17 +14,17 @@ KidCanvas is a drawing app project for kids on iPhone and iPad. This repository 
 ## Documentation
 
 - Product requirements:
-  [docs/product/prd.md](/Volumes/xiaoda_SSD/KidCanvas/justdraw/docs/product/prd.md)
+  [docs/product/prd.md](docs/product/prd.md)
 - Technical architecture:
-  [docs/architecture/TECHNICAL_ARCHITECTURE.md](/Volumes/xiaoda_SSD/KidCanvas/justdraw/docs/architecture/TECHNICAL_ARCHITECTURE.md)
+  [docs/architecture/TECHNICAL_ARCHITECTURE.md](docs/architecture/TECHNICAL_ARCHITECTURE.md)
 - Modular architecture:
-  [docs/architecture/MODULAR_ARCHITECTURE_DESIGN.md](/Volumes/xiaoda_SSD/KidCanvas/justdraw/docs/architecture/MODULAR_ARCHITECTURE_DESIGN.md)
+  [docs/architecture/MODULAR_ARCHITECTURE_DESIGN.md](docs/architecture/MODULAR_ARCHITECTURE_DESIGN.md)
 - Coding standards:
-  [docs/architecture/CODING_STANDARDS.md](/Volumes/xiaoda_SSD/KidCanvas/justdraw/docs/architecture/CODING_STANDARDS.md)
+  [docs/architecture/CODING_STANDARDS.md](docs/architecture/CODING_STANDARDS.md)
 - Module decoupling:
-  [docs/architecture/MODULE_DECOUPLING_GUIDELINES.md](/Volumes/xiaoda_SSD/KidCanvas/justdraw/docs/architecture/MODULE_DECOUPLING_GUIDELINES.md)
+  [docs/architecture/MODULE_DECOUPLING_GUIDELINES.md](docs/architecture/MODULE_DECOUPLING_GUIDELINES.md)
 - Release notes:
-  [docs/release/CHANGELOG.md](/Volumes/xiaoda_SSD/KidCanvas/justdraw/docs/release/CHANGELOG.md)
+  [docs/release/CHANGELOG.md](docs/release/CHANGELOG.md)
 - AI collaboration workspace:
   `ai-docs/`
 

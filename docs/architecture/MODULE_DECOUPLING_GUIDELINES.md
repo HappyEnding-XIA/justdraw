@@ -10,7 +10,7 @@
 - 支持后续模块独立测试、独立演进、独立重构
 - 避免重新回到“一个页面知道所有底层细节”的结构
 
-本文档是 [MODULAR_ARCHITECTURE_DESIGN.md](/Volumes/xiaoda_SSD/KidCanvas/justdraw/docs/architecture/MODULAR_ARCHITECTURE_DESIGN.md) 的补充，专门关注“模块怎么解耦”。
+本文档是 [MODULAR_ARCHITECTURE_DESIGN.md](MODULAR_ARCHITECTURE_DESIGN.md) 的补充，专门关注“模块怎么解耦”。
 
 ## 2. 解耦结论
 
@@ -544,4 +544,3 @@ KidCanvas 的模块化不是“把代码分目录”，而是：
 ```
 
 只有做到这些，模块化才真正成立，后续 SPM 管理、多团队协作、Swift 重构和持续演进才会轻松。
-

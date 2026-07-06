@@ -2,7 +2,7 @@
 
 KidCanvas 是一个面向儿童的 iPhone / iPad 绘画应用项目。当前仓库包含已有原型、产品文档、架构设计文档，以及后续向 `Swift-first + SPM 模块化` 演进的方案。
 
-English version: [README.en.md](/Volumes/xiaoda_SSD/KidCanvas/justdraw/README.en.md)
+English version: [README.en.md](README.en.md)
 
 ## 当前状态
 
@@ -14,17 +14,17 @@ English version: [README.en.md](/Volumes/xiaoda_SSD/KidCanvas/justdraw/README.en
 ## 文档导航
 
 - 产品需求 / Product requirements:
-  [docs/product/prd.md](/Volumes/xiaoda_SSD/KidCanvas/justdraw/docs/product/prd.md)
+  [docs/product/prd.md](docs/product/prd.md)
 - 技术架构 / Technical architecture:
-  [docs/architecture/TECHNICAL_ARCHITECTURE.md](/Volumes/xiaoda_SSD/KidCanvas/justdraw/docs/architecture/TECHNICAL_ARCHITECTURE.md)
+  [docs/architecture/TECHNICAL_ARCHITECTURE.md](docs/architecture/TECHNICAL_ARCHITECTURE.md)
 - 模块化架构 / Modular architecture:
-  [docs/architecture/MODULAR_ARCHITECTURE_DESIGN.md](/Volumes/xiaoda_SSD/KidCanvas/justdraw/docs/architecture/MODULAR_ARCHITECTURE_DESIGN.md)
+  [docs/architecture/MODULAR_ARCHITECTURE_DESIGN.md](docs/architecture/MODULAR_ARCHITECTURE_DESIGN.md)
 - 代码规范 / Coding standards:
-  [docs/architecture/CODING_STANDARDS.md](/Volumes/xiaoda_SSD/KidCanvas/justdraw/docs/architecture/CODING_STANDARDS.md)
+  [docs/architecture/CODING_STANDARDS.md](docs/architecture/CODING_STANDARDS.md)
 - 模块解耦 / Module decoupling:
-  [docs/architecture/MODULE_DECOUPLING_GUIDELINES.md](/Volumes/xiaoda_SSD/KidCanvas/justdraw/docs/architecture/MODULE_DECOUPLING_GUIDELINES.md)
+  [docs/architecture/MODULE_DECOUPLING_GUIDELINES.md](docs/architecture/MODULE_DECOUPLING_GUIDELINES.md)
 - 版本记录 / Release notes:
-  [docs/release/CHANGELOG.md](/Volumes/xiaoda_SSD/KidCanvas/justdraw/docs/release/CHANGELOG.md)
+  [docs/release/CHANGELOG.md](docs/release/CHANGELOG.md)
 - AI 协作区 / AI collaboration workspace:
   `ai-docs/`
 
