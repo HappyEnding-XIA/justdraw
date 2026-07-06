@@ -37,6 +37,27 @@ green() { printf '\033[32m%s\033[0m\n' "$*"; }
 blue()  { printf '\033[34m%s\033[0m\n' "$*"; }
 step()  { blue "▶ $*"; }
 
+require_positive_integer() {
+  local name="$1"
+  local value="${!name}"
+  case "$value" in
+    ''|*[!0-9]*)
+      red "错误：$name 必须是正整数，当前值：$value"
+      exit 8
+      ;;
+  esac
+  if [ "$value" -le 0 ]; then
+    red "错误：$name 必须大于 0，当前值：$value"
+    exit 8
+  fi
+}
+
+require_positive_integer SCREENSHOT_WAIT_SECONDS
+require_positive_integer SCREENSHOT_RETRY_COUNT
+require_positive_integer SCREENSHOT_RETRY_INTERVAL
+require_positive_integer SCREENSHOT_MIN_BYTES
+require_positive_integer LAUNCH_TIMEOUT_SECONDS
+
 # 1. 清理外置盘 AppleDouble 临时文件（validator 会把 ._*.m 当成 OC 源码导致假失败）。
 step "清理 ._*/.!* 临时文件"
 find "$PROJECT_ROOT" -type f \( -name '._*' -o -name '.!*' \) -delete 2>/dev/null || true
@@ -86,25 +107,47 @@ xcrun simctl install "$UDID" "$APP"
 # 6. 启动并捕获输出（启动失败通常是 FBS code 4，属宿主机环境问题）。
 step "启动 $BUNDLE_ID"
 LAUNCH_OUT_FILE="$(mktemp /tmp/kc_smoke_launch.XXXXXX)"
-xcrun simctl launch "$UDID" "$BUNDLE_ID" >"$LAUNCH_OUT_FILE" 2>&1 &
-LAUNCH_PID="$!"
-launch_elapsed=0
-while kill -0 "$LAUNCH_PID" 2>/dev/null; do
-  if [ "$launch_elapsed" -ge "$LAUNCH_TIMEOUT_SECONDS" ]; then
-    kill "$LAUNCH_PID" 2>/dev/null || true
-    wait "$LAUNCH_PID" 2>/dev/null || true
-    LAUNCH_OUT="$(cat "$LAUNCH_OUT_FILE" 2>/dev/null || true)"
-    rm -f "$LAUNCH_OUT_FILE"
-    red "启动超时（超过 ${LAUNCH_TIMEOUT_SECONDS}s）：$LAUNCH_OUT"
-    red "这通常是宿主机 CoreSimulator/LaunchServices 卡住，不一定是代码问题。"
-    red "处理方法见 docs/testing/RUNTIME_SMOKE_TEST.md「CoreSimulator 卡住」。"
-    exit 5
-  fi
-  sleep 1
-  launch_elapsed=$((launch_elapsed + 1))
-done
+set +e
+python3 - "$UDID" "$BUNDLE_ID" "$LAUNCH_TIMEOUT_SECONDS" "$LAUNCH_OUT_FILE" <<'PY'
+import subprocess
+import sys
 
-if ! wait "$LAUNCH_PID"; then
+udid, bundle_id, timeout_text, output_path = sys.argv[1:]
+timeout = int(timeout_text)
+process = subprocess.Popen(
+    ["xcrun", "simctl", "launch", udid, bundle_id],
+    stdout=subprocess.PIPE,
+    stderr=subprocess.STDOUT,
+    text=True,
+)
+try:
+    output, _ = process.communicate(timeout=timeout)
+    with open(output_path, "w", encoding="utf-8") as handle:
+        handle.write(output or "")
+    sys.exit(process.returncode)
+except subprocess.TimeoutExpired:
+    process.kill()
+    try:
+        output, _ = process.communicate(timeout=2)
+    except subprocess.TimeoutExpired:
+        output = ""
+    with open(output_path, "w", encoding="utf-8") as handle:
+        handle.write(output or "")
+    sys.exit(124)
+PY
+LAUNCH_STATUS="$?"
+set -e
+
+if [ "$LAUNCH_STATUS" = 124 ]; then
+  LAUNCH_OUT="$(cat "$LAUNCH_OUT_FILE" 2>/dev/null || true)"
+  rm -f "$LAUNCH_OUT_FILE"
+  red "启动超时（超过 ${LAUNCH_TIMEOUT_SECONDS}s）：$LAUNCH_OUT"
+  red "这通常是宿主机 CoreSimulator/LaunchServices 卡住，不一定是代码问题。"
+  red "处理方法见 docs/testing/RUNTIME_SMOKE_TEST.md「CoreSimulator 卡住」。"
+  exit 5
+fi
+
+if [ "$LAUNCH_STATUS" != 0 ]; then
   LAUNCH_OUT="$(cat "$LAUNCH_OUT_FILE" 2>/dev/null || true)"
   rm -f "$LAUNCH_OUT_FILE"
   red "启动失败：$LAUNCH_OUT"
@@ -139,13 +182,24 @@ fi
 # 8. 截图。启动后 UI 渲染可能比进程存活稍晚，先等待再重试截图，
 # 避免 iPad 偶发抓到启动早期白屏。
 SHOT="$SCREENSHOT_DIR/kc_smoke_${DEVICE_NAME// /_}.png"
+if ! mkdir -p "$SCREENSHOT_DIR"; then
+  red "截图目录不可用：$SCREENSHOT_DIR"
+  exit 7
+fi
 step "等待 UI 渲染 ${SCREENSHOT_WAIT_SECONDS}s"
 sleep "$SCREENSHOT_WAIT_SECONDS"
 
 step "截图 → $SHOT"
 shot_ready=0
+last_shot_error=""
 for attempt in $(seq 1 "$SCREENSHOT_RETRY_COUNT"); do
-  xcrun simctl io "$UDID" screenshot "$SHOT" >/dev/null 2>&1 || true
+  SHOT_ERR_FILE="$(mktemp /tmp/kc_smoke_screenshot.XXXXXX)"
+  if ! xcrun simctl io "$UDID" screenshot "$SHOT" > /dev/null 2>"$SHOT_ERR_FILE"; then
+    last_shot_error="$(cat "$SHOT_ERR_FILE" 2>/dev/null || true)"
+  else
+    last_shot_error=""
+  fi
+  rm -f "$SHOT_ERR_FILE"
   shot_size=0
   if [ -f "$SHOT" ]; then
     shot_size="$(stat -f%z "$SHOT" 2>/dev/null || echo 0)"
@@ -165,6 +219,9 @@ done
 
 if [ "$shot_ready" != 1 ]; then
   red "截图未达到最小大小 ${SCREENSHOT_MIN_BYTES} bytes，最后文件: $SHOT"
+  if [ -n "$last_shot_error" ]; then
+    red "最后一次截图错误：$last_shot_error"
+  fi
   red "这通常表示 UI 仍未渲染完成或截图为空白，可调大 SCREENSHOT_WAIT_SECONDS / SCREENSHOT_RETRY_COUNT 后重试。"
   exit 7
 fi

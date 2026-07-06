@@ -31,6 +31,8 @@ scripts/runtime_smoke_test.sh "iPad Pro 11 M4"
 - `SCREENSHOT_MIN_BYTES`：截图最小文件大小阈值，默认 `20000`。
 - `LAUNCH_TIMEOUT_SECONDS`：`simctl launch` 最大等待秒数，默认 `30`。
 
+以上数值型环境变量都必须是大于 0 的整数，否则脚本会以退出码 `8` 结束。
+
 ## 退出码
 
 | 码 | 含义 |
@@ -42,6 +44,7 @@ scripts/runtime_smoke_test.sh "iPad Pro 11 M4"
 | 5 | 启动失败或启动超时（常见 `FBSOpenApplication` code 4 / CoreSimulator 卡住）|
 | 6 | 启动后进程未存活（崩溃）|
 | 7 | 截图为空或过小，UI 可能尚未渲染完成 |
+| 8 | 环境变量配置非法 |
 
 ## 故障排查
 
