@@ -1060,11 +1060,11 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
     }
 
     func paletteColorButtonSize() -> CGFloat {
-        return self.isCompactPhoneLayout ? 26.0 : self.contentPicker.paletteColorButtonSize
+        return self.isCompactPhoneLayout ? 24.0 : self.contentPicker.paletteColorButtonSize
     }
 
     func paletteColorButtonSpacing() -> CGFloat {
-        return self.isCompactPhoneLayout ? 6.0 : self.contentPicker.paletteColorButtonSpacing
+        return self.isCompactPhoneLayout ? 5.0 : self.contentPicker.paletteColorButtonSpacing
     }
 
     func paletteGridWidth() -> CGFloat {
@@ -1519,6 +1519,10 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
     }
 
     @objc func didTapCustomColor() {
+        self.presentCustomColorPicker(animated: true, completion: nil)
+    }
+
+    func configuredCustomColorPicker() -> UIColorPickerViewController {
         let picker = UIColorPickerViewController()
         picker.delegate = self
         picker.selectedColor = self.canvasView.currentColor
@@ -1529,7 +1533,14 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
             ? self.customColorButton.bounds
             : CGRect(x: self.view.bounds.midX, y: self.view.bounds.midY, width: 1.0, height: 1.0)
         popover?.permittedArrowDirections = self.customColorButton != nil ? .any : []
-        self.present(picker, animated: true, completion: nil)
+        return picker
+    }
+
+    func presentCustomColorPicker(animated: Bool, completion: ((UIColorPickerViewController) -> Void)?) {
+        let picker = self.configuredCustomColorPicker()
+        self.present(picker, animated: animated) {
+            completion?(picker)
+        }
     }
 
     func colorPickerViewControllerDidFinish(_ viewController: UIColorPickerViewController) {
@@ -1580,11 +1591,12 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
     }
 
     @objc func didTapImportImage() {
-        if !UIImagePickerController.isSourceTypeAvailable(.photoLibrary) {
+        if !self.presentPhotoLibraryPicker(animated: true, completion: nil) {
             self.showSaveToastWithSuccess(false)
-            return
         }
+    }
 
+    func configuredPhotoLibraryPicker() -> UIImagePickerController {
         let picker = UIImagePickerController()
         picker.sourceType = .photoLibrary
         picker.delegate = self
@@ -1592,7 +1604,20 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
         popover?.sourceView = self.view
         popover?.sourceRect = CGRect(x: self.view.bounds.maxX - 110.0, y: 88.0, width: 1.0, height: 1.0)
         popover?.permittedArrowDirections = .up
-        self.present(picker, animated: true, completion: nil)
+        return picker
+    }
+
+    @discardableResult
+    func presentPhotoLibraryPicker(animated: Bool, completion: ((UIImagePickerController) -> Void)?) -> Bool {
+        if !UIImagePickerController.isSourceTypeAvailable(.photoLibrary) {
+            return false
+        }
+
+        let picker = self.configuredPhotoLibraryPicker()
+        self.present(picker, animated: animated) {
+            completion?(picker)
+        }
+        return true
     }
 
     @objc func didTapSaveSession() {
@@ -2045,7 +2070,14 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
         let shouldRunLayoutProbe = arguments.contains("--kc-runtime-layout-check")
         let shouldRunStickerProbe = arguments.contains("--kc-runtime-sticker-check")
         let shouldRunSaveHistoryProbe = arguments.contains("--kc-runtime-save-history-check")
-        guard shouldRunEmptySaveProbe || shouldRunLayoutProbe || shouldRunStickerProbe || shouldRunSaveHistoryProbe else {
+        let shouldRunDrawingToolsProbe = arguments.contains("--kc-runtime-drawing-tools-check")
+        let shouldRunSystemUIProbe = arguments.contains("--kc-runtime-system-ui-check")
+        guard shouldRunEmptySaveProbe
+                || shouldRunLayoutProbe
+                || shouldRunStickerProbe
+                || shouldRunSaveHistoryProbe
+                || shouldRunDrawingToolsProbe
+                || shouldRunSystemUIProbe else {
             return
         }
         self.runtimeAcceptanceProbeDidRun = true
@@ -2057,6 +2089,10 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
                 self?.runStickerUndoRedoAcceptanceProbe()
             } else if shouldRunSaveHistoryProbe {
                 self?.runSaveHistoryAcceptanceProbe()
+            } else if shouldRunDrawingToolsProbe {
+                self?.runDrawingToolsAcceptanceProbe()
+            } else if shouldRunSystemUIProbe {
+                self?.runSystemUIPresentationAcceptanceProbe()
             } else {
                 self?.runEmptySaveAcceptanceProbe()
             }
@@ -2337,6 +2373,290 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
             "expectedToast": KCL10n.saveSuccessToastTitle
         ]
         self.writeRuntimeAcceptanceResult(result, fileName: "kc_runtime_acceptance_save_history.json")
+    }
+
+    private func runDrawingToolsAcceptanceProbe() {
+        self.activeSession = nil
+        self.selectedHistorySession = nil
+        self.activeSessionHasUnsavedChanges = false
+        self.draftSaveTimer?.invalidate()
+        self.draftSaveTimer = nil
+        self.suppressNextDraftSave = true
+        self.canvasView.startBlankCanvas()
+        self.sessionStore.clearDraft()
+        self.didTapPalette24()
+        self.refreshHistoryUI()
+        self.refreshActionButtons()
+        self.view.layoutIfNeeded()
+
+        let initialVisible = self.canvasFeature.hasVisibleContent(self.canvasView)
+        let initialCanUndo = self.canvasView.canUndo()
+        let initialCanRedo = self.canvasView.canRedo()
+
+        let palette24Count = self.currentPalette().count
+        let palette24ButtonActive = self.palette24Button.backgroundColor == KCEditorVisualStyle.accentColor
+
+        self.didTapPalette36()
+        let palette36Count = self.currentPalette().count
+        let palette36ButtonActive = self.palette36Button.backgroundColor == KCEditorVisualStyle.accentColor
+        let selectedColor = self.currentPalette().last ?? UIColor(red: 0.94, green: 0.43, blue: 0.45, alpha: 1.0)
+        self.selectColor(selectedColor, sender: nil)
+        let selectedColorApplied = self.color(self.canvasView.currentColor, matchesColor: selectedColor)
+        let selectedColorHighlighted = self.activeColorButton != nil
+
+        self.selectToolMode(.brush)
+        self.selectBrushStyle(.pen)
+        self.canvasView.currentLineWidth = 22.0
+        self.canvasView.insertRuntimeAcceptanceStroke()
+        self.refreshActionButtons()
+        let afterBrushVisible = self.canvasFeature.hasVisibleContent(self.canvasView)
+        let afterBrushCanUndo = self.canvasView.canUndo()
+        let afterBrushSnapshot = self.runtimeAcceptanceSnapshotData()
+
+        self.selectToolMode(.eraser)
+        self.canvasView.currentLineWidth = 34.0
+        self.canvasView.currentEraserShape = .circle
+        self.canvasView.insertRuntimeAcceptanceEraserStroke()
+        self.refreshActionButtons()
+        let afterEraserVisible = self.canvasFeature.hasVisibleContent(self.canvasView)
+        let afterEraserCanUndo = self.canvasView.canUndo()
+        let eraserChangedCanvas = self.runtimeAcceptanceSnapshotData() != afterBrushSnapshot
+
+        let lineArtItem = self.lineArtFeature.makeLineArtItems().first
+        if let lineArtItem {
+            self.loadLineArtItem(lineArtItem)
+        }
+        self.view.layoutIfNeeded()
+        let afterLineArtVisible = self.canvasFeature.hasVisibleContent(self.canvasView)
+        let afterLineArtToolIsFill = self.canvasView.currentToolMode == .fill
+        let afterLineArtCanUndo = self.canvasView.canUndo()
+        let afterLineArtCanRedo = self.canvasView.canRedo()
+        let beforeFillSnapshot = self.runtimeAcceptanceSnapshotData()
+
+        let fillColor = UIColor(red: 0.97, green: 0.86, blue: 0.48, alpha: 1.0)
+        self.selectColor(fillColor, sender: nil)
+        let fillSucceeded = self.canvasView.performRuntimeAcceptanceFloodFill(atNormalizedPoint: CGPoint(x: 0.08, y: 0.08))
+        self.refreshActionButtons()
+        let afterFillVisible = self.canvasFeature.hasVisibleContent(self.canvasView)
+        let afterFillCanUndo = self.canvasView.canUndo()
+        let fillChangedCanvas = self.runtimeAcceptanceSnapshotData() != beforeFillSnapshot
+
+        self.selectToolMode(.picker)
+        let pickedColor = self.canvasView.runtimeAcceptancePickedColor(atNormalizedPoint: CGPoint(x: 0.08, y: 0.08))
+        if let pickedColor {
+            self.canvasView.currentColor = pickedColor
+            self.selectColor(pickedColor, sender: nil)
+            self.addRecentColor(pickedColor)
+        }
+        let pickedColorMatchesFill = self.color(pickedColor, matchesColor: fillColor)
+        let currentColorMatchesPicked = self.color(self.canvasView.currentColor, matchesColor: pickedColor)
+        let recentColorRecorded = self.contentPicker.recentColors.contains { self.color($0, matchesColor: pickedColor) }
+
+        let result: [String: Any] = [
+            "probe": "drawing-tools",
+            "passed": !initialVisible
+                && !initialCanUndo
+                && !initialCanRedo
+                && palette24Count == 24
+                && palette24ButtonActive
+                && palette36Count == 36
+                && palette36ButtonActive
+                && selectedColorApplied
+                && selectedColorHighlighted
+                && afterBrushVisible
+                && afterBrushCanUndo
+                && afterEraserVisible
+                && afterEraserCanUndo
+                && eraserChangedCanvas
+                && lineArtItem != nil
+                && afterLineArtVisible
+                && afterLineArtToolIsFill
+                && !afterLineArtCanUndo
+                && !afterLineArtCanRedo
+                && fillSucceeded
+                && afterFillVisible
+                && afterFillCanUndo
+                && fillChangedCanvas
+                && pickedColorMatchesFill
+                && currentColorMatchesPicked
+                && recentColorRecorded,
+            "initialVisible": initialVisible,
+            "initialCanUndo": initialCanUndo,
+            "initialCanRedo": initialCanRedo,
+            "palette24Count": palette24Count,
+            "palette24ButtonActive": palette24ButtonActive,
+            "palette36Count": palette36Count,
+            "palette36ButtonActive": palette36ButtonActive,
+            "selectedColorApplied": selectedColorApplied,
+            "selectedColorHighlighted": selectedColorHighlighted,
+            "afterBrushVisible": afterBrushVisible,
+            "afterBrushCanUndo": afterBrushCanUndo,
+            "afterEraserVisible": afterEraserVisible,
+            "afterEraserCanUndo": afterEraserCanUndo,
+            "eraserChangedCanvas": eraserChangedCanvas,
+            "lineArtItemId": lineArtItem?.id ?? "",
+            "afterLineArtVisible": afterLineArtVisible,
+            "afterLineArtToolIsFill": afterLineArtToolIsFill,
+            "afterLineArtCanUndo": afterLineArtCanUndo,
+            "afterLineArtCanRedo": afterLineArtCanRedo,
+            "fillSucceeded": fillSucceeded,
+            "afterFillVisible": afterFillVisible,
+            "afterFillCanUndo": afterFillCanUndo,
+            "fillChangedCanvas": fillChangedCanvas,
+            "pickedColorMatchesFill": pickedColorMatchesFill,
+            "currentColorMatchesPicked": currentColorMatchesPicked,
+            "recentColorRecorded": recentColorRecorded
+        ]
+        self.writeRuntimeAcceptanceResult(result, fileName: "kc_runtime_acceptance_drawing_tools.json")
+    }
+
+    private func runSystemUIPresentationAcceptanceProbe() {
+        self.view.layoutIfNeeded()
+        let initialColor = self.canvasView.currentColor
+
+        self.presentCustomColorPicker(animated: false) { [weak self] colorPicker in
+            self?.finishColorPickerSystemUIProbe(initialColor: initialColor, colorPicker: colorPicker)
+        }
+    }
+
+    private func finishColorPickerSystemUIProbe(initialColor: UIColor, colorPicker: UIColorPickerViewController) {
+        let colorPickerPresented = true
+        let colorPickerDelegateSet = colorPicker.delegate != nil
+        let colorPickerInitialColorMatches = self.color(colorPicker.selectedColor, matchesColor: initialColor)
+        let colorPickerPopoverSourceIsCustomButton = colorPicker.popoverPresentationController?.sourceView === self.customColorButton
+        let colorPickerUsesPopoverPresentation = colorPicker.modalPresentationStyle == .popover
+        let simulatedSystemColor = UIColor(red: 0.28, green: 0.62, blue: 0.91, alpha: 1.0)
+        colorPicker.selectedColor = simulatedSystemColor
+        self.colorPickerViewControllerDidSelectColor(colorPicker)
+        self.colorPickerViewControllerDidFinish(colorPicker)
+        let colorPickerSelectionApplied = self.color(self.canvasView.currentColor, matchesColor: simulatedSystemColor)
+        let colorPickerSelectionRecorded = self.contentPicker.recentColors.contains { self.color($0, matchesColor: simulatedSystemColor) }
+
+        self.dismiss(animated: false) { [weak self] in
+            guard let self = self else { return }
+            let photoLibraryAvailable = UIImagePickerController.isSourceTypeAvailable(.photoLibrary)
+            if !self.presentPhotoLibraryPicker(animated: false, completion: { [weak self] imagePicker in
+                self?.finishSystemUIPresentationAcceptanceProbe(
+                    colorPickerPresented: colorPickerPresented,
+                    colorPickerDelegateSet: colorPickerDelegateSet,
+                    colorPickerInitialColorMatches: colorPickerInitialColorMatches,
+                    colorPickerPopoverSourceIsCustomButton: colorPickerPopoverSourceIsCustomButton,
+                    colorPickerUsesPopoverPresentation: colorPickerUsesPopoverPresentation,
+                    colorPickerSelectionApplied: colorPickerSelectionApplied,
+                    colorPickerSelectionRecorded: colorPickerSelectionRecorded,
+                    photoLibraryAvailable: photoLibraryAvailable,
+                    imagePicker: imagePicker
+                )
+            }) {
+                self.finishSystemUIPresentationAcceptanceProbe(
+                    colorPickerPresented: colorPickerPresented,
+                    colorPickerDelegateSet: colorPickerDelegateSet,
+                    colorPickerInitialColorMatches: colorPickerInitialColorMatches,
+                    colorPickerPopoverSourceIsCustomButton: colorPickerPopoverSourceIsCustomButton,
+                    colorPickerUsesPopoverPresentation: colorPickerUsesPopoverPresentation,
+                    colorPickerSelectionApplied: colorPickerSelectionApplied,
+                    colorPickerSelectionRecorded: colorPickerSelectionRecorded,
+                    photoLibraryAvailable: photoLibraryAvailable,
+                    imagePicker: nil
+                )
+            }
+        }
+    }
+
+    private func finishSystemUIPresentationAcceptanceProbe(
+        colorPickerPresented: Bool,
+        colorPickerDelegateSet: Bool,
+        colorPickerInitialColorMatches: Bool,
+        colorPickerPopoverSourceIsCustomButton: Bool,
+        colorPickerUsesPopoverPresentation: Bool,
+        colorPickerSelectionApplied: Bool,
+        colorPickerSelectionRecorded: Bool,
+        photoLibraryAvailable: Bool,
+        imagePicker: UIImagePickerController?
+    ) {
+        let imagePickerPresented = imagePicker != nil
+        let imagePickerUsesPhotoLibrary = imagePicker?.sourceType == .photoLibrary
+        let imagePickerDelegateSet = imagePicker?.delegate != nil
+        if let imagePicker {
+            self.imagePickerController(
+                imagePicker,
+                didFinishPickingMediaWithInfo: [
+                    .originalImage: self.runtimeAcceptanceImportImage()
+                ]
+            )
+        }
+        let imageImportVisible = self.canvasFeature.hasVisibleContent(self.canvasView)
+        let imageImportActiveSessionCleared = self.activeSession == nil
+        let imageImportSelectedHistoryCleared = self.selectedHistorySession == nil
+        let imageImportStartsClean = !self.activeSessionHasUnsavedChanges
+            && !self.canvasView.canUndo()
+            && !self.canvasView.canRedo()
+
+        let result: [String: Any] = [
+            "probe": "system-ui",
+            "passed": colorPickerPresented
+                && colorPickerDelegateSet
+                && colorPickerInitialColorMatches
+                && colorPickerPopoverSourceIsCustomButton
+                && colorPickerUsesPopoverPresentation
+                && colorPickerSelectionApplied
+                && colorPickerSelectionRecorded
+                && photoLibraryAvailable
+                && imagePickerPresented
+                && imagePickerUsesPhotoLibrary
+                && imagePickerDelegateSet
+                && imageImportVisible
+                && imageImportActiveSessionCleared
+                && imageImportSelectedHistoryCleared
+                && imageImportStartsClean,
+            "colorPickerPresented": colorPickerPresented,
+            "colorPickerDelegateSet": colorPickerDelegateSet,
+            "colorPickerInitialColorMatches": colorPickerInitialColorMatches,
+            "colorPickerPopoverSourceIsCustomButton": colorPickerPopoverSourceIsCustomButton,
+            "colorPickerUsesPopoverPresentation": colorPickerUsesPopoverPresentation,
+            "colorPickerSelectionApplied": colorPickerSelectionApplied,
+            "colorPickerSelectionRecorded": colorPickerSelectionRecorded,
+            "photoLibraryAvailable": photoLibraryAvailable,
+            "imagePickerPresented": imagePickerPresented,
+            "imagePickerUsesPhotoLibrary": imagePickerUsesPhotoLibrary,
+            "imagePickerDelegateSet": imagePickerDelegateSet,
+            "imageImportVisible": imageImportVisible,
+            "imageImportActiveSessionCleared": imageImportActiveSessionCleared,
+            "imageImportSelectedHistoryCleared": imageImportSelectedHistoryCleared,
+            "imageImportStartsClean": imageImportStartsClean
+        ]
+        self.writeRuntimeAcceptanceResult(result, fileName: "kc_runtime_acceptance_system_ui.json")
+        self.resetRuntimeAcceptanceCanvasState()
+        self.dismiss(animated: false, completion: nil)
+    }
+
+    private func runtimeAcceptanceImportImage() -> UIImage {
+        let renderer = UIGraphicsImageRenderer(size: CGSize(width: 320.0, height: 240.0))
+        return renderer.image { context in
+            UIColor(red: 0.99, green: 0.88, blue: 0.38, alpha: 1.0).setFill()
+            context.fill(CGRect(x: 0.0, y: 0.0, width: 320.0, height: 240.0))
+            UIColor(red: 0.24, green: 0.58, blue: 0.92, alpha: 1.0).setFill()
+            context.cgContext.fillEllipse(in: CGRect(x: 96.0, y: 56.0, width: 128.0, height: 128.0))
+        }
+    }
+
+    private func resetRuntimeAcceptanceCanvasState() {
+        self.activeSession = nil
+        self.selectedHistorySession = nil
+        self.activeSessionHasUnsavedChanges = false
+        self.draftSaveTimer?.invalidate()
+        self.draftSaveTimer = nil
+        self.suppressNextDraftSave = true
+        self.canvasView.startBlankCanvas()
+        self.sessionStore.clearDraft()
+        self.refreshHistoryUI()
+        self.refreshActionButtons()
+    }
+
+    private func runtimeAcceptanceSnapshotData() -> Data {
+        self.view.layoutIfNeeded()
+        self.canvasView.layoutIfNeeded()
+        return self.canvasView.snapshotImage().pngData() ?? Data()
     }
 
     private enum LayoutEdge {

@@ -440,6 +440,57 @@ final class KCDrawingCanvasView: UIView, UIGestureRecognizerDelegate {
         setNeedsDisplay()
         notifyContentChanged()
     }
+
+    @objc func insertRuntimeAcceptanceEraserStroke() {
+        commitCurrentStateForUndo()
+
+        let drawingBounds = bounds.isEmpty ? CGRect(x: 0.0, y: 0.0, width: 1024.0, height: 720.0) : bounds
+        let start = CGPoint(x: drawingBounds.minX + drawingBounds.width * 0.22,
+                            y: drawingBounds.minY + drawingBounds.height * 0.56)
+        let end = CGPoint(x: drawingBounds.minX + drawingBounds.width * 0.78,
+                          y: drawingBounds.minY + drawingBounds.height * 0.48)
+
+        let path = UIBezierPath()
+        path.move(to: start)
+        path.addLine(to: end)
+        path.lineCapStyle = .round
+        path.lineJoinStyle = .round
+        path.lineWidth = max(42.0, currentLineWidth * 1.35)
+
+        let stroke = KDStroke()
+        stroke.path = path
+        stroke.color = .white
+        stroke.lineWidth = path.lineWidth
+        stroke.pressureTotal = 1.0
+        stroke.pressureSampleCount = 1
+        stroke.startPoint = start
+        stroke.toolMode = .eraser
+        stroke.brushStyle = currentBrushStyle
+        stroke.eraserShape = currentEraserShape
+        strokes.append(stroke)
+
+        setNeedsDisplay()
+        notifyContentChanged()
+    }
+
+    @objc func performRuntimeAcceptanceFloodFill(atNormalizedPoint normalizedPoint: CGPoint) -> Bool {
+        let drawingBounds = bounds.isEmpty ? CGRect(x: 0.0, y: 0.0, width: 1024.0, height: 720.0) : bounds
+        let point = CGPoint(x: drawingBounds.minX + drawingBounds.width * normalizedPoint.x,
+                            y: drawingBounds.minY + drawingBounds.height * normalizedPoint.y)
+        let previousState = canvasStateSnapshot()
+        if performFloodFill(at: point, color: currentColor) {
+            commitUndoStateSnapshot(previousState)
+            return true
+        }
+        return false
+    }
+
+    @objc func runtimeAcceptancePickedColor(atNormalizedPoint normalizedPoint: CGPoint) -> UIColor? {
+        let drawingBounds = bounds.isEmpty ? CGRect(x: 0.0, y: 0.0, width: 1024.0, height: 720.0) : bounds
+        let point = CGPoint(x: drawingBounds.minX + drawingBounds.width * normalizedPoint.x,
+                            y: drawingBounds.minY + drawingBounds.height * normalizedPoint.y)
+        return colorAtPoint(point)
+    }
 #endif
 
     @objc func snapshotImage() -> UIImage {

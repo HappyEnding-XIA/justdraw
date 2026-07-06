@@ -9,17 +9,17 @@
 | 编号 | 流程 | 交付标准 | 自动验证 | 人工触控 |
 |---|---|---|---|---|
 | F01 | 启动 | iPhone/iPad 模拟器可安装、启动、截图非空，并生成横屏观察图、不崩溃 | `runtime_smoke_test.sh` | 检查首屏控件无遮挡 |
-| F02 | 画笔 | 铅笔、钢笔、蜡笔可切换；宽度预览和笔触可用 | `validate_project.py` + `swift test` | 手绘连续线条 |
-| F03 | 橡皮 | 橡皮可切换 circle/cloud/star；尺寸预览和擦除可用 | `validate_project.py` + `swift test` | 擦除已有笔触 |
-| F04 | 填色 | 填色工具存在并通过 Swift flood fill 执行 | `validate_project.py` + `swift test` | 点按封闭区域填色 |
-| F05 | 取色 | 取色器通过 Swift 采样返回颜色，并更新当前颜色 | `validate_project.py` + `swift test` | 从画布取色后继续绘制 |
+| F02 | 画笔 | 铅笔、钢笔、蜡笔可切换；宽度预览和笔触可用 | `validate_project.py` + `swift test` + `drawing-tools` | 手绘连续线条 |
+| F03 | 橡皮 | 橡皮可切换 circle/cloud/star；尺寸预览和擦除可用 | `validate_project.py` + `swift test` + `drawing-tools` | 擦除已有笔触 |
+| F04 | 填色 | 填色工具存在并通过 Swift flood fill 执行 | `validate_project.py` + `swift test` + `drawing-tools` | 点按封闭区域填色 |
+| F05 | 取色 | 取色器通过 Swift 采样返回颜色，并更新当前颜色 | `validate_project.py` + `swift test` + `drawing-tools` | 从画布取色后继续绘制 |
 | F06 | 印章 | 左侧显示“印章”；可添加、选中反馈清楚、拖动、捏合缩放、旋转、前移、删除、撤销/重做 | `validate_project.py` + `swift test` | 添加印章后依次点验选中、拖动、捏合、旋转、前移、删除、撤销/重做 |
-| F07 | 颜色面板 | 24/36 色盘、最近色、当前色高亮可用 | `validate_project.py` + `swift test` | 切换色盘并选择颜色 |
-| F08 | 自定义色 | Custom 仅保留单一入口；弹出系统取色器 | `validate_project.py` | 选择自定义颜色 |
+| F07 | 颜色面板 | 24/36 色盘、最近色、当前色高亮可用 | `validate_project.py` + `swift test` + `drawing-tools` | 切换色盘并选择颜色 |
+| F08 | 自定义色 | Custom 仅保留单一入口；弹出系统取色器 | `validate_project.py` + `system-ui` | 选择自定义颜色 |
 | F09 | 保存 | 空画布不可保存；有内容后保存到历史和系统相册；成功/失败 Toast 使用本地化文字，默认中文 | `validate_project.py` | 空画布点保存应显示“无法保存”；画一笔后保存应显示“已保存”并进入历史/相册 |
 | F10 | 历史 | 草稿、历史缩略图、打开、删除、翻页状态可用 | `validate_project.py` + `swift test` | 保存后打开/删除历史 |
-| F11 | 相册导入 | 可从相册导入图片，并重置为干净画布会话；权限说明中英文资源齐全 | `validate_project.py` | 首次进入相册确认权限弹窗为中文；选择一张照片导入后继续绘制 |
-| F12 | 线稿 | 线稿入口、弹窗、模板加载可用 | `validate_project.py` + `swift test` | 打开线稿并进入绘制 |
+| F11 | 相册导入 | 可从相册导入图片，并重置为干净画布会话；权限说明中英文资源齐全 | `validate_project.py` + `system-ui` | 首次进入相册确认权限弹窗为中文；选择一张照片导入后继续绘制 |
+| F12 | 线稿 | 线稿入口、弹窗、模板加载可用 | `validate_project.py` + `swift test` + `drawing-tools` | 打开线稿并进入绘制 |
 
 ## 2. 必跑命令
 
@@ -49,6 +49,10 @@ scripts/runtime_acceptance_test.sh "iPhone 17 Pro" sticker-undo-redo
 scripts/runtime_acceptance_test.sh "iPad Pro 11 M4" sticker-undo-redo
 scripts/runtime_acceptance_test.sh "iPhone 17 Pro" save-history-restore
 scripts/runtime_acceptance_test.sh "iPad Pro 11 M4" save-history-restore
+scripts/runtime_acceptance_test.sh "iPhone 17 Pro" drawing-tools
+scripts/runtime_acceptance_test.sh "iPad Pro 11 M4" drawing-tools
+scripts/runtime_acceptance_test.sh "iPhone 17 Pro" system-ui
+scripts/runtime_acceptance_test.sh "iPad Pro 11 M4" system-ui
 git diff --check
 ```
 
@@ -88,8 +92,12 @@ git diff --check
 - iPhone 横屏紧凑布局下，左侧工具栏与右侧面板保留足够可视高度，避免首屏看起来被截断或被底部 Dock 压住。
 - 印章可在空白画布插入并进入选中态；删除后画布回空，撤销可恢复印章，重做可再次删除，且保存按钮仍保持可点以触发空画布“无法保存”反馈。
 - 画布生成可见画笔内容后可通过真实保存入口写入历史、显示“已保存”Toast；清空画布后打开刚保存的历史记录可恢复可见内容，且恢复后的 undo/redo 栈保持干净。
+- 绘画工具链路可在 App 内运行时完成：24/36 色盘切换、选色高亮、画笔内容生成、橡皮擦除、线稿加载、填色、取色和最近色写入。
+- 系统 UI 入口和回调可在 App 内运行时执行：Custom 打开系统取色器并通过 delegate 回填颜色，相册导入打开系统相册选择器并通过 delegate 导入合成图片；真实选色、选图和权限弹窗仍需人工点验。
 
 ## 4. 人工验收建议
+
+交付前按 [人工验收执行表（2026-07-06）](./MANUAL_ACCEPTANCE_RUNBOOK_2026-07-06.md) 逐项记录 iPhone / iPad 结果；下面仅保留快速顺序说明。
 
 自动化不能完全替代手指/鼠标交互，交付前建议按以下顺序快速点一遍：
 

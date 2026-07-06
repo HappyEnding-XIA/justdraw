@@ -24,17 +24,24 @@
 | iPad Pro 11 M4 构建 | 通过 | `xcodebuild -project KidCanvas.xcodeproj -scheme KidCanvas -destination 'platform=iOS Simulator,name=iPad Pro 11 M4' build -quiet` |
 | iPhone 17 Pro runtime smoke | 通过 | 启动成功、进程存活、截图非空；原始截图为竖屏 framebuffer，脚本已生成横屏观察图 `/tmp/kc_smoke_iPhone_17_Pro_landscape.png` |
 | iPad Pro 11 M4 runtime smoke | 通过 | 启动成功、进程存活、截图非空；原始截图为竖屏 framebuffer，脚本已生成横屏观察图 `/tmp/kc_smoke_iPad_Pro_11_M4_landscape.png` |
-| iPhone 17 Pro runtime acceptance | 通过 | 空画布保存反馈 Debug 探针：`passed=true`，保存按钮可点，失败 Toast 可见，历史 0→0 |
-| iPad Pro 11 M4 runtime acceptance | 通过 | 空画布保存反馈 Debug 探针：`passed=true`，保存按钮可点，失败 Toast 可见，历史 1→1 |
-| iPhone 17 Pro runtime layout acceptance | 通过 | 首屏 safe area Debug 探针：`passed=true`，顶部工具、左侧工具栏、右侧面板、底部 Dock、折叠按钮均未越界；左栏可视高 229.3pt，右侧面板可视高 196pt |
+| iPhone 17 Pro runtime acceptance | 通过 | 空画布保存反馈 Debug 探针：`passed=true`，保存按钮可点，失败 Toast 可见，历史数量不变 |
+| iPad Pro 11 M4 runtime acceptance | 通过 | 空画布保存反馈 Debug 探针：`passed=true`，保存按钮可点，失败 Toast 可见，历史数量不变 |
+| iPhone 17 Pro runtime layout acceptance | 通过 | 首屏 safe area Debug 探针：`passed=true`，顶部工具、左侧工具栏、右侧面板、底部 Dock、折叠按钮均未越界；左栏可视高 221.7pt，右侧面板可视高 220pt |
 | iPad Pro 11 M4 runtime layout acceptance | 通过 | 首屏 safe area Debug 探针：`passed=true`，顶部工具、左侧工具栏、右侧面板、底部 Dock、折叠按钮均未越界；左栏可视高 357.5pt，右侧面板可视高 495pt |
 | iPhone 17 Pro runtime sticker acceptance | 通过 | 印章删除/撤销/重做 Debug 探针：`passed=true`，覆盖空白画布插入印章、选中态、删除、撤销恢复、重做删除 |
 | iPad Pro 11 M4 runtime sticker acceptance | 通过 | 印章删除/撤销/重做 Debug 探针：`passed=true`，覆盖空白画布插入印章、选中态、删除、撤销恢复、重做删除 |
-| iPhone 17 Pro runtime save/history acceptance | 通过 | 绘制内容保存与历史恢复 Debug 探针：`passed=true`，覆盖画笔内容可见、保存成功 Toast、历史数量增加、清空后打开历史恢复可见内容 |
-| iPad Pro 11 M4 runtime save/history acceptance | 通过 | 绘制内容保存与历史恢复 Debug 探针：`passed=true`，覆盖画笔内容可见、保存成功 Toast、历史数量增加、清空后打开历史恢复可见内容 |
+| iPhone 17 Pro runtime save/history acceptance | 通过 | 绘制内容保存与历史恢复 Debug 探针：`passed=true`，覆盖画笔内容可见、保存成功 Toast、历史数量 +1、清空后打开历史恢复可见内容 |
+| iPad Pro 11 M4 runtime save/history acceptance | 通过 | 绘制内容保存与历史恢复 Debug 探针：`passed=true`，覆盖画笔内容可见、保存成功 Toast、历史数量 +1、清空后打开历史恢复可见内容 |
+| 双端 runtime layout 并行验收 | 通过 | T072 后 iPhone 17 Pro 与 iPad Pro 11 M4 `layout-safe-area` 可并行执行，默认 DerivedData 路径按设备和探针拆分，未再出现 build.db locked |
+| iPhone 17 Pro runtime drawing-tools acceptance | 通过 | 绘画工具链路 Debug 探针：`passed=true`，覆盖 24/36 色盘切换、选色高亮、画笔内容、橡皮擦除、线稿加载、填色、取色和最近色写入 |
+| iPad Pro 11 M4 runtime drawing-tools acceptance | 通过 | 绘画工具链路 Debug 探针：`passed=true`，覆盖 24/36 色盘切换、选色高亮、画笔内容、橡皮擦除、线稿加载、填色、取色和最近色写入 |
+| iPhone 17 Pro runtime system-ui acceptance | 通过 | 系统 UI Debug 探针：`passed=true`，验证 Custom 系统取色器可呈现并回填颜色，相册选择器可呈现并导入合成图片 |
+| iPad Pro 11 M4 runtime system-ui acceptance | 通过 | 系统 UI Debug 探针：`passed=true`，验证 Custom 系统取色器可呈现并回填颜色，相册选择器可呈现并导入合成图片 |
 | `git diff --check` | 通过 | 无空白错误 |
 
 ## 3. F01-F12 验收状态
+
+人工点验执行表已补齐：[KidCanvas 人工验收执行表（2026-07-06）](./MANUAL_ACCEPTANCE_RUNBOOK_2026-07-06.md)。后续人工验收结果以执行表为准，再回写本记录的阶段结论。
 
 | 编号 | 流程 | 自动验收 | 人工点验 | 当前结论 |
 |---|---|---|---|---|
@@ -45,10 +52,10 @@
 | F05 | 取色 | 通过 | 待点验 | 需从画布取色并继续绘制 |
 | F06 | 印章 | 通过 | 待点验 | 需确认选中反馈、拖动、捏合、旋转、前移、删除、撤销/重做 |
 | F07 | 颜色面板 | 通过 | 待点验 | 需切换 24/36 色并选色 |
-| F08 | 自定义色 | 通过 | 待点验 | 需打开系统取色器选择自定义颜色 |
+| F08 | 自定义色 | 通过 | 待点验 | 自动验证系统取色器可呈现；仍需人工选择自定义颜色 |
 | F09 | 保存 | 通过 | 待点验 | 需确认空画布“无法保存”、非空画布“已保存”、历史与系统相册 |
 | F10 | 历史 | 通过 | 待点验 | 需保存后打开/删除历史 |
-| F11 | 相册导入 | 通过 | 待点验 | 需确认权限弹窗、选择照片、导入后干净会话 |
+| F11 | 相册导入 | 通过 | 待点验 | 自动验证相册选择器可呈现；仍需确认权限弹窗、选择照片、导入后干净会话 |
 | F12 | 线稿 | 通过 | 待点验 | 需加载线稿后继续绘制 |
 
 ## 4. 已确认改动
@@ -62,6 +69,12 @@
 - T068：收口 iPhone 横屏紧凑布局；左侧工具栏上移并增加可视高度，右侧面板上移，底部 Dock 和画笔卡片略收紧；新增 runtime 探针对左栏/右栏最低可视高度做防回归检查。
 - T069：新增印章删除/撤销/重做运行时验收探针；`scripts/runtime_acceptance_test.sh "iPhone 17 Pro" sticker-undo-redo` 与 `scripts/runtime_acceptance_test.sh "iPad Pro 11 M4" sticker-undo-redo` 均通过，可自动检查印章插入、选中、删除、撤销恢复和重做删除链路。
 - T070：新增绘制内容保存与历史恢复运行时验收探针；`scripts/runtime_acceptance_test.sh "iPhone 17 Pro" save-history-restore` 与 `scripts/runtime_acceptance_test.sh "iPad Pro 11 M4" save-history-restore` 均通过，可自动检查画笔内容可见、保存成功、历史写入和打开恢复链路。
+- T071：首屏视觉与面板裁切精修已完成自动验收；iPhone 左侧工具栏不再露出半个按钮，右侧面板可视高度提升到 220pt，24 色盘首屏完整显示，底部 Dock 略收紧，浮层/按钮边界更清晰；iPhone/iPad `layout-safe-area` 和 runtime smoke 均通过。
+- T072：运行时验收脚本默认 DerivedData 路径改为按设备名和探针名区分，保留 `DERIVED_DATA` 手动覆盖；双端 `layout-safe-area` 并行执行已通过，避免后续自测因 Xcode build.db 锁误报失败。
+- T073：新增绘画工具链路运行时验收探针；`scripts/runtime_acceptance_test.sh "iPhone 17 Pro" drawing-tools` 与 `scripts/runtime_acceptance_test.sh "iPad Pro 11 M4" drawing-tools` 均通过，可自动检查色盘切换、选色高亮、画笔、橡皮、线稿、填色、取色和最近色链路。
+- T074：补齐交付前人工验收执行表，覆盖 iPhone/iPad 双端 F01-F12、Photos 权限/导入/保存、系统取色器、印章真实捏合/旋转和缺陷记录模板；人工结果仍待执行后填写。
+- T075：运行时烟测脚本默认 DerivedData 路径改为按设备名区分，保留 `DERIVED_DATA` 手动覆盖；双端 smoke 并行执行已通过，避免共用 `/tmp/kc-dd` 导致 Xcode build.db 锁误报失败。
+- T076：新增系统 UI 呈现与回调运行时验收探针；`scripts/runtime_acceptance_test.sh "iPhone 17 Pro" system-ui` 与 `scripts/runtime_acceptance_test.sh "iPad Pro 11 M4" system-ui` 均通过，可自动检查 Custom 系统取色器呈现与颜色回填、相册选择器呈现与合成图片导入；探针结束后会清理回空白会话，避免污染后续 smoke 截图；真实选色/选图/权限弹窗仍保留人工点验。
 
 ## 5. 当前风险
 
@@ -69,7 +82,7 @@
 |---|---|---|
 | 阻塞 | 暂无自动验收发现的阻塞问题 | 人工点验如发现阻塞，回写看板为新任务 |
 | 非阻塞 | 系统 Photos 选择器、权限弹窗和保存到系统相册无法由 runtime smoke 证明 | 需要在 iPhone/iPad 模拟器或真机手动完成 |
-| 非阻塞 | 烟测截图中保留了历史画布内容 | 人工验收前新建画布即可，不影响构建和启动结论 |
+| 非阻塞 | 系统自定义取色器弹窗无法由 Debug 探针替代真实手动选择 | 已自动验证选色/取色/最近色链路；仍需人工打开系统取色器点选一次 |
 | 非阻塞 | `simctl io screenshot` 在当前 Simulator 上输出竖屏 framebuffer | 已由 smoke 脚本生成 `_landscape.png` 横屏观察图；最终仍以人工在模拟器窗口/真机横屏点验为准 |
 
 ## 6. 阶段结论

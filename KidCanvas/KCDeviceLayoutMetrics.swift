@@ -17,15 +17,15 @@ struct KCDeviceLayoutMetrics {
     }
 
     var rightPanelOuterWidth: CGFloat {
-        isCompactPhoneLayout ? 238.0 : 272.0
+        isCompactPhoneLayout ? 232.0 : 272.0
     }
 
     var rightPanelWidth: CGFloat {
-        isCompactPhoneLayout ? 214.0 : 248.0
+        isCompactPhoneLayout ? 208.0 : 248.0
     }
 
     var rightPanelTopOffset: CGFloat {
-        isCompactPhoneLayout ? 104.0 : 150.0
+        isCompactPhoneLayout ? 88.0 : 150.0
     }
 
     var rightPanelTrailingOffset: CGFloat {
@@ -37,15 +37,15 @@ struct KCDeviceLayoutMetrics {
     }
 
     var leftRailTopOffset: CGFloat {
-        isCompactPhoneLayout ? 118.0 : 150.0
+        isCompactPhoneLayout ? 112.0 : 150.0
     }
 
     var leftRailHeightMultiplier: CGFloat {
-        isCompactPhoneLayout ? 0.60 : 0.46
+        isCompactPhoneLayout ? 0.58 : 0.46
     }
 
     var rightPanelInnerInset: CGFloat {
-        isCompactPhoneLayout ? 14.0 : 18.0
+        isCompactPhoneLayout ? 12.0 : 18.0
     }
 
     var rightPanelStackSpacing: CGFloat {
@@ -57,11 +57,11 @@ struct KCDeviceLayoutMetrics {
     }
 
     var bottomDockHeight: CGFloat {
-        isCompactPhoneLayout ? 70.0 : 98.0
+        isCompactPhoneLayout ? 66.0 : 98.0
     }
 
     var bottomDockBottomInset: CGFloat {
-        isCompactPhoneLayout ? -4.0 : -18.0
+        isCompactPhoneLayout ? 0.0 : -18.0
     }
 
     var bottomDockTitleWidth: CGFloat {

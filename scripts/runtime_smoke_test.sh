@@ -19,7 +19,6 @@ DEVICE_NAME="${1:-iPhone 17 Pro}"
 SCHEME="KidCanvas"
 BUNDLE_ID="com.kidcanvas.drawing"
 CONFIGURATION="${CONFIGURATION:-Debug}"
-DERIVED_DATA="${DERIVED_DATA:-/tmp/kc-dd}"
 SCREENSHOT_DIR="${SCREENSHOT_DIR:-/tmp}"
 SCREENSHOT_WAIT_SECONDS="${SCREENSHOT_WAIT_SECONDS:-3}"
 SCREENSHOT_RETRY_COUNT="${SCREENSHOT_RETRY_COUNT:-5}"
@@ -37,6 +36,13 @@ red()   { printf '\033[31m%s\033[0m\n' "$*"; }
 green() { printf '\033[32m%s\033[0m\n' "$*"; }
 blue()  { printf '\033[34m%s\033[0m\n' "$*"; }
 step()  { blue "▶ $*"; }
+
+safe_path_component() {
+  printf '%s' "$1" | tr -c '[:alnum:]_-' '_'
+}
+
+SAFE_DEVICE_NAME="$(safe_path_component "$DEVICE_NAME")"
+DERIVED_DATA="${DERIVED_DATA:-/tmp/kc-dd-smoke-${SAFE_DEVICE_NAME}}"
 
 require_positive_integer() {
   local name="$1"

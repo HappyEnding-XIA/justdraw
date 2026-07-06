@@ -25,4 +25,5 @@
 ## Testing
 
 - [Delivery Acceptance Checklist](./testing/DELIVERY_ACCEPTANCE_CHECKLIST.md)
+- [Manual Acceptance Runbook 2026-07-06](./testing/MANUAL_ACCEPTANCE_RUNBOOK_2026-07-06.md)
 - [Runtime Smoke Test](./testing/RUNTIME_SMOKE_TEST.md)

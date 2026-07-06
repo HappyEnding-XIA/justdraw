@@ -14,8 +14,14 @@ PROBE="${2:-empty-save}"
 SCHEME="KidCanvas"
 BUNDLE_ID="com.kidcanvas.drawing"
 CONFIGURATION="${CONFIGURATION:-Debug}"
-DERIVED_DATA="${DERIVED_DATA:-/tmp/kc-dd-acceptance}"
 WAIT_SECONDS="${WAIT_SECONDS:-10}"
+safe_path_component() {
+  printf '%s' "$1" | tr -cs '[:alnum:]' '_'
+}
+
+SAFE_DEVICE_NAME="$(safe_path_component "$DEVICE_NAME")"
+SAFE_PROBE_NAME="$(safe_path_component "$PROBE")"
+DERIVED_DATA="${DERIVED_DATA:-/tmp/kc-dd-acceptance-${SAFE_DEVICE_NAME}-${SAFE_PROBE_NAME}}"
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
@@ -43,8 +49,16 @@ case "$PROBE" in
     LAUNCH_ARG="--kc-runtime-save-history-check"
     RESULT_FILE="kc_runtime_acceptance_save_history.json"
     ;;
+  drawing-tools)
+    LAUNCH_ARG="--kc-runtime-drawing-tools-check"
+    RESULT_FILE="kc_runtime_acceptance_drawing_tools.json"
+    ;;
+  system-ui)
+    LAUNCH_ARG="--kc-runtime-system-ui-check"
+    RESULT_FILE="kc_runtime_acceptance_system_ui.json"
+    ;;
   *)
-    red "错误：未知验收探针 '$PROBE'，可选：empty-save / layout-safe-area / sticker-undo-redo / save-history-restore"
+    red "错误：未知验收探针 '$PROBE'，可选：empty-save / layout-safe-area / sticker-undo-redo / save-history-restore / drawing-tools / system-ui"
     exit 8
     ;;
 esac

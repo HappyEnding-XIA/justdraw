@@ -13,14 +13,14 @@ enum KCEditorVisualStyle {
     static let mutedInkColor = UIColor(red: 0.48, green: 0.52, blue: 0.58, alpha: 1.0)
     static let accentColor = UIColor(red: 0.97, green: 0.86, blue: 0.48, alpha: 1.0)
     static let accentInkColor = UIColor(red: 0.39, green: 0.26, blue: 0.0, alpha: 1.0)
-    static let raisedBackgroundColor = UIColor(white: 1.0, alpha: 0.86)
-    static let compactBackgroundColor = UIColor(white: 1.0, alpha: 0.80)
-    static let pillBackgroundColor = UIColor(white: 1.0, alpha: 0.68)
-    static let disabledBackgroundColor = UIColor(white: 1.0, alpha: 0.58)
+    static let raisedBackgroundColor = UIColor(white: 1.0, alpha: 0.92)
+    static let compactBackgroundColor = UIColor(white: 1.0, alpha: 0.88)
+    static let pillBackgroundColor = UIColor(white: 1.0, alpha: 0.78)
+    static let disabledBackgroundColor = UIColor(white: 1.0, alpha: 0.68)
     static let saveActionColor = UIColor(red: 0.54, green: 0.80, blue: 0.98, alpha: 1.0)
     static let borderColor = UIColor(white: 1.0, alpha: 0.78).cgColor
     static let activeBorderColor = UIColor(white: 1.0, alpha: 0.94).cgColor
-    static let subtleBorderColor = UIColor(red: 0.17, green: 0.22, blue: 0.30, alpha: 0.08).cgColor
+    static let subtleBorderColor = UIColor(red: 0.17, green: 0.22, blue: 0.30, alpha: 0.12).cgColor
     static let shadowColor = UIColor(red: 0.37, green: 0.32, blue: 0.24, alpha: 1.0).cgColor
     static let inactiveShadowOpacity: Float = 0.05
     static let activeShadowOpacity: Float = 0.09
@@ -31,16 +31,16 @@ enum KCEditorVisualStyle {
         panel.layer.cornerRadius = 26.0
         panel.layer.cornerCurve = .continuous
         panel.layer.shadowColor = shadowColor
-        panel.layer.shadowOpacity = 0.10
-        panel.layer.shadowRadius = 20.0
-        panel.layer.shadowOffset = CGSize(width: 0.0, height: 10.0)
+        panel.layer.shadowOpacity = 0.14
+        panel.layer.shadowRadius = 18.0
+        panel.layer.shadowOffset = CGSize(width: 0.0, height: 8.0)
 
         blurView.layer.cornerRadius = 26.0
         blurView.layer.cornerCurve = .continuous
         blurView.layer.masksToBounds = true
-        blurView.layer.borderColor = UIColor(white: 1.0, alpha: 0.72).cgColor
-        blurView.layer.borderWidth = 1.0
-        blurView.contentView.backgroundColor = UIColor(white: 1.0, alpha: 0.24)
+        blurView.layer.borderColor = UIColor(red: 0.17, green: 0.22, blue: 0.30, alpha: 0.08).cgColor
+        blurView.layer.borderWidth = 1.2
+        blurView.contentView.backgroundColor = UIColor(white: 1.0, alpha: 0.34)
     }
 
     static func applyRaisedButtonAppearance(
@@ -55,7 +55,7 @@ enum KCEditorVisualStyle {
         view.layer.cornerRadius = cornerRadius
         view.layer.cornerCurve = .continuous
         view.layer.borderWidth = 1.0
-        view.layer.borderColor = borderColor
+        view.layer.borderColor = subtleBorderColor
         view.layer.shadowColor = shadowColor
         view.layer.shadowOpacity = shadowOpacity
         view.layer.shadowRadius = shadowRadius
@@ -68,7 +68,7 @@ enum KCEditorVisualStyle {
         button.layer.cornerRadius = cornerRadius
         button.layer.cornerCurve = .continuous
         button.layer.borderWidth = 1.0
-        button.layer.borderColor = borderColor
+        button.layer.borderColor = subtleBorderColor
     }
 
     static func applySmallToolButtonAppearance(to button: UIButton, accent: Bool) {
@@ -96,7 +96,7 @@ enum KCEditorVisualStyle {
         button.backgroundColor = active ? selectedBackgroundColor : baseBackgroundColor
         button.tintColor = active ? activeTintColor : inactiveTintColor
         button.layer.borderWidth = 1.0
-        button.layer.borderColor = active ? activeBorderColor : borderColor
+        button.layer.borderColor = active ? activeBorderColor : subtleBorderColor
         button.layer.cornerCurve = .continuous
         button.layer.shadowColor = shadowColor
         button.layer.shadowOpacity = active ? activeShadowOpacity : inactiveShadowOpacity

@@ -208,6 +208,7 @@ def product_stamp_naming_checks():
 def delivery_acceptance_checks():
     checks = []
     checklist_path = ROOT / "docs" / "testing" / "DELIVERY_ACCEPTANCE_CHECKLIST.md"
+    manual_runbook_path = ROOT / "docs" / "testing" / "MANUAL_ACCEPTANCE_RUNBOOK_2026-07-06.md"
     runtime_docs_path = ROOT / "docs" / "testing" / "RUNTIME_SMOKE_TEST.md"
     docs_index_path = ROOT / "docs" / "README.md"
     runtime_smoke_path = ROOT / "scripts" / "runtime_smoke_test.sh"
@@ -217,6 +218,7 @@ def delivery_acceptance_checks():
         return [fail("Delivery acceptance checklist exists")]
 
     checklist_text = checklist_path.read_text(encoding="utf-8")
+    manual_runbook_text = manual_runbook_path.read_text(encoding="utf-8") if manual_runbook_path.exists() else ""
     runtime_docs_text = runtime_docs_path.read_text(encoding="utf-8") if runtime_docs_path.exists() else ""
     docs_index_text = docs_index_path.read_text(encoding="utf-8")
     runtime_smoke_text = runtime_smoke_path.read_text(encoding="utf-8") if runtime_smoke_path.exists() else ""
@@ -224,19 +226,30 @@ def delivery_acceptance_checks():
 
     checks.append(ok("Delivery acceptance checklist exists"))
     checks.append(require_text(docs_index_text, "./testing/DELIVERY_ACCEPTANCE_CHECKLIST.md", "Docs index links the delivery acceptance checklist"))
+    checks.append(ok("Manual acceptance runbook exists") if manual_runbook_path.exists() else fail("Manual acceptance runbook exists"))
+    checks.append(require_text(docs_index_text, "./testing/MANUAL_ACCEPTANCE_RUNBOOK_2026-07-06.md", "Docs index links the manual acceptance runbook"))
+    checks.append(require_text(checklist_text, "./MANUAL_ACCEPTANCE_RUNBOOK_2026-07-06.md", "Delivery checklist links the manual acceptance runbook"))
     checks.append(ok("Runtime acceptance script exists") if runtime_acceptance_path.exists() else fail("Runtime acceptance script exists"))
     checks.append(ok("Runtime acceptance script is executable") if runtime_acceptance_path.exists() and (runtime_acceptance_path.stat().st_mode & 0o111) else fail("Runtime acceptance script is executable"))
     checks.append(require_text(runtime_acceptance_text, "--kc-runtime-empty-save-check", "Runtime acceptance script launches the empty-save Debug probe"))
     checks.append(require_text(runtime_acceptance_text, "--kc-runtime-layout-check", "Runtime acceptance script launches the layout Debug probe"))
     checks.append(require_text(runtime_acceptance_text, "--kc-runtime-sticker-check", "Runtime acceptance script launches the sticker Debug probe"))
     checks.append(require_text(runtime_acceptance_text, "--kc-runtime-save-history-check", "Runtime acceptance script launches the save-history Debug probe"))
+    checks.append(require_text(runtime_acceptance_text, "--kc-runtime-drawing-tools-check", "Runtime acceptance script launches the drawing-tools Debug probe"))
+    checks.append(require_text(runtime_acceptance_text, "--kc-runtime-system-ui-check", "Runtime acceptance script launches the system-ui Debug probe"))
     checks.append(require_text(runtime_acceptance_text, "kc_runtime_acceptance_empty_save.json", "Runtime acceptance script reads the empty-save JSON result"))
     checks.append(require_text(runtime_acceptance_text, "kc_runtime_acceptance_layout.json", "Runtime acceptance script reads the layout JSON result"))
     checks.append(require_text(runtime_acceptance_text, "kc_runtime_acceptance_sticker.json", "Runtime acceptance script reads the sticker JSON result"))
     checks.append(require_text(runtime_acceptance_text, "kc_runtime_acceptance_save_history.json", "Runtime acceptance script reads the save-history JSON result"))
+    checks.append(require_text(runtime_acceptance_text, "kc_runtime_acceptance_drawing_tools.json", "Runtime acceptance script reads the drawing-tools JSON result"))
+    checks.append(require_text(runtime_acceptance_text, "kc_runtime_acceptance_system_ui.json", "Runtime acceptance script reads the system-ui JSON result"))
     checks.append(require_text(runtime_acceptance_text, "layout-safe-area", "Runtime acceptance script exposes the layout-safe-area probe"))
     checks.append(require_text(runtime_acceptance_text, "sticker-undo-redo", "Runtime acceptance script exposes the sticker-undo-redo probe"))
     checks.append(require_text(runtime_acceptance_text, "save-history-restore", "Runtime acceptance script exposes the save-history-restore probe"))
+    checks.append(require_text(runtime_acceptance_text, "drawing-tools", "Runtime acceptance script exposes the drawing-tools probe"))
+    checks.append(require_text(runtime_acceptance_text, "system-ui", "Runtime acceptance script exposes the system-ui probe"))
+    checks.append(require_text(runtime_acceptance_text, "safe_path_component", "Runtime acceptance script sanitizes device/probe names for DerivedData paths"))
+    checks.append(require_text(runtime_acceptance_text, "/tmp/kc-dd-acceptance-${SAFE_DEVICE_NAME}-${SAFE_PROBE_NAME}", "Runtime acceptance script uses per-device/probe DerivedData by default"))
     checks.append(require_text(runtime_acceptance_text, "result.get(\"passed\")", "Runtime acceptance script fails when the JSON result is not passing"))
 
     required_flows = [
@@ -255,9 +268,20 @@ def delivery_acceptance_checks():
     ]
     for flow in required_flows:
         checks.append(require_text(checklist_text, flow, f"Delivery checklist covers core flow: {flow}"))
+        checks.append(require_text(manual_runbook_text, flow, f"Manual acceptance runbook covers core flow: {flow}"))
     checks.append(require_text(checklist_text, "空画布点保存应显示“无法保存”", "Delivery checklist requires localized save-failure feedback"))
     checks.append(require_text(checklist_text, "画一笔后保存应显示“已保存”", "Delivery checklist requires localized save-success feedback"))
     checks.append(require_text(checklist_text, "相册权限弹窗", "Delivery checklist records photo permission prompt validation"))
+    checks.append(require_text(manual_runbook_text, "iPhone 结果", "Manual acceptance runbook records iPhone results"))
+    checks.append(require_text(manual_runbook_text, "iPad 结果", "Manual acceptance runbook records iPad results"))
+    checks.append(require_text(manual_runbook_text, "系统能力专项点验", "Manual acceptance runbook includes system capability checks"))
+    checks.append(require_text(manual_runbook_text, "Photos 权限弹窗", "Manual acceptance runbook checks Photos permission prompt"))
+    checks.append(require_text(manual_runbook_text, "从相册导入图片", "Manual acceptance runbook checks photo import"))
+    checks.append(require_text(manual_runbook_text, "保存到系统相册", "Manual acceptance runbook checks photo library save"))
+    checks.append(require_text(manual_runbook_text, "系统自定义取色器", "Manual acceptance runbook checks system color picker"))
+    checks.append(require_text(manual_runbook_text, "印章真实捏合/旋转", "Manual acceptance runbook checks real stamp pinch and rotation"))
+    checks.append(require_text(manual_runbook_text, "缺陷记录模板", "Manual acceptance runbook includes a defect template"))
+    checks.append(require_text(manual_runbook_text, "阻塞 / 非阻塞", "Manual acceptance runbook classifies defects by severity"))
 
     required_commands = [
         "python3 scripts/validate_project.py",
@@ -274,6 +298,10 @@ def delivery_acceptance_checks():
         'scripts/runtime_acceptance_test.sh "iPad Pro 11 M4" sticker-undo-redo',
         'scripts/runtime_acceptance_test.sh "iPhone 17 Pro" save-history-restore',
         'scripts/runtime_acceptance_test.sh "iPad Pro 11 M4" save-history-restore',
+        'scripts/runtime_acceptance_test.sh "iPhone 17 Pro" drawing-tools',
+        'scripts/runtime_acceptance_test.sh "iPad Pro 11 M4" drawing-tools',
+        'scripts/runtime_acceptance_test.sh "iPhone 17 Pro" system-ui',
+        'scripts/runtime_acceptance_test.sh "iPad Pro 11 M4" system-ui',
         "git diff --check",
     ]
     for command in required_commands:
@@ -283,6 +311,13 @@ def delivery_acceptance_checks():
     checks.append(require_text(checklist_text, "文档同步", "Delivery checklist requires documentation sync in delivery records"))
     checks.append(require_text(runtime_docs_text, "runtime_acceptance_test.sh", "Runtime testing docs cover runtime acceptance"))
     checks.append(require_text(runtime_docs_text, "空画布保存反馈", "Runtime testing docs explain the empty-canvas save acceptance"))
+    checks.append(require_text(runtime_docs_text, "/tmp/kc-dd-smoke-<设备名>", "Runtime testing docs document per-device smoke DerivedData paths"))
+    checks.append(require_text(runtime_docs_text, "/tmp/kc-dd-acceptance-<设备名>-<探针名>", "Runtime testing docs document per-device/probe acceptance DerivedData paths"))
+    checks.append(require_text(runtime_docs_text, "并行构建锁", "Runtime testing docs explain acceptance DerivedData parallel-build lock avoidance"))
+    checks.append(require_text(runtime_docs_text, "绘画工具链路", "Runtime testing docs explain the drawing-tools acceptance probe"))
+    checks.append(require_text(runtime_docs_text, "系统 UI 呈现探针", "Runtime testing docs explain the system-ui acceptance probe"))
+    checks.append(require_text(runtime_smoke_text, "safe_path_component", "Runtime smoke test sanitizes device names for DerivedData paths"))
+    checks.append(require_text(runtime_smoke_text, "/tmp/kc-dd-smoke-${SAFE_DEVICE_NAME}", "Runtime smoke test uses per-device DerivedData by default"))
     checks.append(require_text(runtime_smoke_text, "NORMALIZE_LANDSCAPE_SCREENSHOT", "Runtime smoke test normalizes landscape screenshot observation"))
     checks.append(require_text(runtime_smoke_text, "shot_width", "Runtime smoke test reads screenshot width"))
     checks.append(require_text(runtime_smoke_text, "shot_height", "Runtime smoke test reads screenshot height"))
@@ -739,10 +774,14 @@ def app_feature_checks(
     checks.append(require_text(main_text, "--kc-runtime-layout-check", "Runtime layout probe is gated by an explicit launch argument"))
     checks.append(require_text(main_text, "--kc-runtime-sticker-check", "Runtime sticker probe is gated by an explicit launch argument"))
     checks.append(require_text(main_text, "--kc-runtime-save-history-check", "Runtime save-history probe is gated by an explicit launch argument"))
+    checks.append(require_text(main_text, "--kc-runtime-drawing-tools-check", "Runtime drawing-tools probe is gated by an explicit launch argument"))
+    checks.append(require_text(main_text, "--kc-runtime-system-ui-check", "Runtime system-ui probe is gated by an explicit launch argument"))
     checks.append(require_text(main_text, "kc_runtime_acceptance_empty_save.json", "Runtime acceptance probe writes the empty-save JSON result"))
     checks.append(require_text(main_text, "kc_runtime_acceptance_layout.json", "Runtime acceptance probe writes the layout JSON result"))
     checks.append(require_text(main_text, "kc_runtime_acceptance_sticker.json", "Runtime acceptance probe writes the sticker JSON result"))
     checks.append(require_text(main_text, "kc_runtime_acceptance_save_history.json", "Runtime save-history probe writes the save-history JSON result"))
+    checks.append(require_text(main_text, "kc_runtime_acceptance_drawing_tools.json", "Runtime drawing-tools probe writes the drawing-tools JSON result"))
+    checks.append(require_text(main_text, "kc_runtime_acceptance_system_ui.json", "Runtime system-ui probe writes the system-ui JSON result"))
     checks.append(require_text(main_text, "saveButtonEnabledBeforeTap", "Runtime acceptance probe verifies empty-canvas save remains tappable"))
     checks.append(require_text(main_text, "failureToastVisible", "Runtime acceptance probe verifies the localized save-failure toast"))
     checks.append(require_text(main_text, "layout-safe-area", "Runtime layout probe reports its probe name"))
@@ -759,6 +798,27 @@ def app_feature_checks(
     checks.append(require_text(main_text, "afterSaveHistoryCount", "Runtime save-history probe verifies history count grows after save"))
     checks.append(require_text(main_text, "successToastObserved", "Runtime save-history probe verifies the save-success toast is triggered"))
     checks.append(require_text(main_text, "afterOpenVisible", "Runtime save-history probe verifies saved history restores visible content"))
+    checks.append(require_text(main_text, "drawing-tools", "Runtime drawing-tools probe reports its probe name"))
+    checks.append(require_text(main_text, "palette36Count", "Runtime drawing-tools probe verifies palette switching"))
+    checks.append(require_text(main_text, "eraserChangedCanvas", "Runtime drawing-tools probe verifies eraser changes canvas pixels"))
+    checks.append(require_text(main_text, "fillSucceeded", "Runtime drawing-tools probe verifies flood fill succeeds"))
+    checks.append(require_text(main_text, "pickedColorMatchesFill", "Runtime drawing-tools probe verifies eyedropper samples the filled color"))
+    checks.append(require_text(main_text, "recentColorRecorded", "Runtime drawing-tools probe verifies picked color is recorded as recent"))
+    checks.append(require_text(main_text, "system-ui", "Runtime system-ui probe reports its probe name"))
+    checks.append(require_text(main_text, "configuredCustomColorPicker", "System color picker configuration is reusable by production and acceptance paths"))
+    checks.append(require_text(main_text, "presentCustomColorPicker", "System color picker presentation is reusable by production and acceptance paths"))
+    checks.append(require_text(main_text, "configuredPhotoLibraryPicker", "Photo picker configuration is reusable by production and acceptance paths"))
+    checks.append(require_text(main_text, "presentPhotoLibraryPicker", "Photo picker presentation is reusable by production and acceptance paths"))
+    checks.append(require_text(main_text, "colorPickerPopoverSourceIsCustomButton", "Runtime system-ui probe verifies the custom color popover anchor"))
+    checks.append(require_text(main_text, "colorPickerSelectionApplied", "Runtime system-ui probe verifies system color selection applies to the canvas"))
+    checks.append(require_text(main_text, "colorPickerSelectionRecorded", "Runtime system-ui probe verifies system color selection is recorded as recent"))
+    checks.append(require_text(main_text, "imagePickerUsesPhotoLibrary", "Runtime system-ui probe verifies photo library source type"))
+    checks.append(require_text(main_text, "imageImportVisible", "Runtime system-ui probe verifies selected photo import creates visible content"))
+    checks.append(require_text(main_text, "imageImportStartsClean", "Runtime system-ui probe verifies imported photos start as a clean session"))
+    checks.append(require_text(main_text, "runtimeAcceptanceImportImage", "Runtime system-ui probe uses a deterministic synthetic import image"))
+    checks.append(require_text(canvas_text, "insertRuntimeAcceptanceEraserStroke", "Canvas exposes Debug-only eraser helper for runtime acceptance"))
+    checks.append(require_text(canvas_text, "performRuntimeAcceptanceFloodFill", "Canvas exposes Debug-only fill helper for runtime acceptance"))
+    checks.append(require_text(canvas_text, "runtimeAcceptancePickedColor", "Canvas exposes Debug-only eyedropper helper for runtime acceptance"))
     checks.append(require_text(main_text, "runSaveHistoryAcceptanceProbe", "Runtime save-history probe is implemented in the main view controller"))
     checks.append(forbid_text(main_text, "let toast = UIVisualEffectView", "Save toast view construction is no longer owned by the main view controller"))
     checks.append(forbid_text(main_text, "UIImage.SymbolConfiguration(pointSize: 24.0", "Save toast icon construction is no longer owned by the main view controller"))
@@ -888,13 +948,13 @@ def app_feature_checks(
     checks.append(require_text(pbx_text, "KCDeviceLayoutMetrics.swift in Sources", "Device layout metrics are included in the app target sources"))
     checks.append(require_text(device_layout_metrics_text, "struct KCDeviceLayoutMetrics", "Device layout metrics are extracted from the main view controller"))
     checks.append(require_text(device_layout_metrics_text, "userInterfaceIdiom == .phone", "Device layout metrics detect compact phone layout"))
-    checks.append(require_regex(device_layout_metrics_text, r"var rightPanelWidth: CGFloat[\s\S]*214\.0 : 248\.0", "Right panel uses compact iPhone width without changing iPad width"))
-    checks.append(require_regex(device_layout_metrics_text, r"var rightPanelOuterWidth: CGFloat[\s\S]*238\.0 : 272\.0", "Right panel scroll container has compact iPhone width"))
-    checks.append(require_regex(device_layout_metrics_text, r"var rightPanelTopOffset: CGFloat[\s\S]*104\.0 : 150\.0", "Compact iPhone right panel starts higher to expose more content"))
-    checks.append(require_regex(device_layout_metrics_text, r"var leftRailTopOffset: CGFloat[\s\S]*118\.0 : 150\.0", "Compact iPhone left rail starts higher without colliding with the top toolbar"))
-    checks.append(require_regex(device_layout_metrics_text, r"var leftRailHeightMultiplier: CGFloat[\s\S]*0\.60 : 0\.46", "Compact iPhone left rail exposes more visible tools"))
+    checks.append(require_regex(device_layout_metrics_text, r"var rightPanelWidth: CGFloat[\s\S]*208\.0 : 248\.0", "Right panel uses compact iPhone width without changing iPad width"))
+    checks.append(require_regex(device_layout_metrics_text, r"var rightPanelOuterWidth: CGFloat[\s\S]*232\.0 : 272\.0", "Right panel scroll container has compact iPhone width"))
+    checks.append(require_regex(device_layout_metrics_text, r"var rightPanelTopOffset: CGFloat[\s\S]*88\.0 : 150\.0", "Compact iPhone right panel starts higher to expose more content"))
+    checks.append(require_regex(device_layout_metrics_text, r"var leftRailTopOffset: CGFloat[\s\S]*112\.0 : 150\.0", "Compact iPhone left rail starts higher without colliding with the top toolbar"))
+    checks.append(require_regex(device_layout_metrics_text, r"var leftRailHeightMultiplier: CGFloat[\s\S]*0\.58 : 0\.46", "Compact iPhone left rail exposes complete visible tools without clipping a partial item"))
     checks.append(require_regex(device_layout_metrics_text, r"var bottomDockWidth: CGFloat[\s\S]*430\.0 : 560\.0", "Bottom brush dock uses compact iPhone width without changing iPad width"))
-    checks.append(require_regex(device_layout_metrics_text, r"var bottomDockHeight: CGFloat[\s\S]*70\.0 : 98\.0", "Bottom brush dock uses compact iPhone height"))
+    checks.append(require_regex(device_layout_metrics_text, r"var bottomDockHeight: CGFloat[\s\S]*66\.0 : 98\.0", "Bottom brush dock uses compact iPhone height"))
     checks.append(require_regex(device_layout_metrics_text, r"var brushCardWidth: CGFloat[\s\S]*100\.0 : 126\.0", "Bottom brush cards shrink on iPhone"))
     checks.append(require_regex(device_layout_metrics_text, r"var brushCardHeight: CGFloat[\s\S]*50\.0 : 68\.0", "Bottom brush cards stay inside the compact iPhone dock"))
     checks.append(require_regex(device_layout_metrics_text, r"var historyThumbSize: CGFloat[\s\S]*82\.0 : 92\.0", "History thumbnails keep compact iPhone sizing"))
@@ -904,7 +964,8 @@ def app_feature_checks(
     checks.append(require_text(main_text, "return self.layoutMetrics.brushCardWidth", "Brush card width is delegated to KCDeviceLayoutMetrics"))
     checks.append(require_text(main_text, "bottomDock.bottomAnchor.constraint(equalTo: safeArea.bottomAnchor", "Bottom brush dock respects the safe area"))
     checks.append(require_regex(main_text, r"rightScrollView\.clipsToBounds = true", "Right menu clips content inside its scroll container"))
-    checks.append(require_regex(main_text, r"func paletteColorButtonSize\(\) -> CGFloat[\s\S]*return self\.isCompactPhoneLayout \? 26\.0 : self\.contentPicker\.paletteColorButtonSize", "Color swatches shrink inside compact iPhone right menu"))
+    checks.append(require_regex(main_text, r"func paletteColorButtonSize\(\) -> CGFloat[\s\S]*return self\.isCompactPhoneLayout \? 24\.0 : self\.contentPicker\.paletteColorButtonSize", "Color swatches shrink inside compact iPhone right menu"))
+    checks.append(require_regex(main_text, r"func paletteColorButtonSpacing\(\) -> CGFloat[\s\S]*return self\.isCompactPhoneLayout \? 5\.0 : self\.contentPicker\.paletteColorButtonSpacing", "Color swatch spacing tightens inside compact iPhone right menu"))
     checks.append(require_regex(main_text, r"func buildBottomDock[\s\S]*scrollView\.clipsToBounds = true[\s\S]*panel\.addSubview\(scrollView\)", "Bottom brush dock clips horizontal scroll content"))
     checks.append(require_regex(brush_sticker_panel_text, r"let stickerScrollView[\s\S]*stickerScrollView\.clipsToBounds = true[\s\S]*panel\.addSubview\(stickerScrollView\)", "Right sticker row clips content inside the panel"))
     checks.append(require_text(main_text, "func buildCollapseControls", "A collapse/expand control is built"))
