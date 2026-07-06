@@ -1,6 +1,6 @@
 # KidCanvas 交付验收记录（2026-07-06）
 
-> 本记录用于 T064 交付前验收。自动验收和人工点验分开记录，不能用 runtime smoke 代替人工触控。
+> 本记录用于 T064 交付前验收及后续自动验收补强。自动验收和人工点验分开记录，不能用 runtime smoke 代替人工触控。
 
 ## 1. 验收环境
 
@@ -26,6 +26,8 @@
 | iPad Pro 11 M4 runtime smoke | 通过 | 启动成功、进程存活、截图非空；原始截图为竖屏 framebuffer，脚本已生成横屏观察图 `/tmp/kc_smoke_iPad_Pro_11_M4_landscape.png` |
 | iPhone 17 Pro runtime acceptance | 通过 | 空画布保存反馈 Debug 探针：`passed=true`，保存按钮可点，失败 Toast 可见，历史 0→0 |
 | iPad Pro 11 M4 runtime acceptance | 通过 | 空画布保存反馈 Debug 探针：`passed=true`，保存按钮可点，失败 Toast 可见，历史 1→1 |
+| iPhone 17 Pro runtime layout acceptance | 通过 | 首屏 safe area Debug 探针：`passed=true`，顶部工具、左侧工具栏、右侧面板、底部 Dock、折叠按钮均未越界 |
+| iPad Pro 11 M4 runtime layout acceptance | 通过 | 首屏 safe area Debug 探针：`passed=true`，顶部工具、左侧工具栏、右侧面板、底部 Dock、折叠按钮均未越界 |
 | `git diff --check` | 通过 | 无空白错误 |
 
 ## 3. F01-F12 验收状态
@@ -52,6 +54,7 @@
 - T063：相册导入/保存链路代码检查和自动验收通过；保存 Toast 已补齐双语文字，中文默认显示“已保存 / 无法保存”。
 - T065：修复空画布保存反馈不可触发；保存按钮空画布时视觉弱化但保持可点击，点击后显示“无法保存”；`scripts/runtime_acceptance_test.sh` 已在 iPhone/iPad 通过。
 - T066：横屏安全区与 smoke 截图归一化已完成自动验收；App 启动请求横屏 scene geometry，浮动控件改用 safe area 约束，`runtime_smoke_test.sh` 会生成横屏观察图便于首屏无遮挡人工检查。
+- T067：新增首屏 safe area 运行时验收探针；`scripts/runtime_acceptance_test.sh "iPhone 17 Pro" layout-safe-area` 与 `scripts/runtime_acceptance_test.sh "iPad Pro 11 M4" layout-safe-area` 均通过，可自动检查关键浮动控件是否越过安全区。
 
 ## 5. 当前风险
 

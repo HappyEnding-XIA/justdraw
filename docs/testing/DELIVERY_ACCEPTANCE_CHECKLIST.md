@@ -43,6 +43,8 @@ scripts/runtime_smoke_test.sh "iPhone 17 Pro"
 scripts/runtime_smoke_test.sh "iPad Pro 11 M4"
 scripts/runtime_acceptance_test.sh "iPhone 17 Pro"
 scripts/runtime_acceptance_test.sh "iPad Pro 11 M4"
+scripts/runtime_acceptance_test.sh "iPhone 17 Pro" layout-safe-area
+scripts/runtime_acceptance_test.sh "iPad Pro 11 M4" layout-safe-area
 git diff --check
 ```
 
@@ -78,6 +80,7 @@ git diff --check
 - 空画布保存按钮保持可点击。
 - 空画布保存不创建历史、不写入相册路径。
 - 空画布保存显示本地化“无法保存”Toast。
+- 首屏顶部工具、左侧工具栏、右侧面板、底部 Dock、折叠按钮位于 safe area 约束内。
 
 ## 4. 人工验收建议
 

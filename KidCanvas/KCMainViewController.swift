@@ -2025,13 +2025,21 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
         if self.runtimeAcceptanceProbeDidRun {
             return
         }
-        guard ProcessInfo.processInfo.arguments.contains("--kc-runtime-empty-save-check") else {
+
+        let arguments = ProcessInfo.processInfo.arguments
+        let shouldRunEmptySaveProbe = arguments.contains("--kc-runtime-empty-save-check")
+        let shouldRunLayoutProbe = arguments.contains("--kc-runtime-layout-check")
+        guard shouldRunEmptySaveProbe || shouldRunLayoutProbe else {
             return
         }
         self.runtimeAcceptanceProbeDidRun = true
 
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { [weak self] in
-            self?.runEmptySaveAcceptanceProbe()
+            if shouldRunLayoutProbe {
+                self?.runLayoutAcceptanceProbe()
+            } else {
+                self?.runEmptySaveAcceptanceProbe()
+            }
         }
     }
 
@@ -2065,14 +2073,118 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
             "historyCountAfter": self.sessions.count,
             "expectedToast": KCL10n.saveFailedToastTitle
         ]
-        self.writeRuntimeAcceptanceResult(result)
+        self.writeRuntimeAcceptanceResult(result, fileName: "kc_runtime_acceptance_empty_save.json")
     }
 
-    private func writeRuntimeAcceptanceResult(_ result: [String: Any]) {
+    private func runLayoutAcceptanceProbe() {
+        self.view.layoutIfNeeded()
+
+        let safeFrame = self.view.bounds.inset(by: self.view.safeAreaInsets)
+        let topLeft = self.collapsiblePanels.indices.contains(0) ? self.collapsiblePanels[0] : nil
+        let topRight = self.collapsiblePanels.indices.contains(1) ? self.collapsiblePanels[1] : nil
+        let leftRail = self.collapsiblePanels.indices.contains(2) ? self.collapsiblePanels[2] : nil
+        let rightPanel = self.collapsiblePanels.indices.contains(3) ? self.collapsiblePanels[3] : nil
+        let bottomDock = self.collapsiblePanels.indices.contains(4) ? self.collapsiblePanels[4] : nil
+
+        var checks: [[String: Any]] = []
+        checks.append(self.layoutCheckResult(name: "top-left", view: topLeft, boundary: safeFrame, edges: [.left, .top]))
+        checks.append(self.layoutCheckResult(name: "top-right", view: topRight, boundary: safeFrame, edges: [.right, .top]))
+        checks.append(self.layoutCheckResult(name: "left-rail", view: leftRail, boundary: safeFrame, edges: [.left, .top, .bottom]))
+        checks.append(self.layoutCheckResult(name: "right-panel", view: rightPanel, boundary: safeFrame, edges: [.right, .top]))
+        checks.append(self.layoutCheckResult(name: "bottom-dock", view: bottomDock, boundary: safeFrame, edges: [.bottom]))
+        checks.append(self.layoutCheckResult(name: "collapse-toggle", view: self.collapseToggleButton, boundary: safeFrame, edges: [.right, .bottom]))
+
+        let failedChecks = checks.filter { ($0["passed"] as? Bool) != true }
+        let result: [String: Any] = [
+            "probe": "layout-safe-area",
+            "passed": failedChecks.isEmpty,
+            "viewBounds": self.dictionary(for: self.view.bounds),
+            "safeAreaInsets": [
+                "top": self.view.safeAreaInsets.top,
+                "left": self.view.safeAreaInsets.left,
+                "bottom": self.view.safeAreaInsets.bottom,
+                "right": self.view.safeAreaInsets.right
+            ],
+            "safeFrame": self.dictionary(for: safeFrame),
+            "checks": checks
+        ]
+        self.writeRuntimeAcceptanceResult(result, fileName: "kc_runtime_acceptance_layout.json")
+    }
+
+    private enum LayoutEdge {
+        case left
+        case right
+        case top
+        case bottom
+    }
+
+    private func layoutCheckResult(name: String, view: UIView?, boundary: CGRect, edges: [LayoutEdge]) -> [String: Any] {
+        guard let view = view else {
+            return [
+                "name": name,
+                "passed": false,
+                "reason": "missing-view"
+            ]
+        }
+
+        let frame = view.convert(view.bounds, to: self.view)
+        let tolerance: CGFloat = 1.0
+        var violations: [String] = []
+        for edge in edges {
+            switch edge {
+            case .left where frame.minX < boundary.minX - tolerance:
+                violations.append("left")
+            case .right where frame.maxX > boundary.maxX + tolerance:
+                violations.append("right")
+            case .top where frame.minY < boundary.minY - tolerance:
+                violations.append("top")
+            case .bottom where frame.maxY > boundary.maxY + tolerance:
+                violations.append("bottom")
+            default:
+                break
+            }
+        }
+
+        return [
+            "name": name,
+            "passed": violations.isEmpty,
+            "frame": self.dictionary(for: frame),
+            "checkedEdges": edges.map { self.name(for: $0) },
+            "violations": violations
+        ]
+    }
+
+    private func dictionary(for rect: CGRect) -> [String: CGFloat] {
+        return [
+            "x": rect.origin.x,
+            "y": rect.origin.y,
+            "width": rect.size.width,
+            "height": rect.size.height,
+            "minX": rect.minX,
+            "minY": rect.minY,
+            "maxX": rect.maxX,
+            "maxY": rect.maxY
+        ]
+    }
+
+    private func name(for edge: LayoutEdge) -> String {
+        switch edge {
+        case .left:
+            return "left"
+        case .right:
+            return "right"
+        case .top:
+            return "top"
+        case .bottom:
+            return "bottom"
+        }
+    }
+
+    private func writeRuntimeAcceptanceResult(_ result: [String: Any], fileName: String) {
         guard let documentsURL = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first else {
             return
         }
-        let resultURL = documentsURL.appendingPathComponent("kc_runtime_acceptance_empty_save.json")
+        let resultURL = documentsURL.appendingPathComponent(fileName)
         guard JSONSerialization.isValidJSONObject(result),
               let data = try? JSONSerialization.data(withJSONObject: result, options: [.prettyPrinted, .sortedKeys]) else {
             return

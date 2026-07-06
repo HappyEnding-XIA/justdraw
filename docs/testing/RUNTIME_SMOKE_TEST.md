@@ -2,7 +2,7 @@
 
 > 静态验收（`swift test` + `validate_project.py` + `xcodebuild build`）通过后，用 `scripts/runtime_smoke_test.sh` 验证 app 能真正在模拟器里启动并稳定运行。静态验收只能证明"能编译"，运行时烟测证明"能启动、不崩溃、UI 能渲染"。
 >
-> 交互类回归可使用 `scripts/runtime_acceptance_test.sh`。该脚本通过 Debug-only launch argument 触发 App 内部验收探针，并从模拟器沙盒读取 JSON 结果；当前覆盖空画布保存反馈。
+> 交互和布局类回归可使用 `scripts/runtime_acceptance_test.sh`。该脚本通过 Debug-only launch argument 触发 App 内部验收探针，并从模拟器沙盒读取 JSON 结果；当前覆盖空画布保存反馈和首屏 safe area 布局。
 
 ## 何时必须跑
 
@@ -22,6 +22,10 @@ scripts/runtime_smoke_test.sh "iPad Pro 11 M4"
 # 空画布保存反馈交互验收
 scripts/runtime_acceptance_test.sh "iPhone 17 Pro"
 scripts/runtime_acceptance_test.sh "iPad Pro 11 M4"
+
+# 首屏 safe area 布局验收
+scripts/runtime_acceptance_test.sh "iPhone 17 Pro" layout-safe-area
+scripts/runtime_acceptance_test.sh "iPad Pro 11 M4" layout-safe-area
 ```
 
 脚本流程：清理 `._*` → 按设备名解析 UDID → 启动设备 → Debug 构建 → 安装 → 启动 → 轮询进程存活 → 等待 UI 渲染 → 重试截图直到文件大小达到阈值 → 必要时生成横屏观察图 → 截图到 `/tmp/kc_smoke_<device>.png`。
@@ -54,6 +58,11 @@ scripts/runtime_acceptance_test.sh "iPad Pro 11 M4"
 | 7 | 截图为空或过小，UI 可能尚未渲染完成 |
 | 8 | 环境变量配置非法 |
 | 9 | 无法读取截图尺寸或无法生成横屏观察图 |
+
+`runtime_acceptance_test.sh` 的第二个参数为探针名，默认 `empty-save`，可选：
+
+- `empty-save`：空画布保存反馈。
+- `layout-safe-area`：首屏浮动控件是否落在 safe area 约束内。
 
 `runtime_acceptance_test.sh` 的补充退出码：
 

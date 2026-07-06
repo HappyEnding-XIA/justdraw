@@ -227,7 +227,10 @@ def delivery_acceptance_checks():
     checks.append(ok("Runtime acceptance script exists") if runtime_acceptance_path.exists() else fail("Runtime acceptance script exists"))
     checks.append(ok("Runtime acceptance script is executable") if runtime_acceptance_path.exists() and (runtime_acceptance_path.stat().st_mode & 0o111) else fail("Runtime acceptance script is executable"))
     checks.append(require_text(runtime_acceptance_text, "--kc-runtime-empty-save-check", "Runtime acceptance script launches the empty-save Debug probe"))
+    checks.append(require_text(runtime_acceptance_text, "--kc-runtime-layout-check", "Runtime acceptance script launches the layout Debug probe"))
     checks.append(require_text(runtime_acceptance_text, "kc_runtime_acceptance_empty_save.json", "Runtime acceptance script reads the empty-save JSON result"))
+    checks.append(require_text(runtime_acceptance_text, "kc_runtime_acceptance_layout.json", "Runtime acceptance script reads the layout JSON result"))
+    checks.append(require_text(runtime_acceptance_text, "layout-safe-area", "Runtime acceptance script exposes the layout-safe-area probe"))
     checks.append(require_text(runtime_acceptance_text, "result.get(\"passed\")", "Runtime acceptance script fails when the JSON result is not passing"))
 
     required_flows = [
@@ -259,6 +262,8 @@ def delivery_acceptance_checks():
         'scripts/runtime_smoke_test.sh "iPad Pro 11 M4"',
         'scripts/runtime_acceptance_test.sh "iPhone 17 Pro"',
         'scripts/runtime_acceptance_test.sh "iPad Pro 11 M4"',
+        'scripts/runtime_acceptance_test.sh "iPhone 17 Pro" layout-safe-area',
+        'scripts/runtime_acceptance_test.sh "iPad Pro 11 M4" layout-safe-area',
         "git diff --check",
     ]
     for command in required_commands:
@@ -721,9 +726,14 @@ def app_feature_checks(
     checks.append(require_text(main_text, "self.toastPresenter.dismiss(self.saveToastView)", "Main view controller delegates save toast dismissal"))
     checks.append(require_text(main_text, "#if DEBUG", "Runtime acceptance probe is Debug-only"))
     checks.append(require_text(main_text, "--kc-runtime-empty-save-check", "Runtime acceptance probe is gated by an explicit launch argument"))
+    checks.append(require_text(main_text, "--kc-runtime-layout-check", "Runtime layout probe is gated by an explicit launch argument"))
     checks.append(require_text(main_text, "kc_runtime_acceptance_empty_save.json", "Runtime acceptance probe writes the empty-save JSON result"))
+    checks.append(require_text(main_text, "kc_runtime_acceptance_layout.json", "Runtime acceptance probe writes the layout JSON result"))
     checks.append(require_text(main_text, "saveButtonEnabledBeforeTap", "Runtime acceptance probe verifies empty-canvas save remains tappable"))
     checks.append(require_text(main_text, "failureToastVisible", "Runtime acceptance probe verifies the localized save-failure toast"))
+    checks.append(require_text(main_text, "layout-safe-area", "Runtime layout probe reports its probe name"))
+    checks.append(require_text(main_text, "safeAreaInsets", "Runtime layout probe records safe area insets"))
+    checks.append(require_text(main_text, "layoutCheckResult", "Runtime layout probe checks key floating controls"))
     checks.append(forbid_text(main_text, "let toast = UIVisualEffectView", "Save toast view construction is no longer owned by the main view controller"))
     checks.append(forbid_text(main_text, "UIImage.SymbolConfiguration(pointSize: 24.0", "Save toast icon construction is no longer owned by the main view controller"))
     checks.append(require_text(pbx_text, "KCColorPalettePanelRenderer.swift in Sources", "Color palette panel renderer is included in the app target sources"))

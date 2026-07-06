@@ -10,11 +10,11 @@
 set -euo pipefail
 
 DEVICE_NAME="${1:-iPhone 17 Pro}"
+PROBE="${2:-empty-save}"
 SCHEME="KidCanvas"
 BUNDLE_ID="com.kidcanvas.drawing"
 CONFIGURATION="${CONFIGURATION:-Debug}"
 DERIVED_DATA="${DERIVED_DATA:-/tmp/kc-dd-acceptance}"
-RESULT_FILE="kc_runtime_acceptance_empty_save.json"
 WAIT_SECONDS="${WAIT_SECONDS:-10}"
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -25,6 +25,21 @@ red()   { printf '\033[31m%s\033[0m\n' "$*"; }
 green() { printf '\033[32m%s\033[0m\n' "$*"; }
 blue()  { printf '\033[34m%s\033[0m\n' "$*"; }
 step()  { blue "▶ $*"; }
+
+case "$PROBE" in
+  empty-save)
+    LAUNCH_ARG="--kc-runtime-empty-save-check"
+    RESULT_FILE="kc_runtime_acceptance_empty_save.json"
+    ;;
+  layout-safe-area)
+    LAUNCH_ARG="--kc-runtime-layout-check"
+    RESULT_FILE="kc_runtime_acceptance_layout.json"
+    ;;
+  *)
+    red "错误：未知验收探针 '$PROBE'，可选：empty-save / layout-safe-area"
+    exit 8
+    ;;
+esac
 
 case "$WAIT_SECONDS" in
   ''|*[!0-9]*)
@@ -80,9 +95,9 @@ if [ -n "$DATA_CONTAINER" ]; then
   rm -f "$DATA_CONTAINER/Documents/$RESULT_FILE"
 fi
 
-step "启动 Debug 运行时验收探针"
+step "启动 Debug 运行时验收探针：$PROBE"
 xcrun simctl terminate "$UDID" "$BUNDLE_ID" >/dev/null 2>&1 || true
-if ! xcrun simctl launch "$UDID" "$BUNDLE_ID" --kc-runtime-empty-save-check >/tmp/kc_acceptance_launch.log 2>&1; then
+if ! xcrun simctl launch "$UDID" "$BUNDLE_ID" "$LAUNCH_ARG" >/tmp/kc_acceptance_launch.log 2>&1; then
   red "启动失败，完整日志见 /tmp/kc_acceptance_launch.log："
   cat /tmp/kc_acceptance_launch.log
   exit 5
