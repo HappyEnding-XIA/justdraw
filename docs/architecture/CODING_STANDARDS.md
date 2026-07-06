@@ -624,6 +624,27 @@ AI 协作文档放在：
 - 再开始修改
 - 有文件占用时不得并发改同一范围
 
+### 13.4 外置盘元数据
+
+项目位于外置盘时，macOS 可能生成 `._*` AppleDouble 元数据文件。它们不是源码、不是文档、不是构建输入，禁止提交到 Git。
+
+处理规则：
+
+- `.git`、`.build`、`ai-docs` 内部文件不作为源码卫生问题处理。
+- `KidCanvas/`、`KidCanvas.xcodeproj/`、`Packages/KidCanvasModules/Sources/`、`Packages/KidCanvasModules/Tests/`、`docs/`、`scripts/` 下不得保留 `._*`。
+- 发现源码目录存在 `._*` 时，先清理再验收。
+- `scripts/validate_project.py` 会拦截源码、文档、脚本和 Xcode 工程目录下的 AppleDouble 文件。
+
+清理命令：
+
+```bash
+find /Volumes/xiaoda_SSD/KidCanvas/justdraw \
+  -path '*/.git' -prune -o \
+  -path '*/.build' -prune -o \
+  -path '*/ai-docs' -prune -o \
+  -name '._*' -type f -delete
+```
+
 ## 14. 禁止事项
 
 以下做法在本项目中禁止：

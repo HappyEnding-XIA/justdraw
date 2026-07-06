@@ -39,16 +39,24 @@ Packages/KidCanvasModules
 
 后续继续在 `KidCanvasModules` 中增加 target，而不是立即拆成多个 package。
 
+当前真实状态（2026-07-06）：
+
+- 当前 App target 已无业务 Objective-C `.m` 源码。
+- 当前工程已无 `KidCanvas-Bridging-Header.h`。
+- 当前 SPM 落地形态是 1 个本地 package、5 个基础 library target。
+- App Feature 暂在 App target 内渐进拆分。
+- 继续支持 iPhone + iPad，横屏优先。
+- 禁止一个模块一个 package。
+- 禁止把画布核心重写为纯 SwiftUI Canvas。
+
 ### 2.2 为什么暂不一个模块一个 package
 
-当前项目仍处于迁移期：
+当前项目仍处于 Feature 边界收敛期：
 
-- `KDMainViewController` 尚未拆分。
-- `KDDrawingCanvasView` 尚未迁移为 Swift。
-- Objective-C bridge 尚未清理。
-- Feature 层尚未落地。
-- CompositionRoot 尚未建立。
-- 业务模块之间的真实依赖关系尚未跑稳定。
+- `KCMainViewController` 已拆出多组 App 层 Feature，但仍承担保存、历史、相册、草稿等强协调流程。
+- `KCDrawingCanvasView` 已迁为 Swift UIKit/Core Graphics 画布，绘制算法已逐步下沉到 `KCDrawingEngine`。
+- `KCAppCompositionRoot` 已建立，但后续用户、会员、素材、同步等业务模块尚未落地。
+- 业务模块之间的真实依赖关系还需要多轮迭代验证。
 
 如果此时一个模块一个 package，会导致每次调整边界都牵涉 package 依赖、路径、版本和 Xcode 配置，迁移成本会被放大。
 
@@ -98,12 +106,12 @@ Packages/KidCanvasModules
 
 ### 阶段 1：Objective-C 清零
 
-对应任务：`T014`。
+状态：已完成，对应任务 `T014`。
 
-目标：
+已完成目标：
 
 - App target 不再编译业务 `.m` 文件。
-- 删除 `KDMainViewController.h/.m`、`KDDrawingCanvasView.h/.m`、`KDArtworkSession.h/.m`、`KDSessionStore.h/.m`。
+- 删除历史 Objective-C 主线文件。
 - 删除迁移期 bridge header 和 `KidCanvas-Bridging-Header.h`。
 - 旧 `sessions.archive` 兼容能力迁到 Swift。
 
@@ -327,12 +335,11 @@ final class KCHistoryViewModel {
 
 近期优先级：
 
-1. `T014`：Objective-C 源码清零。
-2. `T008`：小屏工具栏可隐藏/收起。
-3. `T013`：主控制器 Feature 化。
-4. `T012`：session metadata DTO 化。
-5. `T011`：贴纸手势 Swift 化。
-6. 建立 `KCAppCompositionRoot`，并逐步替换临时 bridge。
+1. 继续把 `KCMainViewController` 中低风险表现层逻辑拆成 App Feature。
+2. 用 `scripts/validate_project.py` 固化 SPM 模块治理、文档同步和工程卫生检查。
+3. 保存、草稿、历史删除、相册导入导出等高风险流程暂不下沉，先补协议边界和验收覆盖。
+4. 后续新增用户、会员、素材、云同步等业务时，先建 `KC*Interface`，由 `KCAppCompositionRoot` 统一注入实现。
+5. 仅当模块边界稳定、测试独立且复用需求明确时，再评估独立 package 或 Swinject。
 
 ## 7. 结论
 

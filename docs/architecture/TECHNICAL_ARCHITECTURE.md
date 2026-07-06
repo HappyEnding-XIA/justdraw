@@ -2,24 +2,25 @@
 
 ## 1. 架构结论
 
-KidCanvas 的目标架构应明确调整为 **弃用 Objective-C，迁移到 Swift-first**。同时，不建议把这次迁移理解为“直接改成纯 SwiftUI”。
+KidCanvas 的目标架构是 **Swift-first + UIKit/Core Graphics 画布核心 + SPM 模块化**。当前 App target 已无业务 Objective-C `.m` 源码，当前工程已无 `KidCanvas-Bridging-Header.h`；后续重点不再是语言迁移，而是继续收敛模块边界、控制器职责和可测试性。
 
 推荐的长期目标架构是：
 
 ```text
 Swift app shell
   + Swift UIKit/Core Graphics drawing canvas
-  + SwiftUI peripheral panels where useful
+  + UIKit App Feature panels
   + local-first session storage
 ```
 
 也就是说，技术演进方向不是“全部 SwiftUI 化”，而是：
 
-1. 停止继续扩展 Objective-C 代码。
-2. 新架构全部采用 Swift 编写。
-3. 对颜色、贴纸、历史、设置等外围面板，优先采用 SwiftUI。
-4. 画布核心迁移为 Swift 编写的 `UIView`/Core Graphics 模块，而不是纯 SwiftUI 画布。
-5. 在迁移完成前，现有 Objective-C 代码仅作为参考实现和回归对照，不再作为长期主线。
+1. 新架构全部采用 Swift 编写。
+2. 当前 SPM 落地形态是 1 个本地 package、5 个基础 library target。
+3. App Feature 暂在 App target 内渐进拆分，边界稳定后再评估下沉 SPM target。
+4. 继续支持 iPhone + iPad，横屏优先。
+5. 禁止一个模块一个 package，禁止把画布核心重写为纯 SwiftUI Canvas。
+6. 画布核心保持 Swift 编写的 `UIView`/Core Graphics 模块。
 
 ## 2. 决策依据
 
@@ -41,21 +42,22 @@ KidCanvas 不是常规表单或内容流 App，而是低延迟绘画工具。核
 
 ### 2.2 当前代码状态
 
-当前项目已经具备完整 MVP 雏形：
+当前项目已经具备完整 MVP 雏形并完成 Swift-first 基线：
 
-- `KDMainViewController`：单页 UI、工具栏、历史、保存、导入、线稿、贴纸配置。
-- `KDDrawingCanvasView`：绘制、填色、取色、贴纸、撤销重做。
-- `KDSessionStore`：作品、缩略图、草稿和 metadata 本地存储。
+- `KCMainViewController`：单页 UI、工具栏、历史、保存、导入、线稿、贴纸配置与 App 层协调。
+- `KCDrawingCanvasView`：Swift UIKit/Core Graphics 画布，负责绘制、填色、取色、贴纸、撤销重做。
+- `KCSessionStore`：作品、缩略图、草稿和 metadata 本地存储。
+- `KCAppCompositionRoot`：App 层统一装配会话服务、内容目录和绘制能力。
 - `scripts/validate_project.py`：工程结构和功能覆盖校验。
 
-这说明我们不是从零开始设计，而是在迁移一个已有原型。风险不在于“能不能写出来”，而在于迁移过程中如何保住现有行为：
+这说明我们不是从零开始设计，而是在演进一个已有产品原型。风险不在于“能不能写出来”，而在于后续拆分过程中如何保住现有行为：
 
 - 绘画手感需要重新调试。
 - flood fill、取色、撤销、贴纸手势都需要重新验证。
 - SwiftUI 与 UIKit 手势、截图、子视图叠加的边界会增加不确定性。
-- 如果一边弃用 OC，一边还强推纯 SwiftUI，迁移成本会被叠加放大。
+- 如果在当前阶段强推纯 SwiftUI 画布，迁移成本和体验风险会被叠加放大。
 
-因此，弃用 Objective-C 是合理目标，但执行方式应是 **Swift 重写 + 保留 UIKit/Core Graphics 画布模式**，而不是一次性把架构和 UI 框架同时推翻。
+因此，当前执行方式应继续保持 **Swift + UIKit/Core Graphics 画布模式**，而不是一次性把 UI 框架和画布内核同时推翻。
 
 ### 2.3 SwiftUI 的适用边界
 
@@ -119,9 +121,9 @@ flowchart TD
 
 当前文件：
 
-- `KidCanvas/main.m`
-- `KidCanvas/KDAppDelegate.m`
-- `KidCanvas/KDSceneDelegate.m`
+- `KidCanvas/AppDelegate.swift`
+- `KidCanvas/SceneDelegate.swift`
+- `KidCanvas/KCAppCompositionRoot.swift`
 
 职责：
 
@@ -132,15 +134,21 @@ flowchart TD
 
 演进建议：
 
-- 迁移后由 Swift 接管 `AppDelegate` / `SceneDelegate` 或 SwiftUI App lifecycle。
-- 如果采用 SwiftUI App lifecycle，画布页仍可通过 `UIViewControllerRepresentable` 或 `UIViewRepresentable` 承载 UIKit 画布。
-- Objective-C 的启动代码不再继续扩展。
+- 当前由 Swift `AppDelegate` / `SceneDelegate` 接管 UIKit 生命周期。
+- 当前阶段继续使用 UIKit lifecycle，不为了形式切换 SwiftUI App lifecycle。
+- 后续如引入 SwiftUI 面板，仍由 App CompositionRoot 明确注入依赖。
 
 ### 4.2 Presentation Layer
 
 当前核心文件：
 
-- `KidCanvas/KDMainViewController.m`
+- `KidCanvas/KCMainViewController.swift`
+- `KidCanvas/KCContentPickerFeature.swift`
+- `KidCanvas/KCEditorPanelsFeature.swift`
+- `KidCanvas/KCHistoryFeature.swift`
+- `KidCanvas/KCLineArtFeature.swift`
+- `KidCanvas/KCColorPalettePanelRenderer.swift`
+- `KidCanvas/KCBrushStickerPanelView.swift`
 
 职责：
 
@@ -153,8 +161,8 @@ flowchart TD
 
 当前问题：
 
-- 单个控制器接近 3000 行，职责偏重。
-- UI 构建、状态同步、业务流程、资源配置混在一起。
+- 主控制器职责已经通过多组 App Feature 收敛，但仍承担保存、草稿、历史删除、相册导入导出等高风险流程协调。
+- App 层文件仍主要扁平放在 `KidCanvas/` 目录，后续需要继续分组或下沉稳定 Feature target。
 
 建议拆分：
 
@@ -169,7 +177,7 @@ MainCanvasScreen
   LineArtPickerView
 ```
 
-SwiftUI 适合优先承接：
+SwiftUI 可作为后续候选承接：
 
 - `ColorPanel`
 - `StickerPanel`
@@ -189,8 +197,10 @@ SwiftUI 适合优先承接：
 
 当前核心文件：
 
-- `KidCanvas/KDDrawingCanvasView.h`
-- `KidCanvas/KDDrawingCanvasView.m`
+- `KidCanvas/KCDrawingCanvasView.swift`
+- `KidCanvas/KCDrawingEngineAdapter.swift`
+- `Packages/KidCanvasModules/Sources/KCDrawingEngine/`
+- `Packages/KidCanvasModules/Sources/KCDomain/`
 
 职责：
 
@@ -220,20 +230,19 @@ CanvasEngine
   restoreSnapshot(...)
 ```
 
-迁移方向：
+演进方向：
 
-- 从 Objective-C `KDDrawingCanvasView` 重写为 Swift `DrawingCanvasView: UIView`。
-- 保持 Core Graphics/bitmap 实现，不强行改成 SwiftUI `Canvas`。
-- 将 stroke、sticker、canvas state 改为 Swift value types。
-- 将 flood fill、取色、快照抽到独立纯逻辑模块，方便单元测试。
-- 在 SwiftUI 层只暴露必要的桥接接口，不让 SwiftUI 直接操纵底层绘图细节。
+- 当前画布已经是 Swift `UIView`，继续保持 Core Graphics/bitmap 实现，不强行改成 SwiftUI `Canvas`。
+- stroke、sticker、canvas state 继续向 Swift value types 和 KCDomain 语义收敛。
+- flood fill、取色、线稿几何、蜡笔纹理等算法继续沉入 `KCDrawingEngine` 并补单测。
+- 如果后续引入 SwiftUI 面板，只通过状态、action 或协议与画布交互，不直接操纵底层绘图细节。
 
 ### 4.4 Tool State
 
 当前状态分散在：
 
-- `KDMainViewController`
-- `KDDrawingCanvasView`
+- `KCMainViewController`
+- `KCDrawingCanvasView`
 - `NSUserDefaults`
 
 建议抽象为单独模型：
@@ -303,10 +312,9 @@ Resources/
 
 当前核心文件：
 
-- `KidCanvas/KDSessionStore.h`
-- `KidCanvas/KDSessionStore.m`
-- `KidCanvas/KDArtworkSession.h`
-- `KidCanvas/KDArtworkSession.m`
+- `Packages/KidCanvasModules/Sources/KCSessionPersistence/KCSessionStore.swift`
+- `Packages/KidCanvasModules/Sources/KCDomain/KCArtworkSession.swift`
+- `KidCanvas/KCSessionService.swift`
 
 当前结构：
 
@@ -454,25 +462,24 @@ UIKit placeholder canvas
 - 建立 Swift 的状态模型、服务层、资源配置结构。
 - 让 Swift 工程具备最小可运行主界面。
 
-#### 阶段 B：重写基础服务
+#### 阶段 B：基础服务继续模块化
 
 技术栈：
 
 ```text
 Swift models/services
-SwiftUI panels
-UIKit bridge
+SPM local targets
+UIKit App coordination
 ```
 
-优先重写：
+优先演进：
 
-- `KDArtworkSession` -> Swift `ArtworkSession`
-- `KDSessionStore` -> Swift `SessionStore`
+- `KCArtworkSession` / `KCSessionStore` API 继续收敛为稳定 public 边界
 - recent colors / brush widths preferences
 - palette / sticker / line art catalog
 - draft autosave coordinator
 
-#### 阶段 C：重写画布核心
+#### 阶段 C：画布核心继续拆分算法
 
 技术栈：
 
@@ -484,9 +491,9 @@ SwiftUI host
 
 目标：
 
-- 重写 `KDDrawingCanvasView` 为 Swift 版本。
+- 继续保持 `KCDrawingCanvasView` 为 Swift UIKit/Core Graphics 画布。
 - 保留触摸采样、压力、贴纸手势、填色、取色、撤销重做能力。
-- 用协议或 observable state 向 SwiftUI 层暴露事件。
+- 用协议、action 或 view data 向外围面板暴露事件。
 
 #### 阶段 D：替换外围界面
 
@@ -682,11 +689,10 @@ UI smoke tests：
 
 | 风险 | 当前等级 | 处理建议 |
 | --- | --- | --- |
-| `KDMainViewController` 过大 | 高 | 拆分面板和服务 |
+| `KCMainViewController` 仍承担高风险流程协调 | 中 | 继续拆低风险表现层，高风险保存/草稿/相册流程先补协议和验收 |
 | flood fill 主线程卡顿 | 中 | 异步化 |
 | undo 快照内存增长 | 中 | 栅格化与 command/checkpoint |
 | 内容硬编码 | 中 | JSON + assets 配置化 |
-| Objective-C 长期维护成本 | 中 | 新模块 Swift 化，逐步迁移 |
 | 全量 SwiftUI 重写风险 | 高 | 避免一次性重写 |
 | 真机签名未配置 | 低 | Xcode 设置 Development Team |
 

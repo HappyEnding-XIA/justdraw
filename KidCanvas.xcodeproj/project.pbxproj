@@ -25,6 +25,12 @@
 		A1FA010000000000C0A10009 /* KCEditorUIFactory.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1FA110000000000C0A10009 /* KCEditorUIFactory.swift */; };
 		A1FA010000000000C0A10010 /* KCBrushDockFeature.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1FA110000000000C0A10010 /* KCBrushDockFeature.swift */; };
 		A1FA010000000000C0A10011 /* KCEraserControlsFeature.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1FA110000000000C0A10011 /* KCEraserControlsFeature.swift */; };
+		A1FA010000000000C0A10012 /* KCToolRailFeature.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1FA110000000000C0A10012 /* KCToolRailFeature.swift */; };
+		A1FA010000000000C0A10013 /* KCLineArtPickerViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1FA110000000000C0A10013 /* KCLineArtPickerViewController.swift */; };
+		A1FA010000000000C0A10014 /* KCPressFeedbackController.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1FA110000000000C0A10014 /* KCPressFeedbackController.swift */; };
+		A1FA010000000000C0A10015 /* KCToastPresenter.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1FA110000000000C0A10015 /* KCToastPresenter.swift */; };
+		A1FA010000000000C0A10016 /* KCColorPalettePanelRenderer.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1FA110000000000C0A10016 /* KCColorPalettePanelRenderer.swift */; };
+		A1FA010000000000C0A10017 /* KCBrushStickerPanelView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1FA110000000000C0A10017 /* KCBrushStickerPanelView.swift */; };
 		A1FA010000000000C0A10001 /* Localizable.strings in Resources */ = {isa = PBXBuildFile; fileRef = A1FA210000000000C0A10001 /* Localizable.strings */; };
 		A1FA010000000000C0A10002 /* InfoPlist.strings in Resources */ = {isa = PBXBuildFile; fileRef = A1FA210000000000C0A10002 /* InfoPlist.strings */; };
 		A1FA010000000000C0A10003 /* KCLocalizedStrings.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1FA110000000000C0A10005 /* KCLocalizedStrings.swift */; };
@@ -51,6 +57,12 @@
 		A1FA110000000000C0A10009 /* KCEditorUIFactory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KCEditorUIFactory.swift; sourceTree = "<group>"; };
 		A1FA110000000000C0A10010 /* KCBrushDockFeature.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KCBrushDockFeature.swift; sourceTree = "<group>"; };
 		A1FA110000000000C0A10011 /* KCEraserControlsFeature.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KCEraserControlsFeature.swift; sourceTree = "<group>"; };
+		A1FA110000000000C0A10012 /* KCToolRailFeature.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KCToolRailFeature.swift; sourceTree = "<group>"; };
+		A1FA110000000000C0A10013 /* KCLineArtPickerViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KCLineArtPickerViewController.swift; sourceTree = "<group>"; };
+		A1FA110000000000C0A10014 /* KCPressFeedbackController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KCPressFeedbackController.swift; sourceTree = "<group>"; };
+		A1FA110000000000C0A10015 /* KCToastPresenter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KCToastPresenter.swift; sourceTree = "<group>"; };
+		A1FA110000000000C0A10016 /* KCColorPalettePanelRenderer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KCColorPalettePanelRenderer.swift; sourceTree = "<group>"; };
+		A1FA110000000000C0A10017 /* KCBrushStickerPanelView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KCBrushStickerPanelView.swift; sourceTree = "<group>"; };
 		A1FA110000000000C0A10005 /* KCLocalizedStrings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KCLocalizedStrings.swift; sourceTree = "<group>"; };
 		A1FA110000000000C0A10001 /* Localizable.strings */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = Localizable.strings; path = "zh-Hans.lproj/Localizable.strings"; sourceTree = "<group>"; };
 		A1FA110000000000C0A10002 /* Localizable.strings */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = Localizable.strings; path = "en.lproj/Localizable.strings"; sourceTree = "<group>"; };
@@ -98,6 +110,12 @@
 				A1FA110000000000C0A10009 /* KCEditorUIFactory.swift */,
 				A1FA110000000000C0A10010 /* KCBrushDockFeature.swift */,
 				A1FA110000000000C0A10011 /* KCEraserControlsFeature.swift */,
+				A1FA110000000000C0A10012 /* KCToolRailFeature.swift */,
+				A1FA110000000000C0A10013 /* KCLineArtPickerViewController.swift */,
+				A1FA110000000000C0A10014 /* KCPressFeedbackController.swift */,
+				A1FA110000000000C0A10015 /* KCToastPresenter.swift */,
+				A1FA110000000000C0A10016 /* KCColorPalettePanelRenderer.swift */,
+				A1FA110000000000C0A10017 /* KCBrushStickerPanelView.swift */,
 				A1FA110000000000C0A10005 /* KCLocalizedStrings.swift */,
 				A1FA210000000000C0A10001 /* Localizable.strings */,
 				A1FA210000000000C0A10002 /* InfoPlist.strings */,
@@ -212,6 +230,12 @@
 				A1FA010000000000C0A10009 /* KCEditorUIFactory.swift in Sources */,
 				A1FA010000000000C0A10010 /* KCBrushDockFeature.swift in Sources */,
 				A1FA010000000000C0A10011 /* KCEraserControlsFeature.swift in Sources */,
+				A1FA010000000000C0A10012 /* KCToolRailFeature.swift in Sources */,
+				A1FA010000000000C0A10013 /* KCLineArtPickerViewController.swift in Sources */,
+				A1FA010000000000C0A10014 /* KCPressFeedbackController.swift in Sources */,
+				A1FA010000000000C0A10015 /* KCToastPresenter.swift in Sources */,
+				A1FA010000000000C0A10016 /* KCColorPalettePanelRenderer.swift in Sources */,
+				A1FA010000000000C0A10017 /* KCBrushStickerPanelView.swift in Sources */,
 				A1FA010000000000C0A10003 /* KCLocalizedStrings.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

@@ -35,20 +35,28 @@ App 壳工程 + 本地 SPM 聚合包 + 多 target 模块 + 分层依赖约束
 - 画布核心保留为 Swift + UIKit/Core Graphics 模块。
 - 外围面板优先使用 SwiftUI。
 
+### 2.1 当前落地状态（2026-07-06）
+
+当前 App target 已无业务 Objective-C `.m` 源码，当前工程已无 `KidCanvas-Bridging-Header.h`，历史 bridge 方案只作为迁移记录保留，不再作为当前实现路径。
+
+当前 SPM 落地形态是 1 个本地 package、5 个基础 library target：`KCCommon`、`KCDomain`、`KCDrawingEngine`、`KCContentCatalog`、`KCSessionPersistence`。App Feature 暂在 App target 内渐进拆分，待边界稳定后再评估下沉到 `Packages/KidCanvasModules` 的独立 target。
+
+产品继续支持 iPhone + iPad，横屏优先。架构治理上禁止一个模块一个 package，禁止把画布核心重写为纯 SwiftUI Canvas；画布仍以 Swift UIKit/Core Graphics 为主，外围面板可在边界稳定后按需 SwiftUI 化。
+
 ## 3. 当前项目问题
 
-当前工程是一个原型结构，主要问题如下：
+当前工程已经完成 Swift-first 基线迁移，但仍处在模块边界继续收敛阶段，主要问题如下：
 
-### 3.1 工程层面没有模块
+### 3.1 工程层面已建立基础模块，Feature 仍在渐进拆分
 
-- 只有 1 个 Xcode target。
-- 没有 SPM 本地模块。
-- 没有 framework 层级。
-- 没有 package 级资源管理。
+- 当前已有 1 个 App target。
+- 当前已有 `Packages/KidCanvasModules` 单一本地 SPM package。
+- 当前已有 5 个基础 library target。
+- App 层 Feature 仍以 App target 内的 Swift 类型承载，后续按稳定边界继续下沉。
 
-### 3.2 目录层面没有分层
+### 3.2 App 目录仍需继续分层
 
-当前代码全部直接放在 `KidCanvas/` 目录下，属于扁平结构：
+当前 App 层 Swift 文件仍主要直接放在 `KidCanvas/` 目录下，属于迁移期扁平结构：
 
 - 启动代码
 - 主页面
@@ -56,11 +64,11 @@ App 壳工程 + 本地 SPM 聚合包 + 多 target 模块 + 分层依赖约束
 - 会话模型
 - 本地存储
 
-都放在同一级，没有明确的工程边界。
+App 层文件还没有形成清晰子目录，工程边界主要由类型和文档先行约束。
 
 ### 3.3 控制器职责过重
 
-`KDMainViewController` 同时承担：
+`KCMainViewController` 仍承担较多页面协调职责：
 
 - 页面布局
 - 工具状态管理
@@ -165,15 +173,21 @@ App -> Feature -> Core/Infra -> Domain -> Common
 
 Feature 拆分进度（App 层 Feature 类型 + KCDomain 纯逻辑）：
 
-- **T022 `KCContentPickerFeature`（App 层）**：从 `KCMainViewController` 抽出，集中持有色盘（24/36 切换）、最近色（UserDefaults）、贴纸分类选择的状态与决策；`KCMainViewController` 持有其 lazy 实例 `contentPicker` 并委托。纯逻辑下沉到 KCDomain：`KCContentPickerLayout`（色盘网格几何）、`KCRecentColorQueue`（最近色去重/裁剪）、`KCStickerCategoryMapping`（分类↔符号↔无障碍标签↔ slug 解析），均有单测。UIKit 按钮创建/约束/事件仍留控制器。T027 后，自定义颜色区域只保留一个明确入口（`customColorButton`，用于打开 `UIColorPickerViewController` 并作为 iPad popover 锚点），最近色独立放在横向 `recentColorRowStack`，不再使用平铺彩虹图或重复色环作为装饰。
+- **T022 `KCContentPickerFeature`（App 层）**：从 `KCMainViewController` 抽出，集中持有色盘（24/36 切换）、最近色（UserDefaults）、贴纸分类选择的状态与决策；`KCMainViewController` 持有其 lazy 实例 `contentPicker` 并委托。纯逻辑下沉到 KCDomain：`KCContentPickerLayout`（色盘网格几何）、`KCRecentColorQueue`（最近色去重/裁剪）、`KCStickerCategoryMapping`（分类↔符号↔无障碍标签↔ slug 解析），均有单测。T027 后，自定义颜色区域只保留一个明确入口（`customColorButton`，用于打开 `UIColorPickerViewController` 并作为 iPad popover 锚点），最近色独立放在横向 `recentColorRowStack`，不再使用平铺彩虹图或重复色环作为装饰。T049 后，颜色面板 UIKit 创建、色盘按钮、最近色按钮、分段按钮样式和当前色高亮由 `KCColorPalettePanelRenderer` 承接，`KCContentPickerFeature` 继续只负责状态和内容决策。
 - **T023 `KCEditorPanelsFeature`（App 层）**：从 `KCMainViewController` 抽出，持有浮动工具面板「收起/展开」状态与折叠态工具芯片色块决策；`KCMainViewController` 持有 lazy 实例 `editorPanels`，`applyPanelsCollapsedAnimated` 与 `refreshToolStateChip` 改为读 `editorPanels.collapseState` / `chipSwatchColor`。纯折叠态决策（图标/标签/各视图 alpha·hidden·enabled）下沉 KCDomain `KCEditorPanelsCollapseState`（有单测）。折叠动画、五组浮动面板视图本身、工具/画笔/颜色事件协调仍留控制器。
 - **T024 `KCHistoryFeature`（App 层）**：从 `KCMainViewController.refreshHistoryUI()` 抽出，集中历史缩略图槽位状态推导（空/普通/当前/选中/脏态）与「删除历史」可用性判定；`KCMainViewController` 持有 lazy 实例 `history`，`refreshHistoryUI` 改为每格 `history.thumbStatus(...)` + `borderColor(for:)`。纯槽位状态判定（优先级 + 边框宽 + 强调缩放 + 无障碍前缀）下沉 KCDomain `KCHistoryThumbStatus`（有单测），分页仍走 T013 `KCHistoryPaging`。历史会话数据、缩略图按钮构建、打开/删除/翻页事件协调仍留控制器；不触碰 session 持久化磁盘格式。
 - **T039 `KCLineArtFeature`（App 层）**：从 `KCMainViewController` 抽出线稿 item 组装、缩略图渲染和画布线稿图片渲染；`KCMainViewController` 持有 lazy 实例 `lineArtFeature`，仅保留线稿弹窗、按钮点击和替换画布的页面协调。线稿元数据仍由 `KCContentCatalog` 提供，几何仍由 `KCDrawingEngine` 提供，Feature 只负责 App 层编排。
+- **T047 `KCLineArtPickerViewController`（App 层）**：从 `KCMainViewController.didTapLineArtPicker()` 抽出线稿选择弹窗的 UIKit 网格、滚动容器、预览按钮和点击回调；主控制器只保留 popover 锚点、dismiss 后调用 `loadLineArtItem(_:)` 的页面协调。
 - **T040 `KCDeviceLayoutMetrics`（App 层）**：从 `KCMainViewController` 抽出设备布局尺寸决策，集中 iPhone/iPad 的右侧面板、底部工具坞、画笔卡片、历史缩略图等指标；控制器暂保留同名方法作薄转发，实际尺寸来源改为 `layoutMetrics`。
 - **T041 `KCEditorUIFactory`（App 层）**：从 `KCMainViewController` 抽出浮动面板、图标按钮、小工具按钮、分段按钮、历史缩略图按钮、画笔卡片等通用 UIKit 控件样式创建；控制器仍保留事件 target、按压反馈注册和面板业务组装。
 - **T042 `KCBrushDockFeature`（App 层）**：从 `KCMainViewController.buildBottomDock(_:)` 抽出底部画笔项配置、SF Symbol、本地化标题和强调色决策；控制器仍保留按钮创建、target/action、无障碍标识和工具状态协调。
 - **T043 `KCBrushDockFeature` 扩展（App 层）**：继续从 `KCMainViewController.refreshBrushDockSelection()` 抽出底部画笔 Dock 的按钮匹配判断和选中态样式；控制器只负责遍历按钮、调用 Feature 和滚动到当前按钮。
 - **T044 `KCEraserControlsFeature`（App 层）**：从 `KCMainViewController` 抽出橡皮擦尺寸预览路径和 circle/cloud/star 形状按钮选中态；真实擦除路径仍由 `KCDrawingEngine` 提供，Feature 只负责控件预览与按钮外观。
+- **T046 `KCToolRailFeature`（App 层）**：从 `KCMainViewController.buildLeftRail(_:)` / `selectToolMode(_:)` 抽出左侧工具栏工具项配置、取色器强调色、按钮匹配判断和选中态样式；控制器只负责创建按钮、绑定事件和协调画布工具状态。
+- **T048 `KCPressFeedbackController`（App 层）**：从 `KCMainViewController` 抽出通用按钮按压反馈注册、原始 transform/alpha 记录和释放恢复动画；控制器只保留注册入口，不再直接维护 associated-object 状态。
+- **T048 `KCToastPresenter`（App 层）**：从 `KCMainViewController.showSaveToastWithSuccess(_:)` 抽出保存成功 / 失败 Toast 的视图创建、图标、约束、展示和自动消失动画；控制器仍负责保存语义、相册写入、历史保存与草稿清理。
+- **T049 `KCColorPalettePanelRenderer`（App 层）**：从 `KCMainViewController.buildColorsPanel(_:)`、`reloadPaletteGrid()`、`reloadRecentColorRow()`、`updatePaletteButtons()` 和 `selectColor(_:sender:)` 抽出颜色面板 UIKit 渲染与当前色高亮；控制器只保留颜色选择事件、当前画布颜色写入、最近色持久化调用和自定义颜色 popover 展示。
+- **T050 `KCBrushStickerPanelView`（App 层）**：从 `KCMainViewController.buildSizePanel(_:)`、`reloadStickerButtons()`、`refreshStickerCategoryButtons()` 和 `refreshStickerEditButtons()` 抽出画笔/贴纸/橡皮/贴纸编辑面板的 UIKit 组装与按钮表现；控制器仍负责事件 selector、画布状态、当前贴纸选择、橡皮真实路径、贴纸手势和 undo/redo。
 - **T013 `KCHistoryPaging`、T017 `KCToolStateChipTitle`（KCDomain）**：更早的最小边界抽取。
 
 ### 5.3 Core / Infrastructure 能力层
@@ -221,14 +235,25 @@ Feature 拆分进度（App 层 Feature 类型 + KCDomain 纯逻辑）：
 | `KCPhotoLibrary` | Infra | 相册导入导出和权限适配 |
 | `KCContentCatalog` | Infra | 线稿、贴纸、调色板等资源目录 |
 | `KCEditorPanelsFeature` | Feature | 工具、颜色、尺寸、贴纸、线稿面板 |
+| `KCContentPickerFeature` | Feature | 色盘、最近色与贴纸分类状态决策 |
 | `KCHistoryFeature` | Feature | 历史会话与草稿入口 |
 | `KCCanvasFeature` | Feature | 主画布业务编排 |
 | `KCLineArtFeature` | Feature | 线稿列表、缩略图与画布线稿渲染编排 |
+| `KCLineArtPickerViewController` | Feature | 线稿选择弹窗 UIKit 展示与选择回调 |
 | `KCDeviceLayoutMetrics` | Feature | iPhone/iPad 布局指标与尺寸决策 |
 | `KCEditorUIFactory` | Feature | 编辑器通用 UIKit 控件样式创建 |
 | `KCBrushDockFeature` | Feature | 底部画笔 Dock 配置、强调色与选中态决策 |
 | `KCEraserControlsFeature` | Feature | 橡皮擦预览路径与形状按钮选中态 |
+| `KCToolRailFeature` | Feature | 左侧工具栏配置、强调色与选中态决策 |
+| `KCPressFeedbackController` | Feature | 通用按钮按压反馈注册与动画 |
+| `KCToastPresenter` | Feature | 保存成功 / 失败 Toast 展示与消失动画 |
+| `KCColorPalettePanelRenderer` | Feature | 颜色面板 UIKit 渲染与当前色高亮 |
+| `KCBrushStickerPanelView` | Feature | 画笔、贴纸、橡皮与贴纸编辑面板组装 |
 | `KidCanvasApp` | App | 启动、装配、依赖注入 |
+
+模块文档基线（T051）：`docs/modules/` 已覆盖 `KCCommon`、`KCDomain`、`KCSessionPersistence`、`KCContentPickerFeature`、`KCEditorPanelsFeature`、`KCHistoryFeature` 以及当前 App 层表现组件。每篇文档至少记录职责、边界、对外 API / 接入路径和禁止回流规则；`scripts/validate_project.py` 会校验这些基线文档存在并出现在模块索引中。
+
+模块治理校验（T052/T053/T054）：`scripts/validate_project.py` 已纳入单一本地 SPM package、多基础 target、测试 target 对齐、基础模块依赖方向、AppleDouble 元数据禁入和架构现实状态校验。后续新增模块或调整依赖时，必须先更新模块文档与架构文档，再让 validator 通过。
 
 ### 6.2 `KCCommon`
 
@@ -438,13 +463,20 @@ Packages/
       KCPhotoLibrary/
       KCContentCatalog/
       KCEditorPanelsFeature/
+      KCContentPickerFeature/
       KCHistoryFeature/
       KCCanvasFeature/
       KCLineArtFeature/
+      KCLineArtPickerViewController/
       KCDeviceLayoutMetrics/
       KCEditorUIFactory/
       KCBrushDockFeature/
       KCEraserControlsFeature/
+      KCToolRailFeature/
+      KCPressFeedbackController/
+      KCToastPresenter/
+      KCColorPalettePanelRenderer/
+      KCBrushStickerPanelView/
     Tests/
       KCCommonTests/
       KCDomainTests/
@@ -533,19 +565,18 @@ flowchart TD
 - `KCCanvasFeature` 可以依赖其他业务和能力模块
 - `KidCanvasApp` 只负责装配，不下沉业务逻辑
 
-## 9. 当前代码到未来模块的映射
+## 9. 当前代码到模块归属的映射
 
-| 当前文件 | 未来模块 |
+| 当前文件 | 当前归属 / 演进目标 |
 | --- | --- |
-| `main.m` | `KidCanvasApp` |
-| `KDAppDelegate.*` | `KidCanvasApp` |
-| `KDSceneDelegate.*` | `KidCanvasApp` |
-| `KDMainViewController.*` | `KCCanvasFeature` + `KCEditorPanelsFeature` + `KCHistoryFeature` + `KCLineArtFeature` + `KCDeviceLayoutMetrics` + `KCEditorUIFactory` + `KCBrushDockFeature` + `KCEraserControlsFeature` |
-| `KDDrawingCanvasView.*` | `KCDrawingEngine` |
-| `KDArtworkSession.*` | `KCDomain` |
-| `KDSessionStore.*` | `KCSessionPersistence` |
-| 代码中的贴纸/线稿/色盘 | `KCContentCatalog` |
-| 颜色、按钮、面板样式 | `KCDesignSystem` |
+| `AppDelegate.swift` / `SceneDelegate.swift` / `KCAppCompositionRoot.swift` | `KidCanvasApp` |
+| `KCMainViewController.swift` | App 壳层页面协调，继续向 `KCCanvasFeature`、`KCEditorPanelsFeature`、`KCContentPickerFeature`、`KCHistoryFeature` 等 App Feature 收敛 |
+| `KCDrawingCanvasView.swift` / `KCDrawingEngineAdapter.swift` | App 层 UIKit 画布与 `KCDrawingEngine` 适配 |
+| `Packages/KidCanvasModules/Sources/KCDrawingEngine/` | `KCDrawingEngine` |
+| `Packages/KidCanvasModules/Sources/KCDomain/` | `KCDomain` |
+| `Packages/KidCanvasModules/Sources/KCSessionPersistence/` | `KCSessionPersistence` |
+| `Packages/KidCanvasModules/Sources/KCContentCatalog/` | `KCContentCatalog` |
+| 颜色、按钮、面板样式 | 当前 App Feature / `KCEditorUIFactory`，后续稳定后再评估 `KCDesignSystem` target |
 
 ## 10. 迁移步骤
 

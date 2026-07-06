@@ -94,6 +94,175 @@ def preview_checks(preview_text):
     return checks
 
 
+def module_documentation_checks():
+    checks = []
+    docs_dir = ROOT / "docs" / "modules"
+    required_docs = [
+        "KCCommon.md",
+        "KCDomain.md",
+        "KCSessionPersistence.md",
+        "KCContentPickerFeature.md",
+        "KCEditorPanelsFeature.md",
+        "KCHistoryFeature.md",
+    ]
+    for filename in required_docs:
+        path = docs_dir / filename
+        if not path.exists():
+            checks.append(fail(f"Module documentation exists: {filename}"))
+            continue
+        text = path.read_text(encoding="utf-8")
+        checks.append(ok(f"Module documentation exists: {filename}"))
+        checks.append(require_text(text, "## 1. 职责", f"{filename} documents responsibilities"))
+        checks.append(require_text(text, "## 2. 边界", f"{filename} documents boundaries"))
+        checks.append(require_regex(text, r"## 3\. (对外 API|当前接入|对外 API / 接入路径)", f"{filename} documents API or integration path"))
+        checks.append(require_text(text, "## 4. 禁止回流规则", f"{filename} documents anti-backflow rules"))
+
+    index_path = docs_dir / "README.md"
+    index_text = index_path.read_text(encoding="utf-8")
+    for filename in required_docs:
+        checks.append(require_text(index_text, f"./{filename}", f"Module index links {filename}"))
+    checks.append(forbid_text(index_text, "待按需补充", "Module index has no pending-baseline placeholder"))
+    checks.append(forbid_text(index_text, "KCCommon / KCDomain / KCSessionPersistence", "Module index no longer lists baseline docs as missing"))
+    return checks
+
+
+def package_dependency_map(package_text):
+    target_dependencies = {}
+    for match in re.finditer(r"\.(?:target|testTarget)\(\s*name:\s*\"([^\"]+)\"(?P<body>.*?)(?=\n\s*\.(?:target|testTarget)\(|\n\s*\]\n\))", package_text, re.S):
+        name = match.group(1)
+        body = match.group("body")
+        dependencies_match = re.search(r"dependencies:\s*\[(.*?)\]", body, re.S)
+        if dependencies_match:
+            target_dependencies[name] = set(re.findall(r"\"([^\"]+)\"", dependencies_match.group(1)))
+        else:
+            target_dependencies[name] = set()
+    return target_dependencies
+
+
+def spm_module_governance_checks():
+    checks = []
+    packages_dir = ROOT / "Packages"
+    package_swifts = sorted(
+        path.relative_to(ROOT).as_posix()
+        for path in packages_dir.rglob("Package.swift")
+        if ".build" not in path.parts
+    )
+    expected_package = "Packages/KidCanvasModules/Package.swift"
+    checks.append(ok("KidCanvasModules remains the single local SPM package")
+                  if package_swifts == [expected_package]
+                  else fail("Unexpected local SPM packages: " + ", ".join(package_swifts or ["none"])))
+
+    package_path = ROOT / expected_package
+    if not package_path.exists():
+        checks.append(fail("KidCanvasModules Package.swift is missing"))
+        return checks
+
+    package_text = package_path.read_text(encoding="utf-8")
+    checks.append(require_text(package_text, 'name: "KidCanvasModules"', "SPM package name is KidCanvasModules"))
+    checks.append(require_text(package_text, ".iOS(.v16)", "SPM package keeps iOS 16 platform floor"))
+    checks.append(forbid_text(package_text, ".package(", "KidCanvasModules has no external package dependencies"))
+
+    expected_targets = {
+        "KCCommon": set(),
+        "KCDomain": {"KCCommon"},
+        "KCDrawingEngine": {"KCCommon", "KCDomain"},
+        "KCContentCatalog": {"KCCommon", "KCDomain"},
+        "KCSessionPersistence": {"KCCommon", "KCDomain"},
+    }
+    dependencies = package_dependency_map(package_text)
+    sources_dir = ROOT / "Packages" / "KidCanvasModules" / "Sources"
+    tests_dir = ROOT / "Packages" / "KidCanvasModules" / "Tests"
+
+    for target_name, allowed_dependencies in expected_targets.items():
+        checks.append(ok(f"SPM source target exists: {target_name}") if (sources_dir / target_name).is_dir() else fail(f"Missing SPM source target directory: {target_name}"))
+        checks.append(require_text(package_text, f'.library(name: "{target_name}"', f"SPM product exists: {target_name}"))
+        checks.append(require_text(package_text, f'name: "{target_name}"', f"SPM target declared: {target_name}"))
+
+        actual_dependencies = dependencies.get(target_name)
+        if actual_dependencies is None:
+            checks.append(fail(f"SPM target dependency map missing: {target_name}"))
+            continue
+        checks.append(ok(f"SPM dependency direction is valid: {target_name}")
+                      if actual_dependencies == allowed_dependencies
+                      else fail(f"Invalid dependencies for {target_name}: {sorted(actual_dependencies)} expected {sorted(allowed_dependencies)}"))
+
+        test_target_name = f"{target_name}Tests"
+        checks.append(ok(f"SPM test target exists: {test_target_name}") if (tests_dir / test_target_name).is_dir() else fail(f"Missing SPM test target directory: {test_target_name}"))
+        checks.append(require_text(package_text, f'name: "{test_target_name}"', f"SPM test target declared: {test_target_name}"))
+        checks.append(ok(f"SPM test target depends on source target: {test_target_name}")
+                      if dependencies.get(test_target_name) == {target_name}
+                      else fail(f"Invalid dependencies for {test_target_name}: {sorted(dependencies.get(test_target_name, set()))} expected {[target_name]}"))
+
+    forbidden_foundations = {"KidCanvas", "KidCanvasApp", "KCEditorPanelsFeature", "KCCanvasFeature", "KCHistoryFeature", "KCContentPickerFeature"}
+    for target_name in expected_targets:
+        actual_dependencies = dependencies.get(target_name, set())
+        forbidden = sorted(actual_dependencies & forbidden_foundations)
+        checks.append(ok(f"Base target does not depend on App/UI Feature targets: {target_name}")
+                      if not forbidden
+                      else fail(f"{target_name} must not depend on App/UI Feature targets: {', '.join(forbidden)}"))
+
+    return checks
+
+
+def apple_double_checks():
+    checks = []
+    guarded_roots = [
+        ROOT / "KidCanvas",
+        ROOT / "KidCanvas.xcodeproj",
+        ROOT / "Packages" / "KidCanvasModules" / "Package.swift",
+        ROOT / "Packages" / "KidCanvasModules" / "Sources",
+        ROOT / "Packages" / "KidCanvasModules" / "Tests",
+        ROOT / "docs",
+        ROOT / "scripts",
+    ]
+    apple_double_files = []
+    for guarded_root in guarded_roots:
+        if guarded_root.is_file():
+            continue
+        if not guarded_root.exists():
+            continue
+        for path in guarded_root.rglob("._*"):
+            if ".git" in path.parts or ".build" in path.parts or "ai-docs" in path.parts:
+                continue
+            apple_double_files.append(path.relative_to(ROOT).as_posix())
+    checks.append(ok("No AppleDouble metadata files in source, docs, scripts, or xcodeproj")
+                  if not apple_double_files
+                  else fail("AppleDouble metadata files found: " + ", ".join(sorted(apple_double_files)[:20])))
+    return checks
+
+
+def architecture_reality_checks():
+    checks = []
+    docs = {
+        "ARCHITECTURE_EVOLUTION_PLAN.md": (ROOT / "docs" / "architecture" / "ARCHITECTURE_EVOLUTION_PLAN.md").read_text(encoding="utf-8"),
+        "TECHNICAL_ARCHITECTURE.md": (ROOT / "docs" / "architecture" / "TECHNICAL_ARCHITECTURE.md").read_text(encoding="utf-8"),
+        "MODULAR_ARCHITECTURE_DESIGN.md": (ROOT / "docs" / "architecture" / "MODULAR_ARCHITECTURE_DESIGN.md").read_text(encoding="utf-8"),
+    }
+    combined = "\n".join(docs.values())
+
+    required_statements = [
+        "当前 App target 已无业务 Objective-C `.m` 源码",
+        "当前工程已无 `KidCanvas-Bridging-Header.h`",
+        "当前 SPM 落地形态是 1 个本地 package、5 个基础 library target",
+        "App Feature 暂在 App target 内渐进拆分",
+        "继续支持 iPhone + iPad，横屏优先",
+        "禁止一个模块一个 package",
+        "禁止把画布核心重写为纯 SwiftUI Canvas",
+    ]
+    for statement in required_statements:
+        checks.append(require_text(combined, statement, f"Architecture docs state reality: {statement}"))
+
+    stale_phrases = [
+        "KDMainViewController 尚未",
+        "KDDrawingCanvasView 尚未",
+        "Objective-C bridge 尚未清理",
+        "尚未迁移为 Swift",
+    ]
+    for phrase in stale_phrases:
+        checks.append(forbid_text(combined, phrase, f"Architecture docs do not contain stale phrase: {phrase}"))
+    return checks
+
+
 def project_file_references_exist(pbx_text):
     missing = []
     for match in re.finditer(r"/\* ([^*]+) \*/ = \{isa = PBXFileReference; [^;]+; path = ([^;]+); sourceTree = \"?<group>\"?;", pbx_text):
@@ -253,10 +422,16 @@ def app_feature_checks(
     content_picker_feature_text,
     canvas_feature_text,
     line_art_feature_text,
+    line_art_picker_text,
     device_layout_metrics_text,
     editor_ui_factory_text,
+    press_feedback_text,
+    toast_presenter_text,
+    color_palette_renderer_text,
+    brush_sticker_panel_text,
     brush_dock_feature_text,
     eraser_controls_feature_text,
+    tool_rail_feature_text,
     kc_content_picker_layout_text,
     kc_recent_color_queue_text,
     kc_sticker_category_mapping_text,
@@ -307,7 +482,60 @@ def app_feature_checks(
     checks.append(require_text(editor_ui_factory_text, "func toolCardButton(symbolName: String, accentColor: UIColor, title: String) -> KDBrushButton", "Brush card creation lives in KCEditorUIFactory"))
     checks.append(require_text(main_text, "private var editorUIFactory: KCEditorUIFactory", "Main view controller delegates common UI creation to KCEditorUIFactory"))
     checks.append(require_text(main_text, "return self.editorUIFactory.floatingPanel()", "Floating panel helper delegates to KCEditorUIFactory"))
-    checks.append(require_text(main_text, "self.registerPressFeedbackForControl(button)", "Main view controller still owns press-feedback target registration"))
+    checks.append(require_text(pbx_text, "KCPressFeedbackController.swift in Sources", "Press feedback controller is included in the app target sources"))
+    checks.append(require_text(press_feedback_text, "final class KCPressFeedbackController", "Press feedback is extracted to KCPressFeedbackController"))
+    checks.append(require_text(press_feedback_text, "func register(_ control: UIControl)", "Press feedback registration lives in KCPressFeedbackController"))
+    checks.append(require_text(press_feedback_text, "objc_getAssociatedObject", "Press feedback associated-object state lives in KCPressFeedbackController"))
+    checks.append(require_text(press_feedback_text, "if !control.isEnabled", "Disabled controls do not trigger press feedback"))
+    checks.append(require_text(main_text, "private(set) lazy var pressFeedbackController: KCPressFeedbackController", "Main view controller owns a Press Feedback controller instance"))
+    checks.append(require_text(main_text, "self.pressFeedbackController.register(control)", "Main view controller delegates press-feedback registration"))
+    checks.append(forbid_text(main_text, "objc_getAssociatedObject", "Press feedback associated-object state is no longer owned by the main view controller"))
+    checks.append(forbid_text(main_text, "objc_setAssociatedObject", "Press feedback associated-object mutation is no longer owned by the main view controller"))
+    checks.append(require_text(pbx_text, "KCToastPresenter.swift in Sources", "Toast presenter is included in the app target sources"))
+    checks.append(require_text(toast_presenter_text, "final class KCToastPresenter", "Save toast UI is extracted to KCToastPresenter"))
+    checks.append(require_text(toast_presenter_text, "func showSaveToast(success: Bool, in view: UIView, anchorView: UIView) -> UIView", "Save toast presentation lives in KCToastPresenter"))
+    checks.append(require_text(toast_presenter_text, "func dismiss(_ toastView: UIView?)", "Save toast dismissal lives in KCToastPresenter"))
+    checks.append(require_text(toast_presenter_text, "UIVisualEffectView(effect: UIBlurEffect(style: .systemThinMaterialLight))", "Toast keeps the existing blur style"))
+    checks.append(require_text(main_text, "self.toastPresenter.showSaveToast(success: success, in: self.view, anchorView: self.saveButton)", "Main view controller delegates save toast presentation"))
+    checks.append(require_text(main_text, "self.toastPresenter.dismiss(self.saveToastView)", "Main view controller delegates save toast dismissal"))
+    checks.append(forbid_text(main_text, "let toast = UIVisualEffectView", "Save toast view construction is no longer owned by the main view controller"))
+    checks.append(forbid_text(main_text, "UIImage.SymbolConfiguration(pointSize: 24.0", "Save toast icon construction is no longer owned by the main view controller"))
+    checks.append(require_text(pbx_text, "KCColorPalettePanelRenderer.swift in Sources", "Color palette panel renderer is included in the app target sources"))
+    checks.append(require_text(color_palette_renderer_text, "final class KCColorPalettePanelRenderer", "Color palette UIKit rendering is extracted to KCColorPalettePanelRenderer"))
+    checks.append(require_text(color_palette_renderer_text, "struct Configuration", "Color palette renderer exposes a configuration DTO"))
+    checks.append(require_text(color_palette_renderer_text, "struct RenderedPanel", "Color palette renderer returns rendered panel references"))
+    checks.append(require_text(color_palette_renderer_text, "func renderPanel", "Color palette panel construction lives in KCColorPalettePanelRenderer"))
+    checks.append(require_text(color_palette_renderer_text, "func reloadPaletteGrid", "Palette grid rendering lives in KCColorPalettePanelRenderer"))
+    checks.append(require_text(color_palette_renderer_text, "func reloadRecentColorRow", "Recent color row rendering lives in KCColorPalettePanelRenderer"))
+    checks.append(require_text(color_palette_renderer_text, "func updateSegmentButtons", "Palette segment selected-state styling lives in KCColorPalettePanelRenderer"))
+    checks.append(require_text(color_palette_renderer_text, "func applyActiveColor", "Current color highlighting lives in KCColorPalettePanelRenderer"))
+    checks.append(require_text(main_text, "private(set) lazy var colorPaletteRenderer: KCColorPalettePanelRenderer", "Main view controller owns a color palette renderer instance"))
+    checks.append(require_text(main_text, "self.colorPaletteRenderer.renderPanel", "Main view controller delegates color panel construction"))
+    checks.append(require_text(main_text, "self.colorPaletteRenderer.reloadPaletteGrid", "Main view controller delegates palette grid rendering"))
+    checks.append(require_text(main_text, "self.colorPaletteRenderer.reloadRecentColorRow", "Main view controller delegates recent color rendering"))
+    checks.append(require_text(main_text, "self.colorPaletteRenderer.updateSegmentButtons", "Main view controller delegates palette segment styling"))
+    checks.append(require_text(main_text, "self.colorPaletteRenderer.applyActiveColor", "Main view controller delegates current color highlighting"))
+    checks.append(forbid_text(main_text, "colorButton.layer.cornerRadius = buttonSize / 2.0", "Palette color button styling is no longer owned by the main view controller"))
+    checks.append(forbid_text(main_text, "button.layer.cornerRadius = buttonSize / 2.0", "Recent color button styling is no longer owned by the main view controller"))
+    checks.append(forbid_text(main_text, "self.palette24Button.setTitleColor", "Palette segment styling is no longer owned by the main view controller"))
+    checks.append(forbid_text(main_text, "activeColorButton.layer.borderColor", "Current color highlight border reset is no longer owned by the main view controller"))
+    checks.append(require_text(pbx_text, "KCBrushStickerPanelView.swift in Sources", "Brush/sticker panel view is included in the app target sources"))
+    checks.append(require_text(brush_sticker_panel_text, "final class KCBrushStickerPanelView", "Brush/sticker/eraser panel assembly is extracted to KCBrushStickerPanelView"))
+    checks.append(require_text(brush_sticker_panel_text, "struct Texts", "Brush/sticker panel text inputs are explicit"))
+    checks.append(require_text(brush_sticker_panel_text, "struct RenderedPanel", "Brush/sticker panel returns rendered control references"))
+    checks.append(require_text(brush_sticker_panel_text, "func renderPanel", "Brush/sticker panel assembly lives in KCBrushStickerPanelView"))
+    checks.append(require_text(brush_sticker_panel_text, "func reloadStickerButtons", "Sticker list rendering lives in KCBrushStickerPanelView"))
+    checks.append(require_text(brush_sticker_panel_text, "func applyStickerCategorySelection", "Sticker category selected-state styling lives in KCBrushStickerPanelView"))
+    checks.append(require_text(brush_sticker_panel_text, "func applyStickerEditButtonsEnabled", "Sticker edit button enabled styling lives in KCBrushStickerPanelView"))
+    checks.append(require_text(main_text, "private(set) lazy var brushStickerPanelView: KCBrushStickerPanelView", "Main view controller owns a brush/sticker panel view instance"))
+    checks.append(require_text(main_text, "self.brushStickerPanelView.renderPanel", "Main view controller delegates brush/sticker panel assembly"))
+    checks.append(require_text(main_text, "self.brushStickerPanelView.reloadStickerButtons", "Main view controller delegates sticker list rendering"))
+    checks.append(require_text(main_text, "self.brushStickerPanelView.applyStickerCategorySelection", "Main view controller delegates sticker category selected-state styling"))
+    checks.append(require_text(main_text, "self.brushStickerPanelView.applyStickerEditButtonsEnabled", "Main view controller delegates sticker edit button styling"))
+    checks.append(forbid_text(main_text, "self.sizeSlider = UISlider()", "Size slider construction is no longer owned by the main view controller"))
+    checks.append(forbid_text(main_text, "let stickerScrollView = UIScrollView()", "Sticker scroll view assembly is no longer owned by the main view controller"))
+    checks.append(forbid_text(main_text, "self.circleEraserButton = self.smallToolButtonWithSymbolName", "Eraser shape button assembly is no longer owned by the main view controller"))
+    checks.append(forbid_text(main_text, "self.frontStickerButton = self.smallToolButtonWithSymbolName", "Sticker edit button assembly is no longer owned by the main view controller"))
     checks.append(require_text(pbx_text, "KCBrushDockFeature.swift in Sources", "Brush Dock feature is included in the app target sources"))
     checks.append(require_text(brush_dock_feature_text, "final class KCBrushDockFeature", "Brush Dock configuration is extracted to KCBrushDockFeature"))
     checks.append(require_text(brush_dock_feature_text, "struct KCBrushDockItem: Equatable", "Brush Dock item DTO is explicit and comparable"))
@@ -350,7 +578,26 @@ def app_feature_checks(
     checks.append(require_regex(main_text, r"func buildLeftRail[\s\S]*let toolScrollView = UIScrollView\(\)[\s\S]*toolScrollView\.alwaysBounceVertical = true[\s\S]*toolScrollView\.addSubview\(stack\)", "Left tool rail is vertically scrollable on compact iPhone screens"))
     checks.append(require_regex(main_text, r"func buildLeftRail[\s\S]*toolScrollView\.clipsToBounds = true[\s\S]*toolScrollView\.addSubview\(stack\)", "Left tool rail clips scrolling tools inside its capsule"))
     checks.append(require_regex(editor_ui_factory_text, r"func railToolButton[\s\S]*button\.widthAnchor\.constraint\(equalToConstant: 56\.0\)[\s\S]*button\.heightAnchor\.constraint\(equalToConstant: 56\.0\)", "Left tool buttons use compact stable dimensions"))
-    checks.append(require_regex(main_text, r"func selectToolMode[\s\S]*button\.transform = \.identity", "Left tool selection does not scale buttons outside the rail"))
+    checks.append(require_text(pbx_text, "KCToolRailFeature.swift in Sources", "Tool Rail feature is included in the app target sources"))
+    checks.append(require_text(tool_rail_feature_text, "final class KCToolRailFeature", "Tool Rail configuration is extracted to KCToolRailFeature"))
+    checks.append(require_text(tool_rail_feature_text, "struct KCToolRailItem: Equatable", "Tool Rail item DTO is explicit and comparable"))
+    checks.append(require_text(tool_rail_feature_text, "func toolItems() -> [KCToolRailItem]", "Tool Rail item list lives in KCToolRailFeature"))
+    checks.append(require_text(tool_rail_feature_text, "func accentColor(for mode: KDToolMode) -> UIColor?", "Tool Rail accent colors live in KCToolRailFeature"))
+    checks.append(require_text(tool_rail_feature_text, "func isButton(_ button: KDToolButton, activeFor toolMode: KDToolMode) -> Bool", "Tool Rail active-state matching lives in KCToolRailFeature"))
+    checks.append(require_text(tool_rail_feature_text, "func applySelectionAppearance(to button: KDToolButton, active: Bool)", "Tool Rail selected-state styling lives in KCToolRailFeature"))
+    checks.append(require_text(tool_rail_feature_text, 'id: "brush"', "Tool Rail feature declares the brush item"))
+    checks.append(require_text(tool_rail_feature_text, 'id: "eraser"', "Tool Rail feature declares the eraser item"))
+    checks.append(require_text(tool_rail_feature_text, 'id: "fill"', "Tool Rail feature declares the fill item"))
+    checks.append(require_text(tool_rail_feature_text, 'id: "sticker"', "Tool Rail feature declares the sticker item"))
+    checks.append(require_text(tool_rail_feature_text, 'id: "eyedropper"', "Tool Rail feature declares the eyedropper item"))
+    checks.append(require_text(main_text, "private(set) lazy var toolRailFeature: KCToolRailFeature", "Main view controller owns a Tool Rail feature instance"))
+    checks.append(require_text(main_text, "let items = self.toolRailFeature.toolItems()", "Main view controller delegates tool rail item creation to KCToolRailFeature"))
+    checks.append(require_text(main_text, "self.toolRailFeature.isButton(", "Main view controller delegates tool rail active-state matching"))
+    checks.append(require_text(main_text, "self.toolRailFeature.applySelectionAppearance(to: button, active: active)", "Main view controller delegates tool rail selected-state styling"))
+    checks.append(forbid_text(main_text, "let items: [(symbol: String, mode: KDToolMode, id: String, label: String)]", "Tool Rail tuple configuration is no longer hardcoded in the main view controller"))
+    checks.append(forbid_text(main_text, "button.backgroundColor = active\n                ? UIColor(red: 0.66, green: 0.89, blue: 0.72", "Tool Rail selected background is no longer written in the main view controller"))
+    checks.append(forbid_text(main_text, "button.layer.shadowOpacity = active ? 0.14 : 0.08", "Tool Rail selected shadow is no longer written in the main view controller"))
+    checks.append(require_text(tool_rail_feature_text, "button.transform = .identity", "Left tool selection does not scale buttons outside the rail"))
     checks.append(require_text(pbx_text, "KCDeviceLayoutMetrics.swift in Sources", "Device layout metrics are included in the app target sources"))
     checks.append(require_text(device_layout_metrics_text, "struct KCDeviceLayoutMetrics", "Device layout metrics are extracted from the main view controller"))
     checks.append(require_text(device_layout_metrics_text, "userInterfaceIdiom == .phone", "Device layout metrics detect compact phone layout"))
@@ -367,7 +614,7 @@ def app_feature_checks(
     checks.append(require_regex(main_text, r"rightScrollView\.clipsToBounds = true", "Right menu clips content inside its scroll container"))
     checks.append(require_regex(main_text, r"func paletteColorButtonSize\(\) -> CGFloat[\s\S]*return self\.isCompactPhoneLayout \? 26\.0 : self\.contentPicker\.paletteColorButtonSize", "Color swatches shrink inside compact iPhone right menu"))
     checks.append(require_regex(main_text, r"func buildBottomDock[\s\S]*scrollView\.clipsToBounds = true[\s\S]*panel\.addSubview\(scrollView\)", "Bottom brush dock clips horizontal scroll content"))
-    checks.append(require_regex(main_text, r"func buildSizePanel[\s\S]*stickerScrollView\.clipsToBounds = true[\s\S]*panel\.addSubview\(stickerScrollView\)", "Right sticker row clips content inside the panel"))
+    checks.append(require_regex(brush_sticker_panel_text, r"let stickerScrollView[\s\S]*stickerScrollView\.clipsToBounds = true[\s\S]*panel\.addSubview\(stickerScrollView\)", "Right sticker row clips content inside the panel"))
     checks.append(require_text(main_text, "func buildCollapseControls", "A collapse/expand control is built"))
     checks.append(require_text(main_text, "#selector(togglePanelsCollapsed", "Collapse control is wired to a toggle action"))
     checks.append(require_text(main_text, "self.editorPanels.toggleCollapsed()", "Collapse toggle delegates to the editor panels feature"))
@@ -412,9 +659,9 @@ def app_feature_checks(
     checks.append(forbid_text(main_text, "UIColor(patternImage:", "Custom color area uses a single entry (no tiled rainbow pattern)"))
     checks.append(forbid_text(main_text, "colorWheelImage", "Decorative rainbow band removed from the custom color area"))
     checks.append(forbid_text(main_text, "ringView", "Custom color area no longer renders repeated rainbow rings"))
-    checks.append(require_regex(main_text, r"customButton\.bottomAnchor\.constraint\(equalTo: panel\.bottomAnchor", "Custom color area pins its single entry to the panel bottom (no rainbow band)"))
-    checks.append(require_regex(main_text, r"let recentScrollView[\s\S]*showsHorizontalScrollIndicator = false[\s\S]*recentScrollView\.addSubview\(recentRow\)", "Recent colors are presented in a horizontal scroll row"))
-    checks.append(require_regex(main_text, r"let recentScrollView[\s\S]*recentScrollView\.clipsToBounds = true[\s\S]*recentScrollView\.addSubview\(recentRow\)", "Recent colors are clipped inside the color panel"))
+    checks.append(require_regex(color_palette_renderer_text, r"customButton\.bottomAnchor\.constraint\(equalTo: panel\.bottomAnchor", "Custom color area pins its single entry to the panel bottom (no rainbow band)"))
+    checks.append(require_regex(color_palette_renderer_text, r"let recentScrollView[\s\S]*showsHorizontalScrollIndicator = false[\s\S]*recentScrollView\.addSubview\(recentRow\)", "Recent colors are presented in a horizontal scroll row"))
+    checks.append(require_regex(color_palette_renderer_text, r"let recentScrollView[\s\S]*recentScrollView\.clipsToBounds = true[\s\S]*recentScrollView\.addSubview\(recentRow\)", "Recent colors are clipped inside the color panel"))
     # T022: recent-color dedupe/cap logic moved to KCDomain KCRecentColorQueue (tested); controller delegates via the feature.
     checks.append(require_text(kc_recent_color_queue_text, "defaultLimit: Int = 8", "Recent colors keep up to eight colors (KCDomain KCRecentColorQueue)"))
     checks.append(require_text(content_picker_feature_text, "KCRecentColorQueue.inserting(", "Content picker feature delegates recent-color insertion to KCDomain"))
@@ -429,6 +676,7 @@ def app_feature_checks(
     checks.append(require_text(composition_root_text, "self.drawingEngine = KCDrawingEngineAdapter()", "Composition Root constructs the default drawing engine adapter"))
     checks.append(require_text(main_text, "let drawingEngine: KCDrawingEngineProviding", "Main view controller stores the injected drawing engine"))
     checks.append(require_text(pbx_text, "KCLineArtFeature.swift in Sources", "Line-art feature is included in the app target sources"))
+    checks.append(require_text(pbx_text, "KCLineArtPickerViewController.swift in Sources", "Line-art picker view controller is included in the app target sources"))
     checks.append(require_text(canvas_text, "var drawingEngine: KCDrawingEngineProviding", "Canvas view depends on the drawing engine protocol"))
     checks.append(require_text(canvas_text, "self.drawingEngine.normalizedPressure", "Drawing canvas delegates to the injected drawing engine"))
     checks.append(require_text(canvas_text, "self.drawingEngine.normalizedPressure", "Pressure normalization is bridged through DI"))
@@ -481,10 +729,20 @@ def app_feature_checks(
     checks.append(require_text(line_art_feature_text, "func thumbnailImage(for item: KCLineArtItem) -> UIImage", "KCLineArtFeature renders line-art thumbnails"))
     checks.append(require_text(line_art_feature_text, "func lineArtImage(for item: KCLineArtItem, canvasSize: CGSize) -> UIImage", "KCLineArtFeature renders canvas-sized line-art images"))
     checks.append(require_text(line_art_feature_text, "struct KCLineArtItem: Equatable", "KCLineArtFeature exposes a stable line-art item DTO"))
+    checks.append(require_text(line_art_picker_text, "final class KCLineArtPickerViewController: UIViewController", "Line-art picker UI is extracted to KCLineArtPickerViewController"))
+    checks.append(require_text(line_art_picker_text, "typealias SelectionHandler", "Line-art picker exposes a selection callback"))
+    checks.append(require_text(line_art_picker_text, "preferredContentSize = CGSize(width: 450.0, height: 420.0)", "Line-art picker keeps the existing popover size"))
+    checks.append(require_text(line_art_picker_text, 'view.accessibilityIdentifier = "line-art.picker"', "Line-art picker keeps the automation identifier"))
+    checks.append(require_text(line_art_picker_text, "let columns = 2", "Line-art picker keeps the two-column grid"))
+    checks.append(require_text(line_art_picker_text, "func lineArtPreviewButton(for item: KCLineArtItem, index: Int) -> UIButton", "Line-art preview button creation lives in the picker view controller"))
     checks.append(require_text(main_text, "private(set) lazy var lineArtFeature: KCLineArtFeature", "Main view controller owns a line-art feature instance"))
     checks.append(require_text(main_text, "self.lineArtFeature.makeLineArtItems()", "Main view controller delegates line-art item creation to KCLineArtFeature"))
-    checks.append(require_text(main_text, "self.lineArtFeature.thumbnailImage(for: item)", "Main view controller delegates line-art thumbnails to KCLineArtFeature"))
+    checks.append(require_text(main_text, "KCLineArtPickerViewController(", "Main view controller presents the dedicated line-art picker"))
+    checks.append(require_text(main_text, "self.loadLineArtItem(item)", "Line-art picker selection still loads the item through the main controller"))
     checks.append(require_text(main_text, "self.lineArtFeature.lineArtImage(for: item, canvasSize: canvasSize)", "Main view controller delegates line-art canvas rendering to KCLineArtFeature"))
+    checks.append(forbid_text(main_text, "let picker = UIViewController()", "Line-art picker is no longer an anonymous UIViewController in the main controller"))
+    checks.append(forbid_text(main_text, "func lineArtPreviewButtonForItem", "Line-art preview button creation is no longer owned by the main view controller"))
+    checks.append(forbid_text(main_text, "#selector(didTapLineArtPreviewButton", "Line-art preview tap handling is no longer target-action in the main view controller"))
     checks.append(forbid_text(main_text, "let bunny: (CGRect) -> Void", "Line-art bunny closure moved out of the main view controller"))
     checks.append(forbid_text(main_text, "\"bunny\": bunny", "Line-art drawing map moved out of the main view controller"))
     checks.append(forbid_text(main_text, "func makeLineArtItems", "Line-art item construction is no longer owned by the main view controller"))
@@ -497,7 +755,7 @@ def app_feature_checks(
     checks.append(forbid_text(main_text, "KDLineArtItem.item(title:", "Line-art titles are no longer hardcoded via .item(title:) in the main view controller"))
     checks.append(require_text(content_picker_feature_text, "stickerSymbolsByCategory", "Built-in stickers are organized by category in the content picker feature"))
     checks.append(require_text(main_text, "func stickerCategorySymbolForCategory", "Sticker category controls use compact icon labels"))
-    checks.append(require_regex(main_text, r'button\.setImage\(categoryImage, for: \.normal\)[\s\S]*button\.accessibilityLabel = KCL10n\.stickerCategoryAccessibility\(category\)', "Sticker category buttons are icon-first with localized accessibility labels"))
+    checks.append(require_regex(brush_sticker_panel_text, r'button\.setImage\(categoryImage, for: \.normal\)[\s\S]*button\.accessibilityLabel = stickerCategoryAccessibilityProvider\(category\)', "Sticker category buttons are icon-first with localized accessibility labels"))
     # T026: tool menus/titles/hints are localized through KCL10n; the key English hardcodes
     # must not return to user-visible UI paths, and the controller must route through KCL10n.
     checks.append(require_regex(main_text, r"KCL10n\.", "Main view controller routes user-visible text through the KCL10n localization entry"))
@@ -597,7 +855,7 @@ def app_feature_checks(
     checks.append(require_regex(main_text, r"func didTapNewCanvas[\s\S]*self\.suppressNextDraftSave = true[\s\S]*self\.canvasView\.startBlankCanvas\(\)", "New canvas starts a clean blank session without creating a draft"))
     checks.append(require_regex(main_text, r"func didTapDeleteLatestSession[\s\S]*shouldDeleteDraft[\s\S]*self\.suppressNextDraftSave = true[\s\S]*self\.canvasView\.startBlankCanvas\(\)", "Deleting the active draft starts a clean blank session"))
     checks.append(require_regex(main_text, r"func saveDraftIfNeeded[\s\S]*self\.activeSession != nil && !self\.activeSessionHasUnsavedChanges[\s\S]*return[\s\S]*self\.canvasFeature\.hasVisibleContent\(self\.canvasView\)", "Draft autosave skips only unchanged saved sessions"))
-    checks.append(require_text(main_text, "line-art.picker", "Line-art picker has an automation identifier"))
+    checks.append(require_text(line_art_picker_text, "line-art.picker", "Line-art picker has an automation identifier"))
     checks.append(require_text(main_text, "draftSaveTimer?.invalidate()", "Draft save timer is invalidated during destructive state changes"))
     checks.append(require_regex(main_text, r"preserveUnsavedActiveSessionDraftIfNeeded\(\)[\s\S]*self\.sessionStore\.clearDraft\(\)[\s\S]*self\.canvasView\.loadLineArtImage\(lineArt\)", "Line-art loading preserves dirty edits before replacing the canvas", re.S))
     checks.append(require_text(kc_artwork_session_text, "modifiedAt: Date = Date()", "Artwork sessions get a default modified date"))
@@ -706,10 +964,22 @@ def main():
     content_picker_feature_text = (ROOT / "KidCanvas" / "KCContentPickerFeature.swift").read_text(encoding="utf-8")
     canvas_feature_text = (ROOT / "KidCanvas" / "KCCanvasFeature.swift").read_text(encoding="utf-8")
     line_art_feature_text = (ROOT / "KidCanvas" / "KCLineArtFeature.swift").read_text(encoding="utf-8")
+    line_art_picker_path = ROOT / "KidCanvas" / "KCLineArtPickerViewController.swift"
+    line_art_picker_text = line_art_picker_path.read_text(encoding="utf-8") if line_art_picker_path.exists() else ""
     device_layout_metrics_text = (ROOT / "KidCanvas" / "KCDeviceLayoutMetrics.swift").read_text(encoding="utf-8")
     editor_ui_factory_text = (ROOT / "KidCanvas" / "KCEditorUIFactory.swift").read_text(encoding="utf-8")
+    press_feedback_path = ROOT / "KidCanvas" / "KCPressFeedbackController.swift"
+    press_feedback_text = press_feedback_path.read_text(encoding="utf-8") if press_feedback_path.exists() else ""
+    toast_presenter_path = ROOT / "KidCanvas" / "KCToastPresenter.swift"
+    toast_presenter_text = toast_presenter_path.read_text(encoding="utf-8") if toast_presenter_path.exists() else ""
+    color_palette_renderer_path = ROOT / "KidCanvas" / "KCColorPalettePanelRenderer.swift"
+    color_palette_renderer_text = color_palette_renderer_path.read_text(encoding="utf-8") if color_palette_renderer_path.exists() else ""
+    brush_sticker_panel_path = ROOT / "KidCanvas" / "KCBrushStickerPanelView.swift"
+    brush_sticker_panel_text = brush_sticker_panel_path.read_text(encoding="utf-8") if brush_sticker_panel_path.exists() else ""
     brush_dock_feature_text = (ROOT / "KidCanvas" / "KCBrushDockFeature.swift").read_text(encoding="utf-8")
     eraser_controls_feature_text = (ROOT / "KidCanvas" / "KCEraserControlsFeature.swift").read_text(encoding="utf-8")
+    tool_rail_feature_path = ROOT / "KidCanvas" / "KCToolRailFeature.swift"
+    tool_rail_feature_text = tool_rail_feature_path.read_text(encoding="utf-8") if tool_rail_feature_path.exists() else ""
     kc_content_picker_layout_text = (ROOT / "Packages" / "KidCanvasModules" / "Sources" / "KCDomain" / "KCContentPickerLayout.swift").read_text(encoding="utf-8")
     kc_recent_color_queue_text = (ROOT / "Packages" / "KidCanvasModules" / "Sources" / "KCDomain" / "KCRecentColorQueue.swift").read_text(encoding="utf-8")
     kc_sticker_category_mapping_text = (ROOT / "Packages" / "KidCanvasModules" / "Sources" / "KCDomain" / "KCStickerCategoryMapping.swift").read_text(encoding="utf-8")
@@ -718,6 +988,10 @@ def main():
     history_feature_text = (ROOT / "KidCanvas" / "KCHistoryFeature.swift").read_text(encoding="utf-8")
     kc_history_thumb_status_text = (ROOT / "Packages" / "KidCanvasModules" / "Sources" / "KCDomain" / "KCHistoryThumbStatus.swift").read_text(encoding="utf-8")
     preview_text = (ROOT / "docs" / "product" / "mockups" / "ui-preview.html").read_text(encoding="utf-8")
+    checks.extend(spm_module_governance_checks())
+    checks.extend(apple_double_checks())
+    checks.extend(architecture_reality_checks())
+    checks.extend(module_documentation_checks())
     checks.extend(app_feature_checks(
         main_text,
         canvas_text,
@@ -740,10 +1014,16 @@ def main():
         content_picker_feature_text,
         canvas_feature_text,
         line_art_feature_text,
+        line_art_picker_text,
         device_layout_metrics_text,
         editor_ui_factory_text,
+        press_feedback_text,
+        toast_presenter_text,
+        color_palette_renderer_text,
+        brush_sticker_panel_text,
         brush_dock_feature_text,
         eraser_controls_feature_text,
+        tool_rail_feature_text,
         kc_content_picker_layout_text,
         kc_recent_color_queue_text,
         kc_sticker_category_mapping_text,

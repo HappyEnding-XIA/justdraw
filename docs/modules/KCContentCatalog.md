@@ -38,7 +38,7 @@
 1. **装配**：`KidCanvas/KCAppCompositionRoot.swift` 在 `init()` 中构造 `KCBundledContentCatalog()`，与 `KCSessionService`、`KCDrawingEngineProviding` 一并作为 App 级依赖。
 2. **注入**：`makeMainViewController()` 以 `KCMainViewController(sessionService:contentCatalog:drawingEngine:)` 构造注入；控制器持有 `let contentCatalog: KCBundledContentCatalog`。
 3. **消费**（`KidCanvas/KCMainViewController.swift` `viewDidLoad`）：
-   - 色盘：`contentCatalog.palette(for: .standard/.extended).colors.map { UIColor(kcHex: $0) }`。`UIColor(kcHex:)` 是 App 层胶水扩展（KCCommon 无 UIKit），用归一化分量无损还原 `KCHexColor → UIColor`。
+   - 色盘：`KCContentPickerFeature` 在构造时调用 `contentCatalog.palette(for: .standard/.extended).colors.map { UIColor(kcHex: $0) }`。`UIColor(kcHex:)` 是 App 层胶水扩展（KCCommon 无 UIKit），用归一化分量无损还原 `KCHexColor → UIColor`。T049 后，色盘 UIKit 按钮、最近色横向行和当前色高亮由 `KCColorPalettePanelRenderer` 渲染，内容来源仍保持 `KCContentCatalog → KCContentPickerFeature → Renderer` 的单向链路。
    - 贴纸分类：`stickerCategories = stickerGroups.map(\.title)`；`stickerSymbolsByCategory = Dictionary(uniqueKeysWithValues: stickerGroups.map { ($0.title, $0.symbols) })`（要求 group title 唯一，由测试守护）。
    - 线稿：`KCLineArtFeature.makeLineArtItems()` 按 `contentCatalog.lineArtTemplates` 的顺序与 `template.title` 产出；程序化绘制几何由 `KCDrawingEngine.KCLineArtDrawing` 按 id 提供。
 

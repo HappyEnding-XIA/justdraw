@@ -87,6 +87,22 @@ xcrun simctl spawn "<UDID>" log stream --predicate 'process == "KidCanvas"' --le
 SCREENSHOT_WAIT_SECONDS=6 SCREENSHOT_RETRY_COUNT=8 scripts/runtime_smoke_test.sh "iPad Pro 11 M4"
 ```
 
+### 外置盘 AppleDouble 文件
+
+项目放在外置盘时，macOS 可能生成 `._*` AppleDouble 元数据文件。`.build` 内部的 `._*` 属于构建目录噪声，不提交即可；源码、文档、脚本和 Xcode 工程目录下的 `._*` 必须清理。
+
+验收前可执行：
+
+```bash
+find /Volumes/xiaoda_SSD/KidCanvas/justdraw \
+  -path '*/.git' -prune -o \
+  -path '*/.build' -prune -o \
+  -path '*/ai-docs' -prune -o \
+  -name '._*' -type f -print
+```
+
+应无输出；如有输出，确认不是 `.git` / `.build` / `ai-docs` 后删除再跑 `python3 scripts/validate_project.py`。
+
 ## 环境依赖
 
 - Xcode 命令行工具（`xcode-select -p`）
