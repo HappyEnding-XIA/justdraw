@@ -30,6 +30,8 @@
 | iPad Pro 11 M4 runtime layout acceptance | 通过 | 首屏 safe area Debug 探针：`passed=true`，顶部工具、左侧工具栏、右侧面板、底部 Dock、折叠按钮均未越界；左栏可视高 357.5pt，右侧面板可视高 495pt |
 | iPhone 17 Pro runtime sticker acceptance | 通过 | 印章删除/撤销/重做 Debug 探针：`passed=true`，覆盖空白画布插入印章、选中态、删除、撤销恢复、重做删除 |
 | iPad Pro 11 M4 runtime sticker acceptance | 通过 | 印章删除/撤销/重做 Debug 探针：`passed=true`，覆盖空白画布插入印章、选中态、删除、撤销恢复、重做删除 |
+| iPhone 17 Pro runtime save/history acceptance | 通过 | 绘制内容保存与历史恢复 Debug 探针：`passed=true`，覆盖画笔内容可见、保存成功 Toast、历史数量增加、清空后打开历史恢复可见内容 |
+| iPad Pro 11 M4 runtime save/history acceptance | 通过 | 绘制内容保存与历史恢复 Debug 探针：`passed=true`，覆盖画笔内容可见、保存成功 Toast、历史数量增加、清空后打开历史恢复可见内容 |
 | `git diff --check` | 通过 | 无空白错误 |
 
 ## 3. F01-F12 验收状态
@@ -59,6 +61,7 @@
 - T067：新增首屏 safe area 运行时验收探针；`scripts/runtime_acceptance_test.sh "iPhone 17 Pro" layout-safe-area` 与 `scripts/runtime_acceptance_test.sh "iPad Pro 11 M4" layout-safe-area` 均通过，可自动检查关键浮动控件是否越过安全区。
 - T068：收口 iPhone 横屏紧凑布局；左侧工具栏上移并增加可视高度，右侧面板上移，底部 Dock 和画笔卡片略收紧；新增 runtime 探针对左栏/右栏最低可视高度做防回归检查。
 - T069：新增印章删除/撤销/重做运行时验收探针；`scripts/runtime_acceptance_test.sh "iPhone 17 Pro" sticker-undo-redo` 与 `scripts/runtime_acceptance_test.sh "iPad Pro 11 M4" sticker-undo-redo` 均通过，可自动检查印章插入、选中、删除、撤销恢复和重做删除链路。
+- T070：新增绘制内容保存与历史恢复运行时验收探针；`scripts/runtime_acceptance_test.sh "iPhone 17 Pro" save-history-restore` 与 `scripts/runtime_acceptance_test.sh "iPad Pro 11 M4" save-history-restore` 均通过，可自动检查画笔内容可见、保存成功、历史写入和打开恢复链路。
 
 ## 5. 当前风险
 

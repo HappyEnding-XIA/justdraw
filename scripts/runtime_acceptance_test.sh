@@ -39,8 +39,12 @@ case "$PROBE" in
     LAUNCH_ARG="--kc-runtime-sticker-check"
     RESULT_FILE="kc_runtime_acceptance_sticker.json"
     ;;
+  save-history-restore)
+    LAUNCH_ARG="--kc-runtime-save-history-check"
+    RESULT_FILE="kc_runtime_acceptance_save_history.json"
+    ;;
   *)
-    red "错误：未知验收探针 '$PROBE'，可选：empty-save / layout-safe-area / sticker-undo-redo"
+    red "错误：未知验收探针 '$PROBE'，可选：empty-save / layout-safe-area / sticker-undo-redo / save-history-restore"
     exit 8
     ;;
 esac
@@ -93,6 +97,11 @@ fi
 
 step "安装到 $DEVICE_NAME"
 xcrun simctl install "$UDID" "$APP"
+
+if [ "$PROBE" = "save-history-restore" ]; then
+  step "授予添加到系统相册权限"
+  xcrun simctl privacy "$UDID" grant photos-add "$BUNDLE_ID" >/dev/null 2>&1 || true
+fi
 
 DATA_CONTAINER="$(xcrun simctl get_app_container "$UDID" "$BUNDLE_ID" data 2>/dev/null || true)"
 if [ -n "$DATA_CONTAINER" ]; then

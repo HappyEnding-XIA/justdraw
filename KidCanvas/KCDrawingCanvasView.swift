@@ -404,6 +404,44 @@ final class KCDrawingCanvasView: UIView, UIGestureRecognizerDelegate {
         notifyContentChanged()
     }
 
+#if DEBUG
+    @objc func insertRuntimeAcceptanceStroke() {
+        commitCurrentStateForUndo()
+
+        let drawingBounds = bounds.isEmpty ? CGRect(x: 0.0, y: 0.0, width: 1024.0, height: 720.0) : bounds
+        let start = CGPoint(x: drawingBounds.minX + drawingBounds.width * 0.28,
+                            y: drawingBounds.minY + drawingBounds.height * 0.58)
+        let controlOne = CGPoint(x: drawingBounds.minX + drawingBounds.width * 0.42,
+                                 y: drawingBounds.minY + drawingBounds.height * 0.34)
+        let controlTwo = CGPoint(x: drawingBounds.minX + drawingBounds.width * 0.58,
+                                 y: drawingBounds.minY + drawingBounds.height * 0.72)
+        let end = CGPoint(x: drawingBounds.minX + drawingBounds.width * 0.74,
+                          y: drawingBounds.minY + drawingBounds.height * 0.46)
+
+        let path = UIBezierPath()
+        path.move(to: start)
+        path.addCurve(to: end, controlPoint1: controlOne, controlPoint2: controlTwo)
+        path.lineCapStyle = .round
+        path.lineJoinStyle = .round
+        path.lineWidth = max(currentLineWidth, 18.0)
+
+        let stroke = KDStroke()
+        stroke.path = path
+        stroke.color = currentColor
+        stroke.lineWidth = path.lineWidth
+        stroke.pressureTotal = 1.0
+        stroke.pressureSampleCount = 1
+        stroke.startPoint = start
+        stroke.toolMode = .brush
+        stroke.brushStyle = currentBrushStyle
+        stroke.eraserShape = currentEraserShape
+        strokes.append(stroke)
+
+        setNeedsDisplay()
+        notifyContentChanged()
+    }
+#endif
+
     @objc func snapshotImage() -> UIImage {
         let selectedSticker = self.selectedStickerView
         let selectedBorderWidth = selectedSticker?.layer.borderWidth ?? 0

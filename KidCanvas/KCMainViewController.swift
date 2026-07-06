@@ -64,6 +64,9 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
     var redoButton: UIButton!
     var saveButton: UIButton!
     var saveToastView: UIView?
+#if DEBUG
+    var runtimeAcceptanceLastSaveToastTitle: String?
+#endif
     var sizePreviewView: UIView!
     var sizePreviewShapeLayer: CAShapeLayer!
     var draftThumbButton: UIButton!
@@ -2022,6 +2025,9 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
     // MARK: - 保存提示
 
     func showSaveToastWithSuccess(_ success: Bool) {
+#if DEBUG
+        self.runtimeAcceptanceLastSaveToastTitle = success ? KCL10n.saveSuccessToastTitle : KCL10n.saveFailedToastTitle
+#endif
         self.toastPresenter.dismiss(self.saveToastView)
         self.saveToastView = self.toastPresenter.showSaveToast(success: success, in: self.view, anchorView: self.saveButton)
     }
@@ -2038,7 +2044,8 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
         let shouldRunEmptySaveProbe = arguments.contains("--kc-runtime-empty-save-check")
         let shouldRunLayoutProbe = arguments.contains("--kc-runtime-layout-check")
         let shouldRunStickerProbe = arguments.contains("--kc-runtime-sticker-check")
-        guard shouldRunEmptySaveProbe || shouldRunLayoutProbe || shouldRunStickerProbe else {
+        let shouldRunSaveHistoryProbe = arguments.contains("--kc-runtime-save-history-check")
+        guard shouldRunEmptySaveProbe || shouldRunLayoutProbe || shouldRunStickerProbe || shouldRunSaveHistoryProbe else {
             return
         }
         self.runtimeAcceptanceProbeDidRun = true
@@ -2048,6 +2055,8 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
                 self?.runLayoutAcceptanceProbe()
             } else if shouldRunStickerProbe {
                 self?.runStickerUndoRedoAcceptanceProbe()
+            } else if shouldRunSaveHistoryProbe {
+                self?.runSaveHistoryAcceptanceProbe()
             } else {
                 self?.runEmptySaveAcceptanceProbe()
             }
@@ -2063,6 +2072,7 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
         self.suppressNextDraftSave = true
         self.canvasView.startBlankCanvas()
         self.sessionStore.clearDraft()
+        self.runtimeAcceptanceLastSaveToastTitle = nil
         self.refreshHistoryUI()
         self.refreshActionButtons()
 
@@ -2200,6 +2210,133 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
             "saveButtonEnabledAfterRedo": saveButtonEnabledAfterRedo
         ]
         self.writeRuntimeAcceptanceResult(result, fileName: "kc_runtime_acceptance_sticker.json")
+    }
+
+    private func runSaveHistoryAcceptanceProbe() {
+        self.activeSession = nil
+        self.selectedHistorySession = nil
+        self.activeSessionHasUnsavedChanges = false
+        self.draftSaveTimer?.invalidate()
+        self.draftSaveTimer = nil
+        self.suppressNextDraftSave = true
+        self.canvasView.startBlankCanvas()
+        self.sessionStore.clearDraft()
+        self.refreshHistoryUI()
+        self.refreshActionButtons()
+
+        let initialHistoryCount = self.sessions.count
+        let initialVisible = self.canvasFeature.hasVisibleContent(self.canvasView)
+        let initialCanUndo = self.canvasView.canUndo()
+        let initialCanRedo = self.canvasView.canRedo()
+
+        self.canvasView.currentColor = UIColor(red: 0.30, green: 0.55, blue: 0.92, alpha: 1.0)
+        self.canvasView.currentToolMode = .brush
+        self.canvasView.currentBrushStyle = .pen
+        self.canvasView.currentLineWidth = 20.0
+        self.canvasView.insertRuntimeAcceptanceStroke()
+        self.refreshActionButtons()
+
+        let afterDrawVisible = self.canvasFeature.hasVisibleContent(self.canvasView)
+        let afterDrawCanUndo = self.canvasView.canUndo()
+        let saveButtonEnabledAfterDraw = self.saveButton.isEnabled
+
+        self.didTapSaveSession()
+
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { [weak self] in
+            self?.finishSaveHistoryAcceptanceProbe(
+                initialHistoryCount: initialHistoryCount,
+                initialVisible: initialVisible,
+                initialCanUndo: initialCanUndo,
+                initialCanRedo: initialCanRedo,
+                afterDrawVisible: afterDrawVisible,
+                afterDrawCanUndo: afterDrawCanUndo,
+                saveButtonEnabledAfterDraw: saveButtonEnabledAfterDraw
+            )
+        }
+    }
+
+    private func finishSaveHistoryAcceptanceProbe(
+        initialHistoryCount: Int,
+        initialVisible: Bool,
+        initialCanUndo: Bool,
+        initialCanRedo: Bool,
+        afterDrawVisible: Bool,
+        afterDrawCanUndo: Bool,
+        saveButtonEnabledAfterDraw: Bool
+    ) {
+        let savedSession = self.activeSession
+        let afterSaveHistoryCount = self.sessions.count
+        let afterSaveActiveSessionId = self.activeSession?.identifier ?? ""
+        let afterSaveSelectedSessionId = self.selectedHistorySession?.identifier ?? ""
+        let successToastVisible = self.saveToastView?.accessibilityLabel == KCL10n.saveSuccessToastTitle
+        let successToastObserved = successToastVisible || self.runtimeAcceptanceLastSaveToastTitle == KCL10n.saveSuccessToastTitle
+        let afterSaveCanUndo = self.canvasView.canUndo()
+        let afterSaveCanRedo = self.canvasView.canRedo()
+
+        self.activeSession = nil
+        self.selectedHistorySession = nil
+        self.activeSessionHasUnsavedChanges = false
+        self.suppressNextDraftSave = true
+        self.canvasView.startBlankCanvas()
+        self.sessionStore.clearDraft()
+        self.refreshHistoryUI()
+        self.refreshActionButtons()
+        let afterClearVisible = self.canvasFeature.hasVisibleContent(self.canvasView)
+
+        if let savedSession {
+            self.openSession(savedSession)
+        }
+
+        let afterOpenVisible = self.canvasFeature.hasVisibleContent(self.canvasView)
+        let afterOpenActiveSessionId = self.activeSession?.identifier ?? ""
+        let afterOpenSelectedSessionId = self.selectedHistorySession?.identifier ?? ""
+        let afterOpenCanUndo = self.canvasView.canUndo()
+        let afterOpenCanRedo = self.canvasView.canRedo()
+
+        let result: [String: Any] = [
+            "probe": "save-history-restore",
+            "passed": !initialVisible
+                && !initialCanUndo
+                && !initialCanRedo
+                && afterDrawVisible
+                && afterDrawCanUndo
+                && saveButtonEnabledAfterDraw
+                && savedSession != nil
+                && afterSaveHistoryCount == initialHistoryCount + 1
+                && afterSaveActiveSessionId == savedSession?.identifier
+                && afterSaveSelectedSessionId == savedSession?.identifier
+                && successToastObserved
+                && afterSaveCanUndo
+                && !afterSaveCanRedo
+                && !afterClearVisible
+                && afterOpenVisible
+                && afterOpenActiveSessionId == savedSession?.identifier
+                && afterOpenSelectedSessionId == savedSession?.identifier
+                && !afterOpenCanUndo
+                && !afterOpenCanRedo,
+            "initialHistoryCount": initialHistoryCount,
+            "initialVisible": initialVisible,
+            "initialCanUndo": initialCanUndo,
+            "initialCanRedo": initialCanRedo,
+            "afterDrawVisible": afterDrawVisible,
+            "afterDrawCanUndo": afterDrawCanUndo,
+            "saveButtonEnabledAfterDraw": saveButtonEnabledAfterDraw,
+            "afterSaveHistoryCount": afterSaveHistoryCount,
+            "afterSaveActiveSessionId": afterSaveActiveSessionId,
+            "afterSaveSelectedSessionId": afterSaveSelectedSessionId,
+            "successToastVisible": successToastVisible,
+            "successToastObserved": successToastObserved,
+            "afterSaveCanUndo": afterSaveCanUndo,
+            "afterSaveCanRedo": afterSaveCanRedo,
+            "afterClearVisible": afterClearVisible,
+            "afterOpenVisible": afterOpenVisible,
+            "afterOpenActiveSessionId": afterOpenActiveSessionId,
+            "afterOpenSelectedSessionId": afterOpenSelectedSessionId,
+            "afterOpenCanUndo": afterOpenCanUndo,
+            "afterOpenCanRedo": afterOpenCanRedo,
+            "expectedToast": KCL10n.saveSuccessToastTitle
+        ]
+        self.writeRuntimeAcceptanceResult(result, fileName: "kc_runtime_acceptance_save_history.json")
     }
 
     private enum LayoutEdge {

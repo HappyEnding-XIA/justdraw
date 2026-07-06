@@ -47,6 +47,8 @@ scripts/runtime_acceptance_test.sh "iPhone 17 Pro" layout-safe-area
 scripts/runtime_acceptance_test.sh "iPad Pro 11 M4" layout-safe-area
 scripts/runtime_acceptance_test.sh "iPhone 17 Pro" sticker-undo-redo
 scripts/runtime_acceptance_test.sh "iPad Pro 11 M4" sticker-undo-redo
+scripts/runtime_acceptance_test.sh "iPhone 17 Pro" save-history-restore
+scripts/runtime_acceptance_test.sh "iPad Pro 11 M4" save-history-restore
 git diff --check
 ```
 
@@ -85,6 +87,7 @@ git diff --check
 - 首屏顶部工具、左侧工具栏、右侧面板、底部 Dock、折叠按钮位于 safe area 约束内。
 - iPhone 横屏紧凑布局下，左侧工具栏与右侧面板保留足够可视高度，避免首屏看起来被截断或被底部 Dock 压住。
 - 印章可在空白画布插入并进入选中态；删除后画布回空，撤销可恢复印章，重做可再次删除，且保存按钮仍保持可点以触发空画布“无法保存”反馈。
+- 画布生成可见画笔内容后可通过真实保存入口写入历史、显示“已保存”Toast；清空画布后打开刚保存的历史记录可恢复可见内容，且恢复后的 undo/redo 栈保持干净。
 
 ## 4. 人工验收建议
 
