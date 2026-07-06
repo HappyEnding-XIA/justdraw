@@ -254,6 +254,7 @@ def app_feature_checks(
     canvas_feature_text,
     line_art_feature_text,
     device_layout_metrics_text,
+    editor_ui_factory_text,
     kc_content_picker_layout_text,
     kc_recent_color_queue_text,
     kc_sticker_category_mapping_text,
@@ -295,6 +296,16 @@ def app_feature_checks(
     checks.append(require_text(main_text, "canvasContainer.topAnchor.constraint(equalTo: self.view.topAnchor)", "Canvas is pinned to the top screen edge"))
     checks.append(require_text(main_text, "canvasContainer.bottomAnchor.constraint(equalTo: self.view.bottomAnchor)", "Canvas is pinned to the bottom screen edge"))
     checks.append(require_count_at_least(main_text, r"floatingPanel", 7, "Floating control panels are used"))
+    checks.append(require_text(pbx_text, "KCEditorUIFactory.swift in Sources", "Editor UI factory is included in the app target sources"))
+    checks.append(require_text(editor_ui_factory_text, "struct KCEditorUIFactory", "Common editor UI creation is extracted to KCEditorUIFactory"))
+    checks.append(require_text(editor_ui_factory_text, "func floatingPanel() -> UIView", "Floating panel creation lives in KCEditorUIFactory"))
+    checks.append(require_text(editor_ui_factory_text, "func iconButton(symbolName: String, accentColor: UIColor?) -> UIButton", "Top icon button creation lives in KCEditorUIFactory"))
+    checks.append(require_text(editor_ui_factory_text, "func panelTitleLabel(_ title: String) -> UILabel", "Panel title label creation lives in KCEditorUIFactory"))
+    checks.append(require_text(editor_ui_factory_text, "func segmentButton(title: String, active: Bool) -> UIButton", "Segment button creation lives in KCEditorUIFactory"))
+    checks.append(require_text(editor_ui_factory_text, "func toolCardButton(symbolName: String, accentColor: UIColor, title: String) -> KDBrushButton", "Brush card creation lives in KCEditorUIFactory"))
+    checks.append(require_text(main_text, "private var editorUIFactory: KCEditorUIFactory", "Main view controller delegates common UI creation to KCEditorUIFactory"))
+    checks.append(require_text(main_text, "return self.editorUIFactory.floatingPanel()", "Floating panel helper delegates to KCEditorUIFactory"))
+    checks.append(require_text(main_text, "self.registerPressFeedbackForControl(button)", "Main view controller still owns press-feedback target registration"))
     # T023: collapse state lives in KCEditorPanelsFeature (KCEditorPanelsCollapseState in KCDomain); controller delegates.
     checks.append(require_text(editor_panels_feature_text, "var panelsCollapsed: Bool", "Toolbar collapse state is tracked in the editor panels feature"))
     checks.append(require_text(kc_editor_panels_collapse_state_text, "public struct KCEditorPanelsCollapseState", "Collapse-state decisions are extracted to KCDomain"))
@@ -304,7 +315,7 @@ def app_feature_checks(
     checks.append(require_regex(main_text, r"leftRail\.heightAnchor\.constraint\(equalTo: self\.view\.heightAnchor, multiplier: 0\.46\)", "Left tool rail height is viewport-relative for iPhone landscape"))
     checks.append(require_regex(main_text, r"func buildLeftRail[\s\S]*let toolScrollView = UIScrollView\(\)[\s\S]*toolScrollView\.alwaysBounceVertical = true[\s\S]*toolScrollView\.addSubview\(stack\)", "Left tool rail is vertically scrollable on compact iPhone screens"))
     checks.append(require_regex(main_text, r"func buildLeftRail[\s\S]*toolScrollView\.clipsToBounds = true[\s\S]*toolScrollView\.addSubview\(stack\)", "Left tool rail clips scrolling tools inside its capsule"))
-    checks.append(require_regex(main_text, r"func railToolButtonWithSymbolName[\s\S]*button\.widthAnchor\.constraint\(equalToConstant: 56\.0\)[\s\S]*button\.heightAnchor\.constraint\(equalToConstant: 56\.0\)", "Left tool buttons use compact stable dimensions"))
+    checks.append(require_regex(editor_ui_factory_text, r"func railToolButton[\s\S]*button\.widthAnchor\.constraint\(equalToConstant: 56\.0\)[\s\S]*button\.heightAnchor\.constraint\(equalToConstant: 56\.0\)", "Left tool buttons use compact stable dimensions"))
     checks.append(require_regex(main_text, r"func selectToolMode[\s\S]*button\.transform = \.identity", "Left tool selection does not scale buttons outside the rail"))
     checks.append(require_text(pbx_text, "KCDeviceLayoutMetrics.swift in Sources", "Device layout metrics are included in the app target sources"))
     checks.append(require_text(device_layout_metrics_text, "struct KCDeviceLayoutMetrics", "Device layout metrics are extracted from the main view controller"))
@@ -656,6 +667,7 @@ def main():
     canvas_feature_text = (ROOT / "KidCanvas" / "KCCanvasFeature.swift").read_text(encoding="utf-8")
     line_art_feature_text = (ROOT / "KidCanvas" / "KCLineArtFeature.swift").read_text(encoding="utf-8")
     device_layout_metrics_text = (ROOT / "KidCanvas" / "KCDeviceLayoutMetrics.swift").read_text(encoding="utf-8")
+    editor_ui_factory_text = (ROOT / "KidCanvas" / "KCEditorUIFactory.swift").read_text(encoding="utf-8")
     kc_content_picker_layout_text = (ROOT / "Packages" / "KidCanvasModules" / "Sources" / "KCDomain" / "KCContentPickerLayout.swift").read_text(encoding="utf-8")
     kc_recent_color_queue_text = (ROOT / "Packages" / "KidCanvasModules" / "Sources" / "KCDomain" / "KCRecentColorQueue.swift").read_text(encoding="utf-8")
     kc_sticker_category_mapping_text = (ROOT / "Packages" / "KidCanvasModules" / "Sources" / "KCDomain" / "KCStickerCategoryMapping.swift").read_text(encoding="utf-8")
@@ -687,6 +699,7 @@ def main():
         canvas_feature_text,
         line_art_feature_text,
         device_layout_metrics_text,
+        editor_ui_factory_text,
         kc_content_picker_layout_text,
         kc_recent_color_queue_text,
         kc_sticker_category_mapping_text,

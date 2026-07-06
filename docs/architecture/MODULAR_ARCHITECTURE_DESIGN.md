@@ -170,6 +170,7 @@ Feature 拆分进度（App 层 Feature 类型 + KCDomain 纯逻辑）：
 - **T024 `KCHistoryFeature`（App 层）**：从 `KCMainViewController.refreshHistoryUI()` 抽出，集中历史缩略图槽位状态推导（空/普通/当前/选中/脏态）与「删除历史」可用性判定；`KCMainViewController` 持有 lazy 实例 `history`，`refreshHistoryUI` 改为每格 `history.thumbStatus(...)` + `borderColor(for:)`。纯槽位状态判定（优先级 + 边框宽 + 强调缩放 + 无障碍前缀）下沉 KCDomain `KCHistoryThumbStatus`（有单测），分页仍走 T013 `KCHistoryPaging`。历史会话数据、缩略图按钮构建、打开/删除/翻页事件协调仍留控制器；不触碰 session 持久化磁盘格式。
 - **T039 `KCLineArtFeature`（App 层）**：从 `KCMainViewController` 抽出线稿 item 组装、缩略图渲染和画布线稿图片渲染；`KCMainViewController` 持有 lazy 实例 `lineArtFeature`，仅保留线稿弹窗、按钮点击和替换画布的页面协调。线稿元数据仍由 `KCContentCatalog` 提供，几何仍由 `KCDrawingEngine` 提供，Feature 只负责 App 层编排。
 - **T040 `KCDeviceLayoutMetrics`（App 层）**：从 `KCMainViewController` 抽出设备布局尺寸决策，集中 iPhone/iPad 的右侧面板、底部工具坞、画笔卡片、历史缩略图等指标；控制器暂保留同名方法作薄转发，实际尺寸来源改为 `layoutMetrics`。
+- **T041 `KCEditorUIFactory`（App 层）**：从 `KCMainViewController` 抽出浮动面板、图标按钮、小工具按钮、分段按钮、历史缩略图按钮、画笔卡片等通用 UIKit 控件样式创建；控制器仍保留事件 target、按压反馈注册和面板业务组装。
 - **T013 `KCHistoryPaging`、T017 `KCToolStateChipTitle`（KCDomain）**：更早的最小边界抽取。
 
 ### 5.3 Core / Infrastructure 能力层
@@ -221,6 +222,7 @@ Feature 拆分进度（App 层 Feature 类型 + KCDomain 纯逻辑）：
 | `KCCanvasFeature` | Feature | 主画布业务编排 |
 | `KCLineArtFeature` | Feature | 线稿列表、缩略图与画布线稿渲染编排 |
 | `KCDeviceLayoutMetrics` | Feature | iPhone/iPad 布局指标与尺寸决策 |
+| `KCEditorUIFactory` | Feature | 编辑器通用 UIKit 控件样式创建 |
 | `KidCanvasApp` | App | 启动、装配、依赖注入 |
 
 ### 6.2 `KCCommon`
@@ -434,6 +436,7 @@ Packages/
       KCCanvasFeature/
       KCLineArtFeature/
       KCDeviceLayoutMetrics/
+      KCEditorUIFactory/
     Tests/
       KCCommonTests/
       KCDomainTests/
@@ -529,7 +532,7 @@ flowchart TD
 | `main.m` | `KidCanvasApp` |
 | `KDAppDelegate.*` | `KidCanvasApp` |
 | `KDSceneDelegate.*` | `KidCanvasApp` |
-| `KDMainViewController.*` | `KCCanvasFeature` + `KCEditorPanelsFeature` + `KCHistoryFeature` + `KCLineArtFeature` + `KCDeviceLayoutMetrics` |
+| `KDMainViewController.*` | `KCCanvasFeature` + `KCEditorPanelsFeature` + `KCHistoryFeature` + `KCLineArtFeature` + `KCDeviceLayoutMetrics` + `KCEditorUIFactory` |
 | `KDDrawingCanvasView.*` | `KCDrawingEngine` |
 | `KDArtworkSession.*` | `KCDomain` |
 | `KDSessionStore.*` | `KCSessionPersistence` |

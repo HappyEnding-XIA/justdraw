@@ -116,6 +116,10 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
         KCDeviceLayoutMetrics(userInterfaceIdiom: UIDevice.current.userInterfaceIdiom)
     }
 
+    private var editorUIFactory: KCEditorUIFactory {
+        KCEditorUIFactory(metrics: self.layoutMetrics)
+    }
+
     var isCompactPhoneLayout: Bool {
         return self.layoutMetrics.isCompactPhoneLayout
     }
@@ -534,53 +538,11 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
     }
 
     func floatingPanel() -> UIView {
-        let panel = UIView()
-        panel.backgroundColor = UIColor.clear
-        panel.layer.cornerRadius = 30.0
-        panel.layer.shadowColor = UIColor(red: 0.34, green: 0.26, blue: 0.14, alpha: 1.0).cgColor
-        panel.layer.shadowOpacity = 0.14
-        panel.layer.shadowRadius = 26.0
-        panel.layer.shadowOffset = CGSize(width: 0, height: 14)
-
-        let effect = UIBlurEffect(style: .systemThinMaterialLight)
-        let blurView = UIVisualEffectView(effect: effect)
-        blurView.translatesAutoresizingMaskIntoConstraints = false
-        blurView.layer.cornerRadius = 30.0
-        blurView.layer.masksToBounds = true
-        blurView.layer.borderColor = UIColor(white: 1.0, alpha: 0.66).cgColor
-        blurView.layer.borderWidth = 1.0
-        blurView.contentView.backgroundColor = UIColor(white: 1.0, alpha: 0.28)
-        panel.addSubview(blurView)
-
-        NSLayoutConstraint.activate([
-            blurView.leadingAnchor.constraint(equalTo: panel.leadingAnchor),
-            blurView.trailingAnchor.constraint(equalTo: panel.trailingAnchor),
-            blurView.topAnchor.constraint(equalTo: panel.topAnchor),
-            blurView.bottomAnchor.constraint(equalTo: panel.bottomAnchor)
-        ])
-
-        return panel
+        return self.editorUIFactory.floatingPanel()
     }
 
     func iconButtonWithSymbolName(_ symbolName: String, accentColor: UIColor?) -> UIButton {
-        let button = UIButton(type: .system)
-        button.translatesAutoresizingMaskIntoConstraints = false
-        button.backgroundColor = accentColor ?? UIColor(white: 1.0, alpha: 0.76)
-        button.layer.cornerRadius = 18.0
-        button.layer.borderWidth = 1.0
-        button.layer.borderColor = UIColor(white: 1.0, alpha: 0.72).cgColor
-        button.layer.shadowColor = UIColor(red: 0.47, green: 0.40, blue: 0.29, alpha: 1.0).cgColor
-        button.layer.shadowOpacity = 0.12
-        button.layer.shadowRadius = 10.0
-        button.layer.shadowOffset = CGSize(width: 0, height: 6)
-        button.tintColor = UIColor(red: 0.19, green: 0.26, blue: 0.33, alpha: 1.0)
-        let configuration = UIImage.SymbolConfiguration(pointSize: 20.0, weight: .bold)
-        let image = UIImage(systemName: symbolName, withConfiguration: configuration)
-        button.setImage(image, for: .normal)
-        NSLayoutConstraint.activate([
-            button.widthAnchor.constraint(equalToConstant: 56.0),
-            button.heightAnchor.constraint(equalToConstant: 50.0)
-        ])
+        let button = self.editorUIFactory.iconButton(symbolName: symbolName, accentColor: accentColor)
         self.registerPressFeedbackForControl(button)
         return button
     }
@@ -600,49 +562,13 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
     }
 
     func historyThumbButton() -> UIButton {
-        let button = UIButton(type: .custom)
-        button.translatesAutoresizingMaskIntoConstraints = false
-        button.layer.cornerRadius = 20.0
-        button.clipsToBounds = true
-        button.layer.borderWidth = 2.0
-        button.layer.borderColor = UIColor(red: 0.17, green: 0.22, blue: 0.30, alpha: 0.08).cgColor
-        button.backgroundColor = UIColor(red: 1.0, green: 0.995, blue: 0.98, alpha: 1.0)
-        button.imageView?.contentMode = .scaleAspectFill
-        button.layer.shadowColor = UIColor(red: 0.40, green: 0.32, blue: 0.22, alpha: 1.0).cgColor
-        button.layer.shadowOpacity = 0.08
-        button.layer.shadowRadius = 10.0
-        button.layer.shadowOffset = CGSize(width: 0, height: 6)
-        let configuration = UIImage.SymbolConfiguration(pointSize: 24.0, weight: .semibold)
-        let placeholder = UIImage(systemName: "photo", withConfiguration: configuration)?
-            .withTintColor(UIColor(red: 0.62, green: 0.67, blue: 0.74, alpha: 0.52), renderingMode: .alwaysOriginal)
-        button.setImage(placeholder, for: .normal)
-        button.imageView?.contentMode = .center
+        let button = self.editorUIFactory.historyThumbButton()
         self.registerPressFeedbackForControl(button)
         return button
     }
 
     func railToolButtonWithSymbolName(_ symbolName: String, slim: Bool) -> KDToolButton {
-        let button = KDToolButton(type: .system)
-        button.translatesAutoresizingMaskIntoConstraints = false
-        button.tintColor = UIColor(red: 0.19, green: 0.26, blue: 0.33, alpha: 1.0)
-        button.backgroundColor = slim
-            ? UIColor(red: 0.96, green: 0.85, blue: 0.48, alpha: 1.0)
-            : UIColor(white: 1.0, alpha: 0.82)
-        button.layer.cornerRadius = 20.0
-        button.layer.borderWidth = 1.0
-        button.layer.borderColor = UIColor(white: 1.0, alpha: 0.72).cgColor
-        button.layer.shadowColor = UIColor(red: 0.47, green: 0.40, blue: 0.29, alpha: 1.0).cgColor
-        button.layer.shadowOpacity = 0.08
-        button.layer.shadowRadius = 8.0
-        button.layer.shadowOffset = CGSize(width: 0, height: 4)
-        let configuration = UIImage.SymbolConfiguration(pointSize: 20.0, weight: .bold)
-        let image = UIImage(systemName: symbolName, withConfiguration: configuration)
-        button.setImage(image, for: .normal)
-
-        NSLayoutConstraint.activate([
-            button.widthAnchor.constraint(equalToConstant: 56.0),
-            button.heightAnchor.constraint(equalToConstant: 56.0)
-        ])
+        let button = self.editorUIFactory.railToolButton(symbolName: symbolName, slim: slim)
         self.registerPressFeedbackForControl(button)
         return button
     }
@@ -1299,56 +1225,23 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
     }
 
     func panelTitleLabel(_ title: String) -> UILabel {
-        let label = UILabel()
-        label.text = title
-        label.font = UIFont.systemFont(ofSize: 15.0, weight: .semibold)
-        label.textColor = UIColor(red: 0.12, green: 0.16, blue: 0.23, alpha: 1.0)
-        return label
+        return self.editorUIFactory.panelTitleLabel(title)
     }
 
     func segmentButtonWithTitle(_ title: String, active: Bool) -> UIButton {
-        let button = UIButton(type: .system)
-        button.translatesAutoresizingMaskIntoConstraints = false
-        button.setTitle(title, for: .normal)
-        button.titleLabel?.font = UIFont.systemFont(ofSize: 13.0, weight: .bold)
-        button.setTitleColor(active ? UIColor(red: 0.39, green: 0.26, blue: 0.0, alpha: 1.0) : UIColor(red: 0.49, green: 0.53, blue: 0.59, alpha: 1.0), for: .normal)
-        button.backgroundColor = active ? UIColor(red: 0.97, green: 0.86, blue: 0.48, alpha: 1.0) : UIColor.clear
-        button.layer.cornerRadius = 16.0
-        button.layer.borderWidth = active ? 1.0 : 0.0
-        button.layer.borderColor = UIColor(white: 1.0, alpha: 0.76).cgColor
+        let button = self.editorUIFactory.segmentButton(title: title, active: active)
         self.registerPressFeedbackForControl(button)
         return button
     }
 
     func historyActionButtonWithTitle(_ title: String, accent: Bool) -> UIButton {
-        let button = UIButton(type: .system)
-        button.setTitle(title, for: .normal)
-        button.titleLabel?.font = UIFont.systemFont(ofSize: 13.0, weight: .bold)
-        button.setTitleColor(accent ? UIColor(red: 0.39, green: 0.26, blue: 0.0, alpha: 1.0) : UIColor(red: 0.23, green: 0.28, blue: 0.35, alpha: 1.0), for: .normal)
-        button.backgroundColor = accent ? UIColor(red: 0.97, green: 0.86, blue: 0.48, alpha: 1.0) : UIColor(white: 1.0, alpha: 0.82)
-        button.layer.cornerRadius = 18.0
-        button.layer.borderWidth = 1.0
-        button.layer.borderColor = UIColor(white: 1.0, alpha: 0.72).cgColor
+        let button = self.editorUIFactory.historyActionButton(title: title, accent: accent)
         self.registerPressFeedbackForControl(button)
         return button
     }
 
     func smallToolButtonWithSymbolName(_ symbolName: String, accent: Bool) -> UIButton {
-        let button = UIButton(type: .system)
-        button.translatesAutoresizingMaskIntoConstraints = false
-        button.tintColor = accent
-            ? UIColor(red: 0.39, green: 0.26, blue: 0.0, alpha: 1.0)
-            : UIColor(red: 0.23, green: 0.28, blue: 0.35, alpha: 1.0)
-        button.backgroundColor = accent
-            ? UIColor(red: 0.97, green: 0.86, blue: 0.48, alpha: 1.0)
-            : UIColor(white: 1.0, alpha: 0.82)
-        button.layer.cornerRadius = 16.0
-        button.layer.borderWidth = 1.0
-        button.layer.borderColor = UIColor(white: 1.0, alpha: 0.72).cgColor
-        let configuration = UIImage.SymbolConfiguration(pointSize: 16.0, weight: .bold)
-        let image = UIImage(systemName: symbolName, withConfiguration: configuration)
-        button.setImage(image, for: .normal)
-        button.heightAnchor.constraint(equalToConstant: 36.0).isActive = true
+        let button = self.editorUIFactory.smallToolButton(symbolName: symbolName, accent: accent)
         self.registerPressFeedbackForControl(button)
         return button
     }
@@ -1372,54 +1265,7 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
     }
 
     func toolCardButtonWithSymbolName(_ symbolName: String, accentColor: UIColor, title: String) -> KDBrushButton {
-        let button = KDBrushButton(type: .system)
-        button.translatesAutoresizingMaskIntoConstraints = false
-        button.backgroundColor = UIColor(white: 1.0, alpha: 0.84)
-        button.layer.cornerRadius = self.isCompactPhoneLayout ? 22.0 : 28.0
-        button.layer.borderWidth = 1.0
-        button.layer.borderColor = UIColor(white: 1.0, alpha: 0.72).cgColor
-        button.layer.shadowColor = UIColor(red: 0.47, green: 0.40, blue: 0.29, alpha: 1.0).cgColor
-        button.layer.shadowOpacity = 0.12
-        button.layer.shadowRadius = self.isCompactPhoneLayout ? 7.0 : 10.0
-        button.layer.shadowOffset = CGSize(width: 0, height: self.isCompactPhoneLayout ? 4.0 : 6.0)
-        button.widthAnchor.constraint(equalToConstant: self.brushCardWidth()).isActive = true
-        button.heightAnchor.constraint(equalToConstant: self.brushCardHeight()).isActive = true
-
-        let iconView = UIImageView()
-        iconView.translatesAutoresizingMaskIntoConstraints = false
-        let configuration = UIImage.SymbolConfiguration(pointSize: self.brushCardIconSize(), weight: .bold)
-        iconView.image = UIImage(systemName: symbolName, withConfiguration: configuration)?.withRenderingMode(.alwaysTemplate)
-        iconView.tintColor = accentColor
-        iconView.contentMode = .scaleAspectFit
-
-        let label = UILabel()
-        label.translatesAutoresizingMaskIntoConstraints = false
-        label.text = title
-        label.font = UIFont.systemFont(ofSize: self.brushCardLabelFontSize(), weight: .semibold)
-        label.textColor = UIColor(red: 0.16, green: 0.22, blue: 0.28, alpha: 1.0)
-
-        let halo = UIView()
-        halo.translatesAutoresizingMaskIntoConstraints = false
-        halo.backgroundColor = accentColor.withAlphaComponent(0.16)
-        halo.layer.cornerRadius = self.brushCardHaloSize() / 2.0
-
-        button.addSubview(halo)
-        button.addSubview(iconView)
-        button.addSubview(label)
-
-        NSLayoutConstraint.activate([
-            halo.leadingAnchor.constraint(equalTo: button.leadingAnchor, constant: self.isCompactPhoneLayout ? 10.0 : 14.0),
-            halo.centerYAnchor.constraint(equalTo: button.centerYAnchor),
-            halo.widthAnchor.constraint(equalToConstant: self.brushCardHaloSize()),
-            halo.heightAnchor.constraint(equalToConstant: self.brushCardHaloSize()),
-            iconView.centerXAnchor.constraint(equalTo: halo.centerXAnchor),
-            iconView.centerYAnchor.constraint(equalTo: halo.centerYAnchor),
-            iconView.widthAnchor.constraint(equalToConstant: self.brushCardIconSize()),
-            iconView.heightAnchor.constraint(equalToConstant: self.brushCardIconSize()),
-            label.leadingAnchor.constraint(equalTo: halo.trailingAnchor, constant: self.isCompactPhoneLayout ? 10.0 : 14.0),
-            label.centerYAnchor.constraint(equalTo: button.centerYAnchor)
-        ])
-
+        let button = self.editorUIFactory.toolCardButton(symbolName: symbolName, accentColor: accentColor, title: title)
         self.registerPressFeedbackForControl(button)
         return button
     }
