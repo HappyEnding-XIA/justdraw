@@ -141,12 +141,13 @@ App -> Feature -> Core/Infra -> Domain -> Common
 - 数据存储细节
 - 具体页面状态处理
 
-模块装配现状（T016/T021）：App 壳层的 Composition Root `KCAppCompositionRoot` 集中装配 App 级依赖并通过构造注入交给使用方，目前装配：
+模块装配现状（T016/T021/T036）：App 壳层的 Composition Root `KCAppCompositionRoot` 集中装配 App 级依赖并通过构造注入交给使用方，目前装配：
 
 - 会话服务 `KCSessionService`（Swift `KCSessionStore` + 旧 archive 迁移器）
 - 内容目录 `KCBundledContentCatalog`（色盘 / 贴纸分组 / 线稿模板的单一来源，详见 `docs/modules/KCContentCatalog.md`）
+- 绘制能力 `KCDrawingEngineProviding`（默认实现 `KCDrawingEngineAdapter`，负责 UIKit 类型与 `KCDrawingEngine` / `KCDomain` 纯 Swift 能力之间的适配）
 
-`SceneDelegate` 经 `KCAppCompositionRoot.makeMainViewController()` 创建主控制器，`KCMainViewController(sessionService:contentCatalog:)` 接收已构造好的依赖，不在控制器内部重新装配或硬编码内容。后续业务模块（用户、付费）演进时，在此处统一装配。
+`SceneDelegate` 经 `KCAppCompositionRoot.makeMainViewController()` 创建主控制器，`KCMainViewController(sessionService:contentCatalog:drawingEngine:)` 接收已构造好的依赖，不在控制器内部重新装配或硬编码内容。后续业务模块（用户、付费）演进时，在此处统一装配。
 
 ### 5.2 Feature 业务层
 
@@ -613,7 +614,7 @@ flowchart TD
 
 | 技术债 | 当前决策 | 后续触发条件 | 验收口径 |
 |:---|:---|:---|:---|
-| `KCDrawingEngineAdapter` 实例化 / 协议化 / DI 化 | 暂缓。当前 adapter 无状态，静态调用风险低 | `KCCanvasFeature` 继续承接画布能力编排，或出现 mock / 多实现测试需求 | 有协议抽象、Composition Root 注入、双端构建与现有绘制测试通过 |
+| `KCDrawingEngineAdapter` 实例化 / 协议化 / DI 化 | 已完成（T036）。App 通过 `KCDrawingEngineProviding` 协议依赖绘制能力，默认 adapter 由 Composition Root 注入 | 后续如出现多绘制实现或 mock 需求，在协议下扩展实现 | 保持 `KCDrawingEngineProviding` 协议、Composition Root 注入、双端构建与现有绘制测试通过 |
 | 色盘 JSON 化 | 暂缓。App 已通过 `KCContentCatalog` 消费色盘，色盘仍是模块内集中数据源 | 需要运营配置、多语言色盘命名、或远端内容下发 | JSON 资源解析测试覆盖，颜色顺序与现有 UI 无回归 |
 | 线稿绘制闭包迁移到 DrawingEngine | 暂缓。涉及视觉/像素回归 | 画布 Feature 边界稳定后，单独迁移程序化线稿绘制 | 线稿数量、id、顺序不变，截图/像素或人工视觉验收通过 |
 | 继续拆 `KCMainViewController` | 持续推进，按最小边界拆分 | 控制器新增职责前，优先评估能否进入 Feature | validator 覆盖新边界，iPhone/iPad build 与 runtime smoke 通过 |

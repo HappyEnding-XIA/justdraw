@@ -97,6 +97,7 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
     var stickerRowStack: UIStackView!
     let sessionStore: KCSessionService
     let contentCatalog: KCBundledContentCatalog
+    let drawingEngine: KCDrawingEngineProviding
     /// 内容选择 Feature（色盘 / 最近色 / 贴纸分类），从 contentCatalog 构造，T022 抽出。
     private(set) lazy var contentPicker: KCContentPickerFeature = {
         KCContentPickerFeature(contentCatalog: self.contentCatalog)
@@ -106,7 +107,7 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
     /// 历史 Feature（缩略图槽位状态推导 + 删除可用性），T024 抽出。
     private(set) lazy var history: KCHistoryFeature = KCHistoryFeature()
     /// 主画布 Feature（画布创建 + 画布动作状态），T033 抽出最小边界。
-    private(set) lazy var canvasFeature: KCCanvasFeature = KCCanvasFeature()
+    private(set) lazy var canvasFeature: KCCanvasFeature = KCCanvasFeature(drawingEngine: self.drawingEngine)
     var sessions: [KCSessionMetadata] = []
     var activeSession: KCSessionMetadata?
     var selectedHistorySession: KCSessionMetadata?
@@ -221,15 +222,20 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
 
     /// 通过 Composition Root 注入依赖创建。避免控制器内部直接 `KCSessionService.shared`。
     /// 内容目录（色盘 / 贴纸 / 线稿元数据）也由 Composition Root 注入，控制器不再硬编码。
-    init(sessionService: KCSessionService, contentCatalog: KCBundledContentCatalog) {
+    init(
+        sessionService: KCSessionService,
+        contentCatalog: KCBundledContentCatalog,
+        drawingEngine: KCDrawingEngineProviding
+    ) {
         self.sessionStore = sessionService
         self.contentCatalog = contentCatalog
+        self.drawingEngine = drawingEngine
         super.init(nibName: nil, bundle: nil)
     }
 
-    @available(*, unavailable, message: "Use init(sessionService:contentCatalog:) via KCAppCompositionRoot")
+    @available(*, unavailable, message: "Use init(sessionService:contentCatalog:drawingEngine:) via KCAppCompositionRoot")
     required init?(coder: NSCoder) {
-        fatalError("Use init(sessionService:contentCatalog:)")
+        fatalError("Use init(sessionService:contentCatalog:drawingEngine:)")
     }
 
     override func viewDidLoad() {
@@ -530,7 +536,7 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
             currentColor: self.canvasView.currentColor
         )
 
-        let title = KCDrawingEngineAdapter.toolStateChipTitle(
+        let title = self.drawingEngine.toolStateChipTitle(
             toolMode: self.canvasView.currentToolMode.rawValue,
             brushStyle: self.canvasView.currentBrushStyle.rawValue
         )
@@ -1947,7 +1953,7 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
     func refreshHistoryUI() {
         self.sessions = self.sessionStore.loadAllSessions()
         let maxPageIndex = self.maxHistoryPageIndex()
-        self.historyPageIndex = KCDrawingEngineAdapter.historyClampedPageIndex(
+        self.historyPageIndex = self.drawingEngine.historyClampedPageIndex(
             self.historyPageIndex,
             sessionCount: self.sessions.count,
             pageSize: self.historyPageSize()
@@ -2030,13 +2036,13 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
 
     func maxHistoryPageIndex() -> Int {
         // 历史分页计算在 Swift KCHistoryPaging Feature 模型中。
-        return KCDrawingEngineAdapter.historyMaxPageIndex(sessionCount: self.sessions.count,
+        return self.drawingEngine.historyMaxPageIndex(sessionCount: self.sessions.count,
                                                          pageSize: self.historyPageSize())
     }
 
     func sessionIndexForHistoryThumbIndex(_ thumbIndex: Int) -> Int {
         // 历史分页计算在 Swift KCHistoryPaging Feature 模型中。
-        return KCDrawingEngineAdapter.historySessionIndex(
+        return self.drawingEngine.historySessionIndex(
             thumbIndex: thumbIndex,
             pageIndex: self.historyPageIndex,
             pageSize: self.historyPageSize()

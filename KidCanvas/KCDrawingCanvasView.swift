@@ -84,7 +84,7 @@ final class KDStickerView: UIImageView {
 
 /// 原 Objective-C `KDDrawingCanvasView` 的忠实 Swift 移植。行为保持 1:1 一致
 ///（触摸绘制、撤销/重做、贴纸手势、渲染）。纯绘制算法通过
-/// `KCDrawingEngineAdapter` 委托给 Swift 绘制引擎（与 OC 版本一致）。
+/// `KCDrawingEngineProviding` 委托给 Swift 绘制引擎（与 OC 版本一致）。
 @objc(KDDrawingCanvasView)
 final class KCDrawingCanvasView: UIView, UIGestureRecognizerDelegate {
 
@@ -97,6 +97,7 @@ final class KCDrawingCanvasView: UIView, UIGestureRecognizerDelegate {
     @objc var currentEraserShape: KDEraserShape = .circle
     @objc var currentStickerSymbol: String = "star.fill"
     @objc var fillTolerance: Double = 28.0
+    var drawingEngine: KCDrawingEngineProviding = KCDrawingEngineAdapter()
 
     private var strokes: [KDStroke] = []
     private var stickers: [KDStickerView] = []
@@ -144,12 +145,12 @@ final class KCDrawingCanvasView: UIView, UIGestureRecognizerDelegate {
     private func drawStroke(_ stroke: KDStroke) {
         let strokeColor: UIColor = stroke.toolMode == .eraser ? .white : stroke.color
         let pressure: CGFloat = stroke.toolMode == .eraser ? 1.0 : stroke.averagePressure
-        let renderedLineWidth = KCDrawingEngineAdapter.renderedStrokeLineWidth(
+        let renderedLineWidth = self.drawingEngine.renderedStrokeLineWidth(
             brushStyle: stroke.brushStyle.rawValue,
             lineWidth: stroke.lineWidth,
             averagePressure: pressure
         )
-        let alpha = KCDrawingEngineAdapter.renderedStrokeAlpha(
+        let alpha = self.drawingEngine.renderedStrokeAlpha(
             brushStyle: stroke.brushStyle.rawValue,
             lineWidth: stroke.lineWidth,
             averagePressure: pressure
@@ -203,8 +204,8 @@ final class KCDrawingCanvasView: UIView, UIGestureRecognizerDelegate {
         clipPath.addClip()
 
         color.withAlphaComponent(0.18).setStroke()
-        let dashWidth = KCDrawingEngineAdapter.crayonGrainDashWidth(lineWidth: lineWidth)
-        let dashPoints = KCDrawingEngineAdapter.crayonGrainDashPoints(pathBounds: bounds, lineWidth: lineWidth)
+        let dashWidth = self.drawingEngine.crayonGrainDashWidth(lineWidth: lineWidth)
+        let dashPoints = self.drawingEngine.crayonGrainDashPoints(pathBounds: bounds, lineWidth: lineWidth)
         let pointCount = dashPoints.count
         var index = 0
         while index + 1 < pointCount {
@@ -346,7 +347,7 @@ final class KCDrawingCanvasView: UIView, UIGestureRecognizerDelegate {
     }
 
     private func normalizedPressure(for touch: UITouch) -> Double {
-        KCDrawingEngineAdapter.normalizedPressure(
+        self.drawingEngine.normalizedPressure(
             force: touch.force,
             maximumPossibleForce: touch.maximumPossibleForce,
             isPencil: touch.type == .pencil
@@ -630,7 +631,7 @@ final class KCDrawingCanvasView: UIView, UIGestureRecognizerDelegate {
         let startX = Int(min(max(point.x * baseImage.scale, 0), CGFloat(width - 1)))
         let startY = Int(min(max(point.y * baseImage.scale, 0), CGFloat(height - 1)))
 
-        guard let filledImage = KCDrawingEngineAdapter.floodFillImage(
+        guard let filledImage = self.drawingEngine.floodFillImage(
             sourceImageRef,
             startX: startX,
             startY: startY,
@@ -660,7 +661,7 @@ final class KCDrawingCanvasView: UIView, UIGestureRecognizerDelegate {
             return nil
         }
 
-        return KCDrawingEngineAdapter.sampleColorFromImage(
+        return self.drawingEngine.sampleColorFromImage(
             imageRef,
             x: Int(point.x * image.scale),
             y: Int(point.y * image.scale)
@@ -702,7 +703,7 @@ final class KCDrawingCanvasView: UIView, UIGestureRecognizerDelegate {
     private func drawStampedEraserStroke(_ stroke: KDStroke, color strokeColor: UIColor) {
         strokeColor.withAlphaComponent(1.0).setFill()
         if stroke.dotStroke {
-            let stamp = KCDrawingEngineAdapter.eraserStampPath(
+            let stamp = self.drawingEngine.eraserStampPath(
                 shape: stroke.eraserShape.rawValue,
                 center: stroke.startPoint,
                 size: stroke.lineWidth
@@ -711,9 +712,9 @@ final class KCDrawingCanvasView: UIView, UIGestureRecognizerDelegate {
             return
         }
 
-        let stampPoints = KCDrawingEngineAdapter.eraserStampPointsAlongPath(stroke.path.cgPath, lineWidth: stroke.lineWidth)
+        let stampPoints = self.drawingEngine.eraserStampPointsAlongPath(stroke.path.cgPath, lineWidth: stroke.lineWidth)
         for value in stampPoints {
-            let stamp = KCDrawingEngineAdapter.eraserStampPath(
+            let stamp = self.drawingEngine.eraserStampPath(
                 shape: stroke.eraserShape.rawValue,
                 center: value.cgPointValue,
                 size: stroke.lineWidth
@@ -794,11 +795,11 @@ final class KCDrawingCanvasView: UIView, UIGestureRecognizerDelegate {
     }
 
     private func constrainStickerScale(_ sticker: KDStickerView) {
-        sticker.transform = KCDrawingEngineAdapter.stickerTransformByClampingScale(sticker.transform)
+        sticker.transform = self.drawingEngine.stickerTransformByClampingScale(sticker.transform)
     }
 
     private func constrainStickerCenter(_ sticker: KDStickerView) {
-        sticker.center = KCDrawingEngineAdapter.clampStickerCenter(
+        sticker.center = self.drawingEngine.clampStickerCenter(
             sticker.center,
             frame: sticker.frame,
             canvasBounds: bounds
@@ -905,6 +906,6 @@ final class KCDrawingCanvasView: UIView, UIGestureRecognizerDelegate {
 
     @objc(eraserShapePathForShape:center:size:)
     func eraserShapePath(forShape shape: KDEraserShape, center: CGPoint, size: CGFloat) -> UIBezierPath? {
-        KCDrawingEngineAdapter.eraserStampPath(shape: shape.rawValue, center: center, size: size)
+        self.drawingEngine.eraserStampPath(shape: shape.rawValue, center: center, size: size)
     }
 }

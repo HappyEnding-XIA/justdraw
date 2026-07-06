@@ -11,6 +11,32 @@ import KCCommon
 import KCDomain
 import KCDrawingEngine
 
+/// App 层使用的绘制能力协议。调用方只依赖协议，默认实现由
+/// `KCAppCompositionRoot` 注入，避免 Feature / View 继续直接依赖静态 adapter。
+protocol KCDrawingEngineProviding: AnyObject {
+    func floodFillImage(
+        _ image: CGImage,
+        startX: Int,
+        startY: Int,
+        fillColor: UIColor,
+        tolerance: Double
+    ) -> CGImage?
+    func sampleColorFromImage(_ image: CGImage, x: Int, y: Int) -> UIColor?
+    func normalizedPressure(force: Double, maximumPossibleForce: Double, isPencil: Bool) -> Double
+    func renderedStrokeLineWidth(brushStyle: Int, lineWidth: Double, averagePressure: Double) -> Double
+    func renderedStrokeAlpha(brushStyle: Int, lineWidth: Double, averagePressure: Double) -> Double
+    func eraserStampPath(shape: Int, center: CGPoint, size: CGFloat) -> UIBezierPath?
+    func eraserStampPointsAlongPath(_ path: CGPath, lineWidth: CGFloat) -> [NSValue]
+    func crayonGrainDashPoints(pathBounds: CGRect, lineWidth: CGFloat) -> [NSValue]
+    func crayonGrainDashWidth(lineWidth: CGFloat) -> CGFloat
+    func stickerTransformByClampingScale(_ transform: CGAffineTransform) -> CGAffineTransform
+    func clampStickerCenter(_ center: CGPoint, frame: CGRect, canvasBounds: CGRect) -> CGPoint
+    func historyMaxPageIndex(sessionCount: Int, pageSize: Int) -> Int
+    func historyClampedPageIndex(_ pageIndex: Int, sessionCount: Int, pageSize: Int) -> Int
+    func historySessionIndex(thumbIndex: Int, pageIndex: Int, pageSize: Int) -> Int
+    func toolStateChipTitle(toolMode: Int, brushStyle: Int) -> String
+}
+
 /// 把无 UIKit 依赖的 `KCDrawingEngine` 算法桥接给画布侧。
 ///
 /// 每个方法都是薄适配，负责在 UIKit/CoreGraphics 类型（UIColor、CGImage、
@@ -22,13 +48,13 @@ import KCDrawingEngine
 ///
 /// 注意：这是迁移期的桥接层。画布完全 Swift 化后，应直接调用引擎。
 @objc(KCDrawingEngineAdapter)
-final class KCDrawingEngineAdapter: NSObject {
+final class KCDrawingEngineAdapter: NSObject, KCDrawingEngineProviding {
 
     /// 对 `image` 从像素坐标（`startX`、`startY`）开始做 flood fill，填充
     /// `fillColor`，使用原型 `tolerance * 4` 的曼哈顿色差规则。
     ///
     /// 返回填充后的图像；若无像素发生变化或图像无法解码，返回 `nil`。
-    @objc static func floodFillImage(
+    func floodFillImage(
         _ image: CGImage,
         startX: Int,
         startY: Int,
@@ -55,7 +81,7 @@ final class KCDrawingEngineAdapter: NSObject {
     /// 从 `image` 的像素坐标（`x`、`y`）采样单个像素颜色，使用与原型
     /// `colorAtPoint:` 相同的 1×1 位图上下文技巧——无需分配完整的
     /// KCBitmapBuffer。
-    @objc static func sampleColorFromImage(
+    func sampleColorFromImage(
         _ image: CGImage,
         x: Int,
         y: Int
@@ -77,7 +103,7 @@ final class KCDrawingEngineAdapter: NSObject {
     ///
     /// 设备不报告 force 时（`maximumPossibleForce <= 0`）返回 `1.0`，
     /// 与原型的提前返回行为一致。
-    @objc static func normalizedPressure(
+    func normalizedPressure(
         force: Double,
         maximumPossibleForce: Double,
         isPencil: Bool
@@ -94,24 +120,24 @@ final class KCDrawingEngineAdapter: NSObject {
     /// 返回给定画笔配置下的渲染线宽。调用方（`drawStroke:`）在调用本方法前，
     /// 已处理橡皮擦的压力覆盖（橡皮擦强制 `averagePressure = 1.0`）。
     /// `brushStyle` 对应 `KDBrushStyle` 的 raw 值：0 = 铅笔、1 = 钢笔、2 = 蜡笔。
-    @objc static func renderedStrokeLineWidth(
+    func renderedStrokeLineWidth(
         brushStyle: Int,
         lineWidth: Double,
         averagePressure: Double
     ) -> Double {
-        guard let style = brushStyleFromOC(brushStyle) else { return lineWidth }
+        guard let style = Self.brushStyleFromOC(brushStyle) else { return lineWidth }
         return KCStrokeRenderMath.renderedMetrics(
             brushStyle: style, lineWidth: lineWidth, pressure: averagePressure
         ).renderedLineWidth
     }
 
     /// 返回给定画笔配置下的渲染 alpha。
-    @objc static func renderedStrokeAlpha(
+    func renderedStrokeAlpha(
         brushStyle: Int,
         lineWidth: Double,
         averagePressure: Double
     ) -> Double {
-        guard let style = brushStyleFromOC(brushStyle) else { return 1.0 }
+        guard let style = Self.brushStyleFromOC(brushStyle) else { return 1.0 }
         return KCStrokeRenderMath.renderedMetrics(
             brushStyle: style, lineWidth: lineWidth, pressure: averagePressure
         ).alpha
@@ -122,12 +148,12 @@ final class KCDrawingEngineAdapter: NSObject {
     /// 返回给定橡皮擦形状在 `center`、`size` 处的 `UIBezierPath`，封装自
     /// CoreGraphics `KCEraserStampPath` 引擎。`shape` 对应 `KDEraserShape`
     /// 的 raw 值：0 = 圆形、1 = 云朵、2 = 星形。
-    @objc static func eraserStampPath(
+    func eraserStampPath(
         shape: Int,
         center: CGPoint,
         size: CGFloat
     ) -> UIBezierPath? {
-        guard let eraserShape = eraserShapeFromOC(shape) else { return nil }
+        guard let eraserShape = Self.eraserShapeFromOC(shape) else { return nil }
         let cgPath = KCEraserStampPath.path(for: eraserShape, center: center, size: size)
         return UIBezierPath(cgPath: cgPath)
     }
@@ -137,7 +163,7 @@ final class KCDrawingEngineAdapter: NSObject {
     /// 返回沿 `path` 插值得到的印章中心点，间距为 `max(6, lineWidth × 0.38)`。
     /// 调用方遍历这些点，在每个位置填充橡皮擦印章形状。
     /// 返回 `NSValue` 包装的 `CGPoint` 数组，供跨语言调用使用。
-    @objc static func eraserStampPointsAlongPath(
+    func eraserStampPointsAlongPath(
         _ path: CGPath,
         lineWidth: CGFloat
     ) -> [NSValue] {
@@ -154,7 +180,7 @@ final class KCDrawingEngineAdapter: NSObject {
     /// 每个 dash 编码为两个连续的 `NSValue` 包装 `CGPoint`（起点、终点），
     /// 返回数组长度恒为偶数。每条 dash 的常量描边宽度请用
     /// `crayonGrainDashWidth(lineWidth:)` 获取。
-    @objc static func crayonGrainDashPoints(
+    func crayonGrainDashPoints(
         pathBounds: CGRect,
         lineWidth: CGFloat
     ) -> [NSValue] {
@@ -171,7 +197,7 @@ final class KCDrawingEngineAdapter: NSObject {
     /// 蜡笔纹理每条 dash 的常量描边宽度（`max(0.7, lineWidth * 0.045)`）。
     /// 等于 `KCCrayonGrain.dashes(...)` 生成的每条 dash 的 `lineWidth`；
     /// 单独暴露，避免纹理绘制方内联重复推导该常量。
-    @objc static func crayonGrainDashWidth(lineWidth: CGFloat) -> CGFloat {
+    func crayonGrainDashWidth(lineWidth: CGFloat) -> CGFloat {
         max(0.7, lineWidth * 0.045)
     }
 
@@ -180,7 +206,7 @@ final class KCDrawingEngineAdapter: NSObject {
     /// 返回贴纸的仿射变换，其等比缩放被限制在原型的 `[0.48, 2.6]` 范围内
     ///（退化情况 → identity）。pinch 手势处理方将结果应用到视图；只有计算
     /// 逻辑在 Swift（`KCStickerConstraints`）中。
-    @objc static func stickerTransformByClampingScale(
+    func stickerTransformByClampingScale(
         _ transform: CGAffineTransform
     ) -> CGAffineTransform {
         KCStickerConstraints.transformWithClampedScale(transform)
@@ -188,7 +214,7 @@ final class KCDrawingEngineAdapter: NSObject {
 
     /// 返回经限制的贴纸 `center`，使贴纸在 `canvasBounds` 内始终可触及。
     /// pan 手势处理方将结果应用到视图。
-    @objc static func clampStickerCenter(
+    func clampStickerCenter(
         _ center: CGPoint,
         frame: CGRect,
         canvasBounds: CGRect
@@ -200,12 +226,12 @@ final class KCDrawingEngineAdapter: NSObject {
 
     /// `sessionCount` 个会话在 `pageSize` 下最高有效的历史页索引。
     /// 委托给 Swift `KCHistoryPaging` 历史 Feature 模型。
-    @objc static func historyMaxPageIndex(sessionCount: Int, pageSize: Int) -> Int {
+    func historyMaxPageIndex(sessionCount: Int, pageSize: Int) -> Int {
         KCHistoryPaging(sessionCount: sessionCount, pageSize: pageSize).maxPageIndex
     }
 
     /// 将 `pageIndex` 限制到 `sessionCount`/`pageSize` 的有效范围内。
-    @objc static func historyClampedPageIndex(
+    func historyClampedPageIndex(
         _ pageIndex: Int,
         sessionCount: Int,
         pageSize: Int
@@ -214,7 +240,7 @@ final class KCDrawingEngineAdapter: NSObject {
     }
 
     /// 缩略图槽位 `thumbIndex` 在 `pageIndex` 页对应的绝对会话索引。
-    @objc static func historySessionIndex(
+    func historySessionIndex(
         thumbIndex: Int,
         pageIndex: Int,
         pageSize: Int
@@ -228,8 +254,8 @@ final class KCDrawingEngineAdapter: NSObject {
     /// 返回当前工具/画笔在折叠态芯片上的标题文本，委托给 Swift `KCToolStateChipTitle`。
     /// `toolMode`/`brushStyle` 为 OC 枚举 rawValue（Int）：tool 0=画笔/1=橡皮/2=填充/3=贴纸/4=取色；
     /// brush 0=铅笔/1=钢笔/2=蜡笔。越界返回空串。
-    @objc static func toolStateChipTitle(toolMode: Int, brushStyle: Int) -> String {
-        guard let tool = toolModeFromOC(toolMode), let brush = brushStyleFromOC(brushStyle) else {
+    func toolStateChipTitle(toolMode: Int, brushStyle: Int) -> String {
+        guard let tool = Self.toolModeFromOC(toolMode), let brush = Self.brushStyleFromOC(brushStyle) else {
             return ""
         }
         return KCToolStateChipTitle.title(tool: tool, brush: brush)

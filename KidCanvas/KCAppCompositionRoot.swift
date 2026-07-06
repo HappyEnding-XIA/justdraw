@@ -16,6 +16,7 @@ import KCContentCatalog
 final class KCAppCompositionRoot {
     private let sessionService: KCSessionService
     private let contentCatalog: KCBundledContentCatalog
+    private let drawingEngine: KCDrawingEngineProviding
 
     init() {
         // 会话服务：内部装配 Swift KCSessionStore + 旧 archive 迁移器。
@@ -23,10 +24,16 @@ final class KCAppCompositionRoot {
         // 内容目录：色盘 / 贴纸分组 / 线稿模板的单一来源（贴纸与线稿元数据从
         // KCContentCatalog 的 package resource 加载；色盘为内置 KCContentCatalogDefaults）。
         self.contentCatalog = KCBundledContentCatalog()
+        // 绘制能力：默认使用 App 层 adapter 连接 UIKit 类型与 SPM 绘制/领域模型。
+        self.drawingEngine = KCDrawingEngineAdapter()
     }
 
     /// 创建主控制器并注入已装配的依赖。
     func makeMainViewController() -> KCMainViewController {
-        KCMainViewController(sessionService: sessionService, contentCatalog: contentCatalog)
+        KCMainViewController(
+            sessionService: sessionService,
+            contentCatalog: contentCatalog,
+            drawingEngine: drawingEngine
+        )
     }
 }

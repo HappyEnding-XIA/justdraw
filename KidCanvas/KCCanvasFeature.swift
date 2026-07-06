@@ -13,6 +13,7 @@ import UIKit
 /// 撤销栈、贴纸手势或 Core Graphics 绘制逻辑。这样可以先让
 /// `KCMainViewController` 从直接创建/判断画布细节中退一步，同时保持行为稳定。
 final class KCCanvasFeature {
+    private let drawingEngine: KCDrawingEngineProviding
 
     struct ActionState: Equatable {
         let canUndo: Bool
@@ -20,10 +21,15 @@ final class KCCanvasFeature {
         let canSave: Bool
     }
 
+    init(drawingEngine: KCDrawingEngineProviding) {
+        self.drawingEngine = drawingEngine
+    }
+
     func makeCanvasView(delegate: KDDrawingCanvasViewDelegate) -> KCDrawingCanvasView {
         let canvasView = KCDrawingCanvasView()
         canvasView.translatesAutoresizingMaskIntoConstraints = false
         canvasView.delegate = delegate
+        canvasView.drawingEngine = drawingEngine
         canvasView.clipsToBounds = true
         return canvasView
     }
