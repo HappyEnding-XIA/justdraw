@@ -35,8 +35,12 @@ case "$PROBE" in
     LAUNCH_ARG="--kc-runtime-layout-check"
     RESULT_FILE="kc_runtime_acceptance_layout.json"
     ;;
+  sticker-undo-redo)
+    LAUNCH_ARG="--kc-runtime-sticker-check"
+    RESULT_FILE="kc_runtime_acceptance_sticker.json"
+    ;;
   *)
-    red "错误：未知验收探针 '$PROBE'，可选：empty-save / layout-safe-area"
+    red "错误：未知验收探针 '$PROBE'，可选：empty-save / layout-safe-area / sticker-undo-redo"
     exit 8
     ;;
 esac

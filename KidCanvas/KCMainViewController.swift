@@ -2037,7 +2037,8 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
         let arguments = ProcessInfo.processInfo.arguments
         let shouldRunEmptySaveProbe = arguments.contains("--kc-runtime-empty-save-check")
         let shouldRunLayoutProbe = arguments.contains("--kc-runtime-layout-check")
-        guard shouldRunEmptySaveProbe || shouldRunLayoutProbe else {
+        let shouldRunStickerProbe = arguments.contains("--kc-runtime-sticker-check")
+        guard shouldRunEmptySaveProbe || shouldRunLayoutProbe || shouldRunStickerProbe else {
             return
         }
         self.runtimeAcceptanceProbeDidRun = true
@@ -2045,6 +2046,8 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { [weak self] in
             if shouldRunLayoutProbe {
                 self?.runLayoutAcceptanceProbe()
+            } else if shouldRunStickerProbe {
+                self?.runStickerUndoRedoAcceptanceProbe()
             } else {
                 self?.runEmptySaveAcceptanceProbe()
             }
@@ -2119,6 +2122,84 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
             "checks": checks
         ]
         self.writeRuntimeAcceptanceResult(result, fileName: "kc_runtime_acceptance_layout.json")
+    }
+
+    private func runStickerUndoRedoAcceptanceProbe() {
+        self.activeSession = nil
+        self.selectedHistorySession = nil
+        self.activeSessionHasUnsavedChanges = false
+        self.draftSaveTimer?.invalidate()
+        self.draftSaveTimer = nil
+        self.suppressNextDraftSave = true
+        self.canvasView.startBlankCanvas()
+        self.sessionStore.clearDraft()
+        self.refreshHistoryUI()
+        self.refreshActionButtons()
+
+        let initialVisible = self.canvasFeature.hasVisibleContent(self.canvasView)
+        let initialCanUndo = self.canvasView.canUndo()
+        let initialCanRedo = self.canvasView.canRedo()
+
+        self.canvasView.currentColor = UIColor(red: 0.94, green: 0.43, blue: 0.45, alpha: 1.0)
+        self.canvasView.insertStickerSymbol("seal.fill", atNormalizedPoint: CGPoint(x: 0.5, y: 0.5))
+        self.refreshActionButtons()
+
+        let afterInsertVisible = self.canvasFeature.hasVisibleContent(self.canvasView)
+        let afterInsertSelected = self.canvasView.hasSelectedSticker()
+        let afterInsertCanUndo = self.canvasView.canUndo()
+        let saveButtonEnabledAfterInsert = self.saveButton.isEnabled
+
+        self.canvasView.deleteSelectedSticker()
+        self.refreshActionButtons()
+        let afterDeleteVisible = self.canvasFeature.hasVisibleContent(self.canvasView)
+        let afterDeleteCanUndo = self.canvasView.canUndo()
+        let afterDeleteCanRedo = self.canvasView.canRedo()
+
+        self.canvasView.undoLastAction()
+        self.refreshActionButtons()
+        let afterUndoVisible = self.canvasFeature.hasVisibleContent(self.canvasView)
+        let afterUndoCanRedo = self.canvasView.canRedo()
+
+        self.canvasView.redoLastAction()
+        self.refreshActionButtons()
+        let afterRedoVisible = self.canvasFeature.hasVisibleContent(self.canvasView)
+        let afterRedoCanUndo = self.canvasView.canUndo()
+        let saveButtonEnabledAfterRedo = self.saveButton.isEnabled
+
+        let result: [String: Any] = [
+            "probe": "sticker-undo-redo",
+            "passed": !initialVisible
+                && !initialCanUndo
+                && !initialCanRedo
+                && afterInsertVisible
+                && afterInsertSelected
+                && afterInsertCanUndo
+                && saveButtonEnabledAfterInsert
+                && !afterDeleteVisible
+                && afterDeleteCanUndo
+                && !afterDeleteCanRedo
+                && afterUndoVisible
+                && afterUndoCanRedo
+                && !afterRedoVisible
+                && afterRedoCanUndo
+                && saveButtonEnabledAfterRedo,
+            "initialVisible": initialVisible,
+            "initialCanUndo": initialCanUndo,
+            "initialCanRedo": initialCanRedo,
+            "afterInsertVisible": afterInsertVisible,
+            "afterInsertSelected": afterInsertSelected,
+            "afterInsertCanUndo": afterInsertCanUndo,
+            "saveButtonEnabledAfterInsert": saveButtonEnabledAfterInsert,
+            "afterDeleteVisible": afterDeleteVisible,
+            "afterDeleteCanUndo": afterDeleteCanUndo,
+            "afterDeleteCanRedo": afterDeleteCanRedo,
+            "afterUndoVisible": afterUndoVisible,
+            "afterUndoCanRedo": afterUndoCanRedo,
+            "afterRedoVisible": afterRedoVisible,
+            "afterRedoCanUndo": afterRedoCanUndo,
+            "saveButtonEnabledAfterRedo": saveButtonEnabledAfterRedo
+        ]
+        self.writeRuntimeAcceptanceResult(result, fileName: "kc_runtime_acceptance_sticker.json")
     }
 
     private enum LayoutEdge {

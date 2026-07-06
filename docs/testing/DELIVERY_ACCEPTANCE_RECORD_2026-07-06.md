@@ -28,6 +28,8 @@
 | iPad Pro 11 M4 runtime acceptance | 通过 | 空画布保存反馈 Debug 探针：`passed=true`，保存按钮可点，失败 Toast 可见，历史 1→1 |
 | iPhone 17 Pro runtime layout acceptance | 通过 | 首屏 safe area Debug 探针：`passed=true`，顶部工具、左侧工具栏、右侧面板、底部 Dock、折叠按钮均未越界；左栏可视高 229.3pt，右侧面板可视高 196pt |
 | iPad Pro 11 M4 runtime layout acceptance | 通过 | 首屏 safe area Debug 探针：`passed=true`，顶部工具、左侧工具栏、右侧面板、底部 Dock、折叠按钮均未越界；左栏可视高 357.5pt，右侧面板可视高 495pt |
+| iPhone 17 Pro runtime sticker acceptance | 通过 | 印章删除/撤销/重做 Debug 探针：`passed=true`，覆盖空白画布插入印章、选中态、删除、撤销恢复、重做删除 |
+| iPad Pro 11 M4 runtime sticker acceptance | 通过 | 印章删除/撤销/重做 Debug 探针：`passed=true`，覆盖空白画布插入印章、选中态、删除、撤销恢复、重做删除 |
 | `git diff --check` | 通过 | 无空白错误 |
 
 ## 3. F01-F12 验收状态
@@ -56,6 +58,7 @@
 - T066：横屏安全区与 smoke 截图归一化已完成自动验收；App 启动请求横屏 scene geometry，浮动控件改用 safe area 约束，`runtime_smoke_test.sh` 会生成横屏观察图便于首屏无遮挡人工检查。
 - T067：新增首屏 safe area 运行时验收探针；`scripts/runtime_acceptance_test.sh "iPhone 17 Pro" layout-safe-area` 与 `scripts/runtime_acceptance_test.sh "iPad Pro 11 M4" layout-safe-area` 均通过，可自动检查关键浮动控件是否越过安全区。
 - T068：收口 iPhone 横屏紧凑布局；左侧工具栏上移并增加可视高度，右侧面板上移，底部 Dock 和画笔卡片略收紧；新增 runtime 探针对左栏/右栏最低可视高度做防回归检查。
+- T069：新增印章删除/撤销/重做运行时验收探针；`scripts/runtime_acceptance_test.sh "iPhone 17 Pro" sticker-undo-redo` 与 `scripts/runtime_acceptance_test.sh "iPad Pro 11 M4" sticker-undo-redo` 均通过，可自动检查印章插入、选中、删除、撤销恢复和重做删除链路。
 
 ## 5. 当前风险
 
