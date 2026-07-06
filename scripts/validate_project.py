@@ -252,6 +252,7 @@ def app_feature_checks(
     catalog_text,
     content_picker_feature_text,
     canvas_feature_text,
+    line_art_feature_text,
     kc_content_picker_layout_text,
     kc_recent_color_queue_text,
     kc_sticker_category_mapping_text,
@@ -373,6 +374,7 @@ def app_feature_checks(
     checks.append(require_text(drawing_bridge_text, "final class KCDrawingEngineAdapter: NSObject, KCDrawingEngineProviding", "Default drawing adapter implements the protocol"))
     checks.append(require_text(composition_root_text, "self.drawingEngine = KCDrawingEngineAdapter()", "Composition Root constructs the default drawing engine adapter"))
     checks.append(require_text(main_text, "let drawingEngine: KCDrawingEngineProviding", "Main view controller stores the injected drawing engine"))
+    checks.append(require_text(pbx_text, "KCLineArtFeature.swift in Sources", "Line-art feature is included in the app target sources"))
     checks.append(require_text(canvas_text, "var drawingEngine: KCDrawingEngineProviding", "Canvas view depends on the drawing engine protocol"))
     checks.append(require_text(canvas_text, "self.drawingEngine.normalizedPressure", "Drawing canvas delegates to the injected drawing engine"))
     checks.append(require_text(canvas_text, "self.drawingEngine.normalizedPressure", "Pressure normalization is bridged through DI"))
@@ -416,13 +418,25 @@ def app_feature_checks(
     # the main view controller consumes it via contentCatalog instead of hardcoding metadata.
     checks.append(require_count_at_least(catalog_text, r'"category": "', 8, "Built-in line-art templates live in the content catalog"))
     checks.append(require_count_at_least(catalog_text, r'"[a-z0-9.]+\.fill"|"rainbow"|"camera\.macro"', 12, "Built-in sticker symbols live in the content catalog"))
-    checks.append(require_text(main_text, "contentCatalog.lineArtTemplates", "Line-art order and titles are driven by the content catalog"))
+    checks.append(require_text(line_art_feature_text, "final class KCLineArtFeature", "Line-art orchestration is extracted to KCLineArtFeature"))
+    checks.append(require_text(line_art_feature_text, "contentCatalog.lineArtTemplates", "Line-art order and titles are driven by the content catalog inside KCLineArtFeature"))
     checks.append(require_text(line_art_drawing_text, "public enum KCLineArtDrawing", "Line-art drawing geometry lives in KCDrawingEngine"))
     checks.append(require_text(line_art_drawing_text, "public static let supportedTemplateIds", "DrawingEngine declares supported line-art ids"))
     checks.append(require_text(drawing_bridge_text, "KCLineArtDrawing.strokes(forTemplateId:", "Drawing adapter bridges line-art geometry from DrawingEngine"))
-    checks.append(require_text(main_text, "self.drawingEngine.lineArtDrawingBlock(templateId:", "Main view controller delegates line-art drawing to the drawing engine"))
+    checks.append(require_text(line_art_feature_text, "self.drawingEngine.lineArtDrawingBlock(templateId:", "Line-art feature delegates geometry drawing to the drawing engine"))
+    checks.append(require_text(line_art_feature_text, "func thumbnailImage(for item: KCLineArtItem) -> UIImage", "KCLineArtFeature renders line-art thumbnails"))
+    checks.append(require_text(line_art_feature_text, "func lineArtImage(for item: KCLineArtItem, canvasSize: CGSize) -> UIImage", "KCLineArtFeature renders canvas-sized line-art images"))
+    checks.append(require_text(line_art_feature_text, "struct KCLineArtItem: Equatable", "KCLineArtFeature exposes a stable line-art item DTO"))
+    checks.append(require_text(main_text, "private(set) lazy var lineArtFeature: KCLineArtFeature", "Main view controller owns a line-art feature instance"))
+    checks.append(require_text(main_text, "self.lineArtFeature.makeLineArtItems()", "Main view controller delegates line-art item creation to KCLineArtFeature"))
+    checks.append(require_text(main_text, "self.lineArtFeature.thumbnailImage(for: item)", "Main view controller delegates line-art thumbnails to KCLineArtFeature"))
+    checks.append(require_text(main_text, "self.lineArtFeature.lineArtImage(for: item, canvasSize: canvasSize)", "Main view controller delegates line-art canvas rendering to KCLineArtFeature"))
     checks.append(forbid_text(main_text, "let bunny: (CGRect) -> Void", "Line-art bunny closure moved out of the main view controller"))
     checks.append(forbid_text(main_text, "\"bunny\": bunny", "Line-art drawing map moved out of the main view controller"))
+    checks.append(forbid_text(main_text, "func makeLineArtItems", "Line-art item construction is no longer owned by the main view controller"))
+    checks.append(forbid_text(main_text, "func thumbnailImageForLineArtItem", "Line-art thumbnail rendering is no longer owned by the main view controller"))
+    checks.append(forbid_text(main_text, "var lineArtStrokeScale", "Line-art stroke scale state is no longer stored in the main view controller"))
+    checks.append(forbid_text(main_text, "func strokePath(_ path: UIBezierPath", "Line-art path stroking is no longer owned by the main view controller"))
     checks.append(require_text(content_picker_feature_text, "contentCatalog.stickerGroups", "Sticker groups are sourced from the content catalog via the content picker feature"))
     checks.append(require_text(content_picker_feature_text, "map(\\.title)", "Sticker categories are derived from catalog sticker groups in the content picker feature"))
     checks.append(forbid_text(main_text, 'stickerCategories = ["Animals"', "Sticker categories are no longer hardcoded in the main view controller"))
@@ -631,6 +645,7 @@ def main():
     catalog_text = (ROOT / "Packages" / "KidCanvasModules" / "Sources" / "KCContentCatalog" / "Resources" / "content.json").read_text(encoding="utf-8")
     content_picker_feature_text = (ROOT / "KidCanvas" / "KCContentPickerFeature.swift").read_text(encoding="utf-8")
     canvas_feature_text = (ROOT / "KidCanvas" / "KCCanvasFeature.swift").read_text(encoding="utf-8")
+    line_art_feature_text = (ROOT / "KidCanvas" / "KCLineArtFeature.swift").read_text(encoding="utf-8")
     kc_content_picker_layout_text = (ROOT / "Packages" / "KidCanvasModules" / "Sources" / "KCDomain" / "KCContentPickerLayout.swift").read_text(encoding="utf-8")
     kc_recent_color_queue_text = (ROOT / "Packages" / "KidCanvasModules" / "Sources" / "KCDomain" / "KCRecentColorQueue.swift").read_text(encoding="utf-8")
     kc_sticker_category_mapping_text = (ROOT / "Packages" / "KidCanvasModules" / "Sources" / "KCDomain" / "KCStickerCategoryMapping.swift").read_text(encoding="utf-8")
@@ -660,6 +675,7 @@ def main():
         catalog_text,
         content_picker_feature_text,
         canvas_feature_text,
+        line_art_feature_text,
         kc_content_picker_layout_text,
         kc_recent_color_queue_text,
         kc_sticker_category_mapping_text,

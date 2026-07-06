@@ -30,23 +30,6 @@ class KDBrushButton: UIButton {
     var representsBrushStyle: Bool = false
 }
 
-// MARK: - KDLineArtItem
-
-class KDLineArtItem: NSObject {
-    var title: String
-    var drawingBlock: ((CGRect) -> Void)?
-
-    init(title: String, drawingBlock: @escaping (CGRect) -> Void) {
-        self.title = title
-        self.drawingBlock = drawingBlock
-        super.init()
-    }
-
-    static func item(title: String, drawingBlock: @escaping (CGRect) -> Void) -> KDLineArtItem {
-        KDLineArtItem(title: title, drawingBlock: drawingBlock)
-    }
-}
-
 // MARK: - KCHexColor → UIColor 桥
 
 /// 把 UIKit 无关的 `KCHexColor`（KCCommon）转成 `UIColor`。两者都用归一化 0...1
@@ -65,7 +48,7 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
     var canvasContainerView: UIView!
     var canvasView: KCDrawingCanvasView!
     var sizeSlider: UISlider!
-    var lineArtItems: [KDLineArtItem]!
+    var lineArtItems: [KCLineArtItem]!
     var colorButtons: [UIButton] = []
     var recentColorButtons: [UIButton] = []
     var toolButtons: [KDToolButton] = []
@@ -108,6 +91,10 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
     private(set) lazy var history: KCHistoryFeature = KCHistoryFeature()
     /// 主画布 Feature（画布创建 + 画布动作状态），T033 抽出最小边界。
     private(set) lazy var canvasFeature: KCCanvasFeature = KCCanvasFeature(drawingEngine: self.drawingEngine)
+    /// 线稿 Feature（线稿 item 构造 + 缩略图/画布线稿渲染），T039 抽出。
+    private(set) lazy var lineArtFeature: KCLineArtFeature = {
+        KCLineArtFeature(contentCatalog: self.contentCatalog, drawingEngine: self.drawingEngine)
+    }()
     var sessions: [KCSessionMetadata] = []
     var activeSession: KCSessionMetadata?
     var selectedHistorySession: KCSessionMetadata?
@@ -120,7 +107,6 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
     var draftSaveTimer: Timer?
     var suppressNextDraftSave: Bool = false
     var activeSessionHasUnsavedChanges: Bool = false
-    var lineArtStrokeScale: CGFloat = 1.0
     var brushWidthsByStyle: [Int: CGFloat] = [:]
     var eraserSliderValue: CGFloat = 0.0
 
@@ -242,10 +228,9 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
         super.viewDidLoad()
 
         self.view.backgroundColor = UIColor(red: 0.97, green: 0.94, blue: 0.89, alpha: 1.0)
-        self.lineArtStrokeScale = 1.0
         // 内容选择 Feature 在构造时从 contentCatalog 建好色盘与贴纸分组；这里载入最近色。
         self.contentPicker.loadRecentColors()
-        self.lineArtItems = self.makeLineArtItems()
+        self.lineArtItems = self.lineArtFeature.makeLineArtItems()
         self.colorButtons = []
         self.recentColorButtons = []
         self.toolButtons = []
@@ -1317,13 +1302,6 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
         return label
     }
 
-    func strokePath(_ path: UIBezierPath, width: CGFloat) {
-        path.lineWidth = width * self.lineArtStrokeScale
-        path.lineCapStyle = .round
-        path.lineJoinStyle = .round
-        path.stroke()
-    }
-
     func segmentButtonWithTitle(_ title: String, active: Bool) -> UIButton {
         let button = UIButton(type: .system)
         button.translatesAutoresizingMaskIntoConstraints = false
@@ -1451,22 +1429,6 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
             return UIColor(red: 0.45, green: 0.73, blue: 0.97, alpha: 1.0)
         case .crayon:
             return UIColor(red: 0.93, green: 0.62, blue: 0.41, alpha: 1.0)
-        }
-    }
-
-    // MARK: - 线稿项
-
-    func makeLineArtItems() -> [KDLineArtItem] {
-        let stroke: (_ path: UIBezierPath, _ lineWidth: CGFloat) -> Void = { [weak self] path, width in
-            self?.strokePath(path, width: width)
-        }
-
-        // 顺序与标题由 catalog 驱动；线稿几何由 DrawingEngine 提供，控制器只负责页面协调。
-        return self.contentCatalog.lineArtTemplates.compactMap { template in
-            guard let draw = self.drawingEngine.lineArtDrawingBlock(templateId: template.id, stroke: stroke) else {
-                return nil
-            }
-            return KDLineArtItem(title: template.title, drawingBlock: draw)
         }
     }
 
@@ -2321,7 +2283,7 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
         self.present(picker, animated: true, completion: nil)
     }
 
-    func lineArtPreviewButtonForItem(_ item: KDLineArtItem, index: Int) -> UIButton {
+    func lineArtPreviewButtonForItem(_ item: KCLineArtItem, index: Int) -> UIButton {
         let button = UIButton(type: .custom)
         button.backgroundColor = UIColor(red: 1.0, green: 0.995, blue: 0.98, alpha: 0.96)
         button.layer.cornerRadius = 24.0
@@ -2333,7 +2295,7 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
         button.layer.shadowOffset = CGSize(width: 0, height: 6)
         button.tag = index
         var configuration = UIButton.Configuration.plain()
-        configuration.image = self.thumbnailImageForLineArtItem(item)
+        configuration.image = self.lineArtFeature.thumbnailImage(for: item)
         configuration.contentInsets = NSDirectionalEdgeInsets(top: 14.0, leading: 18.0, bottom: 14.0, trailing: 18.0)
         button.configuration = configuration
         button.imageView?.contentMode = .scaleAspectFit
@@ -2354,49 +2316,12 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
         }
     }
 
-    func thumbnailImageForLineArtItem(_ item: KDLineArtItem) -> UIImage {
-        let size = CGSize(width: 160.0, height: 112.0)
-        let renderer = UIGraphicsImageRenderer(size: size)
-        return renderer.image { (_: UIGraphicsImageRendererContext) in
-            UIColor(red: 1.0, green: 0.995, blue: 0.98, alpha: 1.0).setFill()
-            UIRectFill(CGRect(origin: .zero, size: size))
-            UIColor(red: 0.18, green: 0.23, blue: 0.30, alpha: 1.0).setStroke()
-
-            let drawingRect = CGRect(origin: .zero, size: size).insetBy(dx: 22.0, dy: 18.0)
-            let context = UIGraphicsGetCurrentContext()
-            context?.saveGState()
-            let scale = min(drawingRect.size.width / 520.0, drawingRect.size.height / 420.0)
-            let previousStrokeScale = self.lineArtStrokeScale
-            self.lineArtStrokeScale = 0.22
-            defer {
-                self.lineArtStrokeScale = previousStrokeScale
-            }
-            context?.translateBy(x: drawingRect.midX, y: drawingRect.midY)
-            context?.scaleBy(x: scale, y: scale)
-            context?.translateBy(x: -260.0, y: -210.0)
-            item.drawingBlock?(CGRect(x: 0.0, y: 0.0, width: 520.0, height: 420.0))
-            context?.restoreGState()
-        }
-    }
-
-    func loadLineArtItem(_ item: KDLineArtItem) {
+    func loadLineArtItem(_ item: KCLineArtItem) {
         var canvasSize = self.canvasView.bounds.size
         if canvasSize == .zero {
             canvasSize = CGSize(width: 1024.0, height: 720.0)
         }
-        let renderer = UIGraphicsImageRenderer(size: canvasSize)
-        let lineArt = renderer.image { (rendererContext: UIGraphicsImageRendererContext) in
-            UIColor.white.setFill()
-            UIRectFill(CGRect(origin: .zero, size: canvasSize))
-            let context = rendererContext.cgContext
-            context.setLineWidth(12.0)
-            context.setLineCap(.round)
-            context.setLineJoin(.round)
-            context.setStrokeColor(UIColor.black.cgColor)
-
-            let drawingRect = CGRect(origin: .zero, size: canvasSize).insetBy(dx: 110.0, dy: 90.0)
-            item.drawingBlock?(drawingRect)
-        }
+        let lineArt = self.lineArtFeature.lineArtImage(for: item, canvasSize: canvasSize)
 
         let preservedDraft = self.preserveUnsavedActiveSessionDraftIfNeeded()
         self.activeSession = nil

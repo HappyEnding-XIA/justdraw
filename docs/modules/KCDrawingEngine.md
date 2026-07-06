@@ -17,8 +17,8 @@ T038 后，内置线稿的程序化几何不再放在 `KCMainViewController`。
 - `KCContentCatalog` 负责线稿 id、标题、分类和展示顺序。
 - `KCLineArtDrawing.supportedTemplateIds` 负责声明 DrawingEngine 支持的线稿 id。
 - `KCLineArtDrawing.strokes(forTemplateId:in:)` 输出 `[KCLineArtStroke]`，每条包含 `CGPath` 和原型线宽。
-- `KCDrawingEngineAdapter.lineArtDrawingBlock(templateId:stroke:)` 在 App 层把 `CGPath` 包装为 `UIBezierPath`，并交给现有描边函数。
-- `KCMainViewController.makeLineArtItems()` 只按 catalog 顺序组装 item，不再持有每个线稿的几何闭包。
+- `KCDrawingEngineAdapter.lineArtDrawingBlock(templateId:stroke:)` 在 App 层把 `CGPath` 包装为 `UIBezierPath`，并交给调用方提供的描边闭包。
+- `KCLineArtFeature` 只按 catalog 顺序组装 item，并负责缩略图与画布线稿图片渲染；`KCMainViewController` 不再持有每个线稿的几何闭包或缩略图渲染逻辑。
 
 ## 3. 测试与验收
 

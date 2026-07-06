@@ -40,7 +40,7 @@
 3. **消费**（`KidCanvas/KCMainViewController.swift` `viewDidLoad`）：
    - 色盘：`contentCatalog.palette(for: .standard/.extended).colors.map { UIColor(kcHex: $0) }`。`UIColor(kcHex:)` 是 App 层胶水扩展（KCCommon 无 UIKit），用归一化分量无损还原 `KCHexColor → UIColor`。
    - 贴纸分类：`stickerCategories = stickerGroups.map(\.title)`；`stickerSymbolsByCategory = Dictionary(uniqueKeysWithValues: stickerGroups.map { ($0.title, $0.symbols) })`（要求 group title 唯一，由测试守护）。
-   - 线稿：`makeLineArtItems()` 按 `contentCatalog.lineArtTemplates` 的顺序与 `template.title` 产出；程序化绘制几何由 `KCDrawingEngine.KCLineArtDrawing` 按 id 提供。
+   - 线稿：`KCLineArtFeature.makeLineArtItems()` 按 `contentCatalog.lineArtTemplates` 的顺序与 `template.title` 产出；程序化绘制几何由 `KCDrawingEngine.KCLineArtDrawing` 按 id 提供。
 
 ## 4. 边界与遗留
 

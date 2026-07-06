@@ -165,9 +165,10 @@ App -> Feature -> Core/Infra -> Domain -> Common
 
 Feature 拆分进度（App 层 Feature 类型 + KCDomain 纯逻辑）：
 
-- **T022 `KCContentPickerFeature`（App 层）**：从 `KCMainViewController` 抽出，集中持有色盘（24/36 切换）、最近色（UserDefaults）、贴纸分类选择的状态与决策；`KCMainViewController` 持有其 lazy 实例 `contentPicker` 并委托。纯逻辑下沉到 KCDomain：`KCContentPickerLayout`（色盘网格几何）、`KCRecentColorQueue`（最近色去重/裁剪）、`KCStickerCategoryMapping`（分类↔符号↔无障碍标签↔ slug 解析），均有单测。UIKit 按钮创建/约束/事件仍留控制器；线稿列表（绘制闭包与画布耦合）暂未纳入，留待画布核心迁移。T027 后，自定义颜色区域只保留一个明确入口（`customColorButton`，用于打开 `UIColorPickerViewController` 并作为 iPad popover 锚点），最近色独立放在横向 `recentColorRowStack`，不再使用平铺彩虹图或重复色环作为装饰。
+- **T022 `KCContentPickerFeature`（App 层）**：从 `KCMainViewController` 抽出，集中持有色盘（24/36 切换）、最近色（UserDefaults）、贴纸分类选择的状态与决策；`KCMainViewController` 持有其 lazy 实例 `contentPicker` 并委托。纯逻辑下沉到 KCDomain：`KCContentPickerLayout`（色盘网格几何）、`KCRecentColorQueue`（最近色去重/裁剪）、`KCStickerCategoryMapping`（分类↔符号↔无障碍标签↔ slug 解析），均有单测。UIKit 按钮创建/约束/事件仍留控制器。T027 后，自定义颜色区域只保留一个明确入口（`customColorButton`，用于打开 `UIColorPickerViewController` 并作为 iPad popover 锚点），最近色独立放在横向 `recentColorRowStack`，不再使用平铺彩虹图或重复色环作为装饰。
 - **T023 `KCEditorPanelsFeature`（App 层）**：从 `KCMainViewController` 抽出，持有浮动工具面板「收起/展开」状态与折叠态工具芯片色块决策；`KCMainViewController` 持有 lazy 实例 `editorPanels`，`applyPanelsCollapsedAnimated` 与 `refreshToolStateChip` 改为读 `editorPanels.collapseState` / `chipSwatchColor`。纯折叠态决策（图标/标签/各视图 alpha·hidden·enabled）下沉 KCDomain `KCEditorPanelsCollapseState`（有单测）。折叠动画、五组浮动面板视图本身、工具/画笔/颜色事件协调仍留控制器。
 - **T024 `KCHistoryFeature`（App 层）**：从 `KCMainViewController.refreshHistoryUI()` 抽出，集中历史缩略图槽位状态推导（空/普通/当前/选中/脏态）与「删除历史」可用性判定；`KCMainViewController` 持有 lazy 实例 `history`，`refreshHistoryUI` 改为每格 `history.thumbStatus(...)` + `borderColor(for:)`。纯槽位状态判定（优先级 + 边框宽 + 强调缩放 + 无障碍前缀）下沉 KCDomain `KCHistoryThumbStatus`（有单测），分页仍走 T013 `KCHistoryPaging`。历史会话数据、缩略图按钮构建、打开/删除/翻页事件协调仍留控制器；不触碰 session 持久化磁盘格式。
+- **T039 `KCLineArtFeature`（App 层）**：从 `KCMainViewController` 抽出线稿 item 组装、缩略图渲染和画布线稿图片渲染；`KCMainViewController` 持有 lazy 实例 `lineArtFeature`，仅保留线稿弹窗、按钮点击和替换画布的页面协调。线稿元数据仍由 `KCContentCatalog` 提供，几何仍由 `KCDrawingEngine` 提供，Feature 只负责 App 层编排。
 - **T013 `KCHistoryPaging`、T017 `KCToolStateChipTitle`（KCDomain）**：更早的最小边界抽取。
 
 ### 5.3 Core / Infrastructure 能力层
@@ -217,6 +218,7 @@ Feature 拆分进度（App 层 Feature 类型 + KCDomain 纯逻辑）：
 | `KCEditorPanelsFeature` | Feature | 工具、颜色、尺寸、贴纸、线稿面板 |
 | `KCHistoryFeature` | Feature | 历史会话与草稿入口 |
 | `KCCanvasFeature` | Feature | 主画布业务编排 |
+| `KCLineArtFeature` | Feature | 线稿列表、缩略图与画布线稿渲染编排 |
 | `KidCanvasApp` | App | 启动、装配、依赖注入 |
 
 ### 6.2 `KCCommon`
@@ -341,7 +343,7 @@ Feature 拆分进度（App 层 Feature 类型 + KCDomain 纯逻辑）：
 - 色盘、贴纸分组与线稿模板的**元数据**外置为 package resource `Resources/content.json`，由 `KCContentCatalogDefaults.decodedContent(from:)` 解码；JSON 缺失、损坏或色盘数量不完整时回退到逐字一致的硬编码 `Fallback`。
 - 调色板（24/36 色）以 `KCHexColor` 形式从 JSON 解码，`palette.36` 的前 24 色必须与 `palette.24` 一致。
 - 打包入口 `KCBundledContentCatalog`（Sendable）一次性暴露色盘 + 贴纸分组 + 线稿模板，供 App 层注入。
-- App 主路径通过 `KCAppCompositionRoot` 装配 `KCBundledContentCatalog` 并构造注入 `KCMainViewController`；控制器据此派生色盘、贴纸分类、线稿顺序与标题，不再硬编码这些内容。线稿的程序化几何由 `KCDrawingEngine.KCLineArtDrawing` 提供，App adapter 只负责把 `CGPath` 包装为 `UIBezierPath` 并交给现有描边函数。
+- App 主路径通过 `KCAppCompositionRoot` 装配 `KCBundledContentCatalog` 并构造注入 `KCMainViewController`；控制器据此派生色盘、贴纸分类等内容状态，不再硬编码这些内容。线稿顺序与标题由 `KCLineArtFeature` 消费 catalog 生成，程序化几何由 `KCDrawingEngine.KCLineArtDrawing` 提供，App adapter 只负责把 `CGPath` 包装为 `UIBezierPath` 并交给调用方描边闭包。
 - 详见 `docs/modules/KCContentCatalog.md`。
 
 ### 6.9 `KCEditorPanelsFeature`
@@ -390,7 +392,7 @@ Feature 拆分进度（App 层 Feature 类型 + KCDomain 纯逻辑）：
 
 - 触摸绘制、撤销栈、贴纸手势与 Core Graphics 绘制仍留在 `KCDrawingCanvasView`
 - 保存、草稿、历史、相册导入导出仍由 `KCMainViewController` 协调
-- 线稿程序化绘制几何已迁入 `KCDrawingEngine`，App 层只保留 UIKit 描边适配
+- 线稿程序化绘制几何已迁入 `KCDrawingEngine`，线稿 item、缩略图和画布图片渲染由 `KCLineArtFeature` 承接
 
 演进原则：`KCCanvasFeature` 是主画布 Feature 的聚合入口，但不重新实现底层绘制能力；控制器可以逐步把“状态决策”和“依赖装配”迁入 Feature，视觉和运行行为必须保持 iPhone + iPad 双端稳定。
 
@@ -428,6 +430,7 @@ Packages/
       KCEditorPanelsFeature/
       KCHistoryFeature/
       KCCanvasFeature/
+      KCLineArtFeature/
     Tests/
       KCCommonTests/
       KCDomainTests/
@@ -523,7 +526,7 @@ flowchart TD
 | `main.m` | `KidCanvasApp` |
 | `KDAppDelegate.*` | `KidCanvasApp` |
 | `KDSceneDelegate.*` | `KidCanvasApp` |
-| `KDMainViewController.*` | `KCCanvasFeature` + `KCEditorPanelsFeature` + `KCHistoryFeature` |
+| `KDMainViewController.*` | `KCCanvasFeature` + `KCEditorPanelsFeature` + `KCHistoryFeature` + `KCLineArtFeature` |
 | `KDDrawingCanvasView.*` | `KCDrawingEngine` |
 | `KDArtworkSession.*` | `KCDomain` |
 | `KDSessionStore.*` | `KCSessionPersistence` |
