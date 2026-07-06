@@ -9,6 +9,11 @@ import UIKit
 
 /// App 层画笔 Dock Feature：集中底部画笔项配置，控制器只负责创建按钮和绑定事件。
 final class KCBrushDockFeature {
+    private let activeBackgroundColor = UIColor(red: 0.66, green: 0.89, blue: 0.72, alpha: 1.0)
+    private let inactiveBackgroundColor = UIColor(white: 1.0, alpha: 0.84)
+    private let activeBorderColor = UIColor(white: 1.0, alpha: 0.94)
+    private let inactiveBorderColor = UIColor(white: 1.0, alpha: 0.72)
+
     func brushItems() -> [KCBrushDockItem] {
         [
             KCBrushDockItem(
@@ -51,6 +56,24 @@ final class KCBrushDockFeature {
         case .crayon:
             return UIColor(red: 0.93, green: 0.62, blue: 0.41, alpha: 1.0)
         }
+    }
+
+    func isButton(_ button: KDBrushButton, activeForToolMode toolMode: KDToolMode, brushStyle: KDBrushStyle) -> Bool {
+        button.representsBrushStyle
+            ? (toolMode == .brush && button.brushStyle == brushStyle)
+            : (button.toolMode == toolMode)
+    }
+
+    func button(_ button: KDBrushButton, matchesToolMode toolMode: KDToolMode, brushStyle: KDBrushStyle) -> Bool {
+        self.isButton(button, activeForToolMode: toolMode, brushStyle: brushStyle)
+    }
+
+    /// 应用底部画笔 Dock 的选中态样式，控制器只负责滚动和事件协调。
+    func applySelectionAppearance(to button: KDBrushButton, active: Bool) {
+        button.backgroundColor = active ? self.activeBackgroundColor : self.inactiveBackgroundColor
+        button.layer.borderColor = (active ? self.activeBorderColor : self.inactiveBorderColor).cgColor
+        button.layer.shadowOpacity = active ? 0.20 : 0.12
+        button.transform = active ? CGAffineTransform(scaleX: 1.03, y: 1.03) : .identity
     }
 }
 

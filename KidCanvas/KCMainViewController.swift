@@ -1730,15 +1730,12 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
 
     func refreshBrushDockSelection() {
         for button in self.brushButtons {
-            let active = button.representsBrushStyle
-                ? (self.canvasView.currentToolMode == .brush && button.brushStyle == self.canvasView.currentBrushStyle)
-                : (button.toolMode == self.canvasView.currentToolMode)
-            button.backgroundColor = active ? UIColor(red: 0.66, green: 0.89, blue: 0.72, alpha: 1.0) : UIColor(white: 1.0, alpha: 0.84)
-            button.layer.borderColor = (active
-                ? UIColor(white: 1.0, alpha: 0.94)
-                : UIColor(white: 1.0, alpha: 0.72)).cgColor
-            button.layer.shadowOpacity = active ? 0.20 : 0.12
-            button.transform = active ? CGAffineTransform(scaleX: 1.03, y: 1.03) : .identity
+            let active = self.brushDockFeature.isButton(
+                button,
+                activeForToolMode: self.canvasView.currentToolMode,
+                brushStyle: self.canvasView.currentBrushStyle
+            )
+            self.brushDockFeature.applySelectionAppearance(to: button, active: active)
             if active {
                 self.scrollBrushDockToButton(button)
             }
@@ -1747,9 +1744,11 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
 
     func scrollBrushDockToToolMode(_ mode: KDToolMode) {
         for button in self.brushButtons {
-            let matches = button.representsBrushStyle
-                ? (mode == .brush && button.brushStyle == self.canvasView.currentBrushStyle)
-                : (button.toolMode == mode)
+            let matches = self.brushDockFeature.button(
+                button,
+                matchesToolMode: mode,
+                brushStyle: self.canvasView.currentBrushStyle
+            )
             if matches {
                 self.scrollBrushDockToButton(button)
                 return
