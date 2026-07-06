@@ -406,56 +406,25 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
     /// 收起时显示的最小当前工具芯片。iPhone 与 iPad 默认都展开；该按钮可让
     /// 用户隐藏全部浮动面板以释放画布空间——在 iPhone 横屏下最有用。
     func buildCollapseControls() {
-        let toggle = UIButton(type: .system)
-        toggle.translatesAutoresizingMaskIntoConstraints = false
-        toggle.tintColor = UIColor(red: 0.19, green: 0.26, blue: 0.33, alpha: 1.0)
-        toggle.backgroundColor = UIColor(white: 1.0, alpha: 0.82)
-        toggle.layer.cornerRadius = 22.0
-        toggle.layer.borderWidth = 1.0
-        toggle.layer.borderColor = UIColor(white: 1.0, alpha: 0.72).cgColor
-        toggle.layer.shadowColor = UIColor(red: 0.47, green: 0.40, blue: 0.29, alpha: 1.0).cgColor
-        toggle.layer.shadowOpacity = 0.16
-        toggle.layer.shadowRadius = 10.0
-        toggle.layer.shadowOffset = CGSize(width: 0, height: 6)
-        toggle.setImage(UIImage(systemName: "rectangle.compress.vertical"), for: .normal)
+        let toggle = self.editorUIFactory.collapseToggleButton(symbolName: "rectangle.compress.vertical")
         toggle.accessibilityLabel = KCL10n.hideToolsTitle
         toggle.addTarget(self, action: #selector(togglePanelsCollapsed(_:)), for: .touchUpInside)
         self.view.addSubview(toggle)
         self.collapseToggleButton = toggle
 
-        let chip = UIView()
-        chip.translatesAutoresizingMaskIntoConstraints = false
-        chip.backgroundColor = UIColor(white: 1.0, alpha: 0.82)
-        chip.layer.cornerRadius = 18.0
-        chip.layer.borderWidth = 1.0
-        chip.layer.borderColor = UIColor(white: 1.0, alpha: 0.72).cgColor
-        chip.layer.shadowColor = UIColor(red: 0.47, green: 0.40, blue: 0.29, alpha: 1.0).cgColor
-        chip.layer.shadowOpacity = 0.12
-        chip.layer.shadowRadius = 8.0
-        chip.layer.shadowOffset = CGSize(width: 0, height: 4)
-        chip.isHidden = true
-        chip.alpha = 0.0
+        let chip = self.editorUIFactory.toolStateChip()
         self.view.addSubview(chip)
         self.toolStateChip = chip
 
-        let swatch = UIView()
-        swatch.translatesAutoresizingMaskIntoConstraints = false
-        swatch.layer.cornerRadius = 9.0
-        swatch.layer.borderWidth = 1.0
-        swatch.layer.borderColor = UIColor(white: 1.0, alpha: 0.8).cgColor
+        let swatch = self.editorUIFactory.toolStateSwatch()
         chip.addSubview(swatch)
         self.toolStateSwatch = swatch
 
-        let label = UILabel()
-        label.translatesAutoresizingMaskIntoConstraints = false
-        label.font = UIFont.systemFont(ofSize: 14, weight: .semibold)
-        label.textColor = UIColor(red: 0.19, green: 0.26, blue: 0.33, alpha: 1.0)
+        let label = self.editorUIFactory.toolStateLabel()
         chip.addSubview(label)
         self.toolStateLabel = label
 
         NSLayoutConstraint.activate([
-            toggle.widthAnchor.constraint(equalToConstant: 44.0),
-            toggle.heightAnchor.constraint(equalToConstant: 44.0),
             toggle.trailingAnchor.constraint(equalTo: self.view.trailingAnchor, constant: -20.0),
             toggle.bottomAnchor.constraint(equalTo: self.view.bottomAnchor, constant: -28.0),
 

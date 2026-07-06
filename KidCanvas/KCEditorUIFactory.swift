@@ -40,22 +40,22 @@ enum KCEditorVisualStyle {
     }
 
     static func applyRaisedButtonAppearance(
-        to button: UIButton,
+        to view: UIView,
         cornerRadius: CGFloat,
         backgroundColor: UIColor = raisedBackgroundColor,
         shadowOpacity: Float = 0.10,
         shadowRadius: CGFloat = 9.0,
         shadowOffset: CGSize = CGSize(width: 0.0, height: 5.0)
     ) {
-        button.backgroundColor = backgroundColor
-        button.layer.cornerRadius = cornerRadius
-        button.layer.cornerCurve = .continuous
-        button.layer.borderWidth = 1.0
-        button.layer.borderColor = borderColor
-        button.layer.shadowColor = shadowColor
-        button.layer.shadowOpacity = shadowOpacity
-        button.layer.shadowRadius = shadowRadius
-        button.layer.shadowOffset = shadowOffset
+        view.backgroundColor = backgroundColor
+        view.layer.cornerRadius = cornerRadius
+        view.layer.cornerCurve = .continuous
+        view.layer.borderWidth = 1.0
+        view.layer.borderColor = borderColor
+        view.layer.shadowColor = shadowColor
+        view.layer.shadowOpacity = shadowOpacity
+        view.layer.shadowRadius = shadowRadius
+        view.layer.shadowOffset = shadowOffset
     }
 
     static func applyCompactButtonAppearance(to button: UIButton, accent: Bool, cornerRadius: CGFloat = 16.0) {
@@ -219,6 +219,61 @@ struct KCEditorUIFactory {
         button.setImage(image, for: .normal)
         button.heightAnchor.constraint(equalToConstant: 36.0).isActive = true
         return button
+    }
+
+    func collapseToggleButton(symbolName: String) -> UIButton {
+        let button = UIButton(type: .system)
+        button.translatesAutoresizingMaskIntoConstraints = false
+        KCEditorVisualStyle.applyRaisedButtonAppearance(
+            to: button,
+            cornerRadius: 18.0,
+            backgroundColor: KCEditorVisualStyle.compactBackgroundColor,
+            shadowOpacity: 0.06,
+            shadowRadius: 6.0,
+            shadowOffset: CGSize(width: 0.0, height: 3.0)
+        )
+        button.tintColor = KCEditorVisualStyle.inkColor
+        let configuration = UIImage.SymbolConfiguration(pointSize: 18.0, weight: .bold)
+        button.setImage(UIImage(systemName: symbolName, withConfiguration: configuration), for: .normal)
+        NSLayoutConstraint.activate([
+            button.widthAnchor.constraint(equalToConstant: 44.0),
+            button.heightAnchor.constraint(equalToConstant: 44.0)
+        ])
+        return button
+    }
+
+    func toolStateChip() -> UIView {
+        let chip = UIView()
+        chip.translatesAutoresizingMaskIntoConstraints = false
+        KCEditorVisualStyle.applyRaisedButtonAppearance(
+            to: chip,
+            cornerRadius: 18.0,
+            backgroundColor: KCEditorVisualStyle.compactBackgroundColor,
+            shadowOpacity: 0.05,
+            shadowRadius: 5.0,
+            shadowOffset: CGSize(width: 0.0, height: 2.0)
+        )
+        chip.isHidden = true
+        chip.alpha = 0.0
+        return chip
+    }
+
+    func toolStateSwatch() -> UIView {
+        let swatch = UIView()
+        swatch.translatesAutoresizingMaskIntoConstraints = false
+        swatch.layer.cornerRadius = 9.0
+        swatch.layer.cornerCurve = .continuous
+        swatch.layer.borderWidth = 1.0
+        swatch.layer.borderColor = KCEditorVisualStyle.activeBorderColor
+        return swatch
+    }
+
+    func toolStateLabel() -> UILabel {
+        let label = UILabel()
+        label.translatesAutoresizingMaskIntoConstraints = false
+        label.font = UIFont.systemFont(ofSize: 14.0, weight: .semibold)
+        label.textColor = KCEditorVisualStyle.inkColor
+        return label
     }
 
     func toolCardButton(symbolName: String, accentColor: UIColor, title: String) -> KDBrushButton {
