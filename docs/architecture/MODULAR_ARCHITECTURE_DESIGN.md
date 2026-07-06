@@ -171,6 +171,7 @@ Feature 拆分进度（App 层 Feature 类型 + KCDomain 纯逻辑）：
 - **T039 `KCLineArtFeature`（App 层）**：从 `KCMainViewController` 抽出线稿 item 组装、缩略图渲染和画布线稿图片渲染；`KCMainViewController` 持有 lazy 实例 `lineArtFeature`，仅保留线稿弹窗、按钮点击和替换画布的页面协调。线稿元数据仍由 `KCContentCatalog` 提供，几何仍由 `KCDrawingEngine` 提供，Feature 只负责 App 层编排。
 - **T040 `KCDeviceLayoutMetrics`（App 层）**：从 `KCMainViewController` 抽出设备布局尺寸决策，集中 iPhone/iPad 的右侧面板、底部工具坞、画笔卡片、历史缩略图等指标；控制器暂保留同名方法作薄转发，实际尺寸来源改为 `layoutMetrics`。
 - **T041 `KCEditorUIFactory`（App 层）**：从 `KCMainViewController` 抽出浮动面板、图标按钮、小工具按钮、分段按钮、历史缩略图按钮、画笔卡片等通用 UIKit 控件样式创建；控制器仍保留事件 target、按压反馈注册和面板业务组装。
+- **T042 `KCBrushDockFeature`（App 层）**：从 `KCMainViewController.buildBottomDock(_:)` 抽出底部画笔项配置、SF Symbol、本地化标题和强调色决策；控制器仍保留按钮创建、target/action、无障碍标识和工具状态协调。
 - **T013 `KCHistoryPaging`、T017 `KCToolStateChipTitle`（KCDomain）**：更早的最小边界抽取。
 
 ### 5.3 Core / Infrastructure 能力层
@@ -223,6 +224,7 @@ Feature 拆分进度（App 层 Feature 类型 + KCDomain 纯逻辑）：
 | `KCLineArtFeature` | Feature | 线稿列表、缩略图与画布线稿渲染编排 |
 | `KCDeviceLayoutMetrics` | Feature | iPhone/iPad 布局指标与尺寸决策 |
 | `KCEditorUIFactory` | Feature | 编辑器通用 UIKit 控件样式创建 |
+| `KCBrushDockFeature` | Feature | 底部画笔 Dock 配置与强调色决策 |
 | `KidCanvasApp` | App | 启动、装配、依赖注入 |
 
 ### 6.2 `KCCommon`
@@ -437,6 +439,7 @@ Packages/
       KCLineArtFeature/
       KCDeviceLayoutMetrics/
       KCEditorUIFactory/
+      KCBrushDockFeature/
     Tests/
       KCCommonTests/
       KCDomainTests/
@@ -532,7 +535,7 @@ flowchart TD
 | `main.m` | `KidCanvasApp` |
 | `KDAppDelegate.*` | `KidCanvasApp` |
 | `KDSceneDelegate.*` | `KidCanvasApp` |
-| `KDMainViewController.*` | `KCCanvasFeature` + `KCEditorPanelsFeature` + `KCHistoryFeature` + `KCLineArtFeature` + `KCDeviceLayoutMetrics` + `KCEditorUIFactory` |
+| `KDMainViewController.*` | `KCCanvasFeature` + `KCEditorPanelsFeature` + `KCHistoryFeature` + `KCLineArtFeature` + `KCDeviceLayoutMetrics` + `KCEditorUIFactory` + `KCBrushDockFeature` |
 | `KDDrawingCanvasView.*` | `KCDrawingEngine` |
 | `KDArtworkSession.*` | `KCDomain` |
 | `KDSessionStore.*` | `KCSessionPersistence` |

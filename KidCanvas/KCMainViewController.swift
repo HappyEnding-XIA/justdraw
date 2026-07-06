@@ -95,6 +95,8 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
     private(set) lazy var lineArtFeature: KCLineArtFeature = {
         KCLineArtFeature(contentCatalog: self.contentCatalog, drawingEngine: self.drawingEngine)
     }()
+    /// 画笔 Dock Feature（底部画笔项配置），T042 抽出。
+    private(set) lazy var brushDockFeature: KCBrushDockFeature = KCBrushDockFeature()
     var sessions: [KCSessionMetadata] = []
     var activeSession: KCSessionMetadata?
     var selectedHistorySession: KCSessionMetadata?
@@ -1172,17 +1174,13 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
             stack.heightAnchor.constraint(equalTo: scrollView.frameLayoutGuide.heightAnchor)
         ])
 
-        let brushItems: [(id: String, style: KDBrushStyle, mode: KDToolMode, brush: Bool, symbol: String, accent: UIColor, title: String)] = [
-            ("pencil", .pencil, .brush, true, "pencil.tip", self.brushColor(for: .pencil), KCL10n.pencilTitle),
-            ("pen", .pen, .brush, true, "pencil", self.brushColor(for: .pen), KCL10n.penTitle),
-            ("crayon", .crayon, .brush, true, "paintbrush.pointed.fill", self.brushColor(for: .crayon), KCL10n.crayonTitle)
-        ]
+        let brushItems = self.brushDockFeature.brushItems()
 
         for (index, item) in brushItems.enumerated() {
-            let button = self.toolCardButtonWithSymbolName(item.symbol, accentColor: item.accent, title: item.title)
+            let button = self.toolCardButtonWithSymbolName(item.symbolName, accentColor: item.accentColor, title: item.title)
             button.brushStyle = item.style
             button.toolMode = item.mode
-            button.representsBrushStyle = item.brush
+            button.representsBrushStyle = item.representsBrushStyle
             button.tag = index
             self.applyAccessibilityLabel(item.title, identifier: "dock.\(item.id)", toControl: button)
             button.addTarget(self, action: #selector(didTapBrushButton(_:)), for: .touchUpInside)
@@ -1268,18 +1266,6 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
         let button = self.editorUIFactory.toolCardButton(symbolName: symbolName, accentColor: accentColor, title: title)
         self.registerPressFeedbackForControl(button)
         return button
-    }
-
-    /// 画笔卡片强调色（按画笔枚举匹配；标题不再参与匹配，便于本地化）。
-    func brushColor(for style: KDBrushStyle) -> UIColor {
-        switch style {
-        case .pencil:
-            return UIColor(red: 0.94, green: 0.43, blue: 0.45, alpha: 1.0)
-        case .pen:
-            return UIColor(red: 0.45, green: 0.73, blue: 0.97, alpha: 1.0)
-        case .crayon:
-            return UIColor(red: 0.93, green: 0.62, blue: 0.41, alpha: 1.0)
-        }
     }
 
     // MARK: - 调色板（颜色取自 contentCatalog，见 viewDidLoad）

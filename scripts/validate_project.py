@@ -255,6 +255,7 @@ def app_feature_checks(
     line_art_feature_text,
     device_layout_metrics_text,
     editor_ui_factory_text,
+    brush_dock_feature_text,
     kc_content_picker_layout_text,
     kc_recent_color_queue_text,
     kc_sticker_category_mapping_text,
@@ -306,6 +307,18 @@ def app_feature_checks(
     checks.append(require_text(main_text, "private var editorUIFactory: KCEditorUIFactory", "Main view controller delegates common UI creation to KCEditorUIFactory"))
     checks.append(require_text(main_text, "return self.editorUIFactory.floatingPanel()", "Floating panel helper delegates to KCEditorUIFactory"))
     checks.append(require_text(main_text, "self.registerPressFeedbackForControl(button)", "Main view controller still owns press-feedback target registration"))
+    checks.append(require_text(pbx_text, "KCBrushDockFeature.swift in Sources", "Brush Dock feature is included in the app target sources"))
+    checks.append(require_text(brush_dock_feature_text, "final class KCBrushDockFeature", "Brush Dock configuration is extracted to KCBrushDockFeature"))
+    checks.append(require_text(brush_dock_feature_text, "struct KCBrushDockItem: Equatable", "Brush Dock item DTO is explicit and comparable"))
+    checks.append(require_text(brush_dock_feature_text, "func brushItems() -> [KCBrushDockItem]", "Brush Dock item list lives in KCBrushDockFeature"))
+    checks.append(require_text(brush_dock_feature_text, "func brushColor(for style: KDBrushStyle) -> UIColor", "Brush accent colors live in KCBrushDockFeature"))
+    checks.append(require_text(brush_dock_feature_text, 'id: "pencil"', "Brush Dock feature declares the pencil item"))
+    checks.append(require_text(brush_dock_feature_text, 'id: "pen"', "Brush Dock feature declares the pen item"))
+    checks.append(require_text(brush_dock_feature_text, 'id: "crayon"', "Brush Dock feature declares the crayon item"))
+    checks.append(require_text(main_text, "private(set) lazy var brushDockFeature: KCBrushDockFeature", "Main view controller owns a Brush Dock feature instance"))
+    checks.append(require_text(main_text, "let brushItems = self.brushDockFeature.brushItems()", "Main view controller delegates brush dock item creation to KCBrushDockFeature"))
+    checks.append(forbid_text(main_text, "let brushItems: [(id:", "Brush Dock tuple configuration is no longer hardcoded in the main view controller"))
+    checks.append(forbid_text(main_text, "func brushColor(for style: KDBrushStyle) -> UIColor", "Brush accent color decisions live outside the main view controller"))
     # T023: collapse state lives in KCEditorPanelsFeature (KCEditorPanelsCollapseState in KCDomain); controller delegates.
     checks.append(require_text(editor_panels_feature_text, "var panelsCollapsed: Bool", "Toolbar collapse state is tracked in the editor panels feature"))
     checks.append(require_text(kc_editor_panels_collapse_state_text, "public struct KCEditorPanelsCollapseState", "Collapse-state decisions are extracted to KCDomain"))
@@ -668,6 +681,7 @@ def main():
     line_art_feature_text = (ROOT / "KidCanvas" / "KCLineArtFeature.swift").read_text(encoding="utf-8")
     device_layout_metrics_text = (ROOT / "KidCanvas" / "KCDeviceLayoutMetrics.swift").read_text(encoding="utf-8")
     editor_ui_factory_text = (ROOT / "KidCanvas" / "KCEditorUIFactory.swift").read_text(encoding="utf-8")
+    brush_dock_feature_text = (ROOT / "KidCanvas" / "KCBrushDockFeature.swift").read_text(encoding="utf-8")
     kc_content_picker_layout_text = (ROOT / "Packages" / "KidCanvasModules" / "Sources" / "KCDomain" / "KCContentPickerLayout.swift").read_text(encoding="utf-8")
     kc_recent_color_queue_text = (ROOT / "Packages" / "KidCanvasModules" / "Sources" / "KCDomain" / "KCRecentColorQueue.swift").read_text(encoding="utf-8")
     kc_sticker_category_mapping_text = (ROOT / "Packages" / "KidCanvasModules" / "Sources" / "KCDomain" / "KCStickerCategoryMapping.swift").read_text(encoding="utf-8")
@@ -700,6 +714,7 @@ def main():
         line_art_feature_text,
         device_layout_metrics_text,
         editor_ui_factory_text,
+        brush_dock_feature_text,
         kc_content_picker_layout_text,
         kc_recent_color_queue_text,
         kc_sticker_category_mapping_text,

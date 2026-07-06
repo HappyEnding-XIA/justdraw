@@ -9,5 +9,6 @@
 - [KCLineArtFeature](./KCLineArtFeature.md) — App 层线稿列表、缩略图与画布线稿渲染编排。
 - [KCDeviceLayoutMetrics](./KCDeviceLayoutMetrics.md) — App 层 iPhone/iPad 布局指标与尺寸决策。
 - [KCEditorUIFactory](./KCEditorUIFactory.md) — App 层编辑器通用 UIKit 控件样式工厂。
+- [KCBrushDockFeature](./KCBrushDockFeature.md) — App 层底部画笔 Dock 配置与强调色决策。
 
 > 其余模块（KCCommon / KCDomain / KCSessionPersistence）待按需补充。

@@ -23,6 +23,7 @@
 		A1FA010000000000C0A10007 /* KCLineArtFeature.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1FA110000000000C0A10007 /* KCLineArtFeature.swift */; };
 		A1FA010000000000C0A10008 /* KCDeviceLayoutMetrics.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1FA110000000000C0A10008 /* KCDeviceLayoutMetrics.swift */; };
 		A1FA010000000000C0A10009 /* KCEditorUIFactory.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1FA110000000000C0A10009 /* KCEditorUIFactory.swift */; };
+		A1FA010000000000C0A10010 /* KCBrushDockFeature.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1FA110000000000C0A10010 /* KCBrushDockFeature.swift */; };
 		A1FA010000000000C0A10001 /* Localizable.strings in Resources */ = {isa = PBXBuildFile; fileRef = A1FA210000000000C0A10001 /* Localizable.strings */; };
 		A1FA010000000000C0A10002 /* InfoPlist.strings in Resources */ = {isa = PBXBuildFile; fileRef = A1FA210000000000C0A10002 /* InfoPlist.strings */; };
 		A1FA010000000000C0A10003 /* KCLocalizedStrings.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1FA110000000000C0A10005 /* KCLocalizedStrings.swift */; };
@@ -47,6 +48,7 @@
 		A1FA110000000000C0A10007 /* KCLineArtFeature.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KCLineArtFeature.swift; sourceTree = "<group>"; };
 		A1FA110000000000C0A10008 /* KCDeviceLayoutMetrics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KCDeviceLayoutMetrics.swift; sourceTree = "<group>"; };
 		A1FA110000000000C0A10009 /* KCEditorUIFactory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KCEditorUIFactory.swift; sourceTree = "<group>"; };
+		A1FA110000000000C0A10010 /* KCBrushDockFeature.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KCBrushDockFeature.swift; sourceTree = "<group>"; };
 		A1FA110000000000C0A10005 /* KCLocalizedStrings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KCLocalizedStrings.swift; sourceTree = "<group>"; };
 		A1FA110000000000C0A10001 /* Localizable.strings */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = Localizable.strings; path = "zh-Hans.lproj/Localizable.strings"; sourceTree = "<group>"; };
 		A1FA110000000000C0A10002 /* Localizable.strings */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = Localizable.strings; path = "en.lproj/Localizable.strings"; sourceTree = "<group>"; };
@@ -92,6 +94,7 @@
 				A1FA110000000000C0A10007 /* KCLineArtFeature.swift */,
 				A1FA110000000000C0A10008 /* KCDeviceLayoutMetrics.swift */,
 				A1FA110000000000C0A10009 /* KCEditorUIFactory.swift */,
+				A1FA110000000000C0A10010 /* KCBrushDockFeature.swift */,
 				A1FA110000000000C0A10005 /* KCLocalizedStrings.swift */,
 				A1FA210000000000C0A10001 /* Localizable.strings */,
 				A1FA210000000000C0A10002 /* InfoPlist.strings */,
@@ -204,6 +207,7 @@
 				A1FA010000000000C0A10007 /* KCLineArtFeature.swift in Sources */,
 				A1FA010000000000C0A10008 /* KCDeviceLayoutMetrics.swift in Sources */,
 				A1FA010000000000C0A10009 /* KCEditorUIFactory.swift in Sources */,
+				A1FA010000000000C0A10010 /* KCBrushDockFeature.swift in Sources */,
 				A1FA010000000000C0A10003 /* KCLocalizedStrings.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
