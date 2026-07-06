@@ -204,6 +204,14 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
         return self.layoutMetrics.bottomDockStackSpacing
     }
 
+    func leftRailTopOffset() -> CGFloat {
+        return self.layoutMetrics.leftRailTopOffset
+    }
+
+    func leftRailHeightMultiplier() -> CGFloat {
+        return self.layoutMetrics.leftRailHeightMultiplier
+    }
+
     func brushCardWidth() -> CGFloat {
         return self.layoutMetrics.brushCardWidth
     }
@@ -376,9 +384,9 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
             topRight.topAnchor.constraint(equalTo: safeArea.topAnchor, constant: 24.0),
 
             leftRail.leadingAnchor.constraint(equalTo: safeArea.leadingAnchor, constant: 24.0),
-            leftRail.topAnchor.constraint(equalTo: safeArea.topAnchor, constant: 150.0),
+            leftRail.topAnchor.constraint(equalTo: safeArea.topAnchor, constant: self.leftRailTopOffset()),
             leftRail.widthAnchor.constraint(equalToConstant: 80.0),
-            leftRail.heightAnchor.constraint(equalTo: safeArea.heightAnchor, multiplier: 0.46),
+            leftRail.heightAnchor.constraint(equalTo: safeArea.heightAnchor, multiplier: self.leftRailHeightMultiplier()),
 
             rightScrollView.trailingAnchor.constraint(equalTo: safeArea.trailingAnchor, constant: self.rightPanelTrailingOffset()),
             rightScrollView.topAnchor.constraint(equalTo: safeArea.topAnchor, constant: self.rightPanelTopOffset()),
@@ -2093,6 +2101,8 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
         checks.append(self.layoutCheckResult(name: "right-panel", view: rightPanel, boundary: safeFrame, edges: [.right, .top]))
         checks.append(self.layoutCheckResult(name: "bottom-dock", view: bottomDock, boundary: safeFrame, edges: [.bottom]))
         checks.append(self.layoutCheckResult(name: "collapse-toggle", view: self.collapseToggleButton, boundary: safeFrame, edges: [.right, .bottom]))
+        checks.append(self.visibleHeightCheckResult(name: "left-rail-visible-height", view: leftRail, minimumHeight: 220.0))
+        checks.append(self.visibleHeightCheckResult(name: "right-panel-visible-height", view: rightPanel, minimumHeight: 190.0))
 
         let failedChecks = checks.filter { ($0["passed"] as? Bool) != true }
         let result: [String: Any] = [
@@ -2151,6 +2161,25 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
             "frame": self.dictionary(for: frame),
             "checkedEdges": edges.map { self.name(for: $0) },
             "violations": violations
+        ]
+    }
+
+    private func visibleHeightCheckResult(name: String, view: UIView?, minimumHeight: CGFloat) -> [String: Any] {
+        guard let view = view else {
+            return [
+                "name": name,
+                "passed": false,
+                "reason": "missing-view",
+                "minimumHeight": minimumHeight
+            ]
+        }
+
+        let frame = view.convert(view.bounds, to: self.view)
+        return [
+            "name": name,
+            "passed": frame.height >= minimumHeight,
+            "frame": self.dictionary(for: frame),
+            "minimumHeight": minimumHeight
         ]
     }
 

@@ -62,7 +62,7 @@ scripts/runtime_acceptance_test.sh "iPad Pro 11 M4" layout-safe-area
 `runtime_acceptance_test.sh` 的第二个参数为探针名，默认 `empty-save`，可选：
 
 - `empty-save`：空画布保存反馈。
-- `layout-safe-area`：首屏浮动控件是否落在 safe area 约束内。
+- `layout-safe-area`：首屏浮动控件是否落在 safe area 约束内，并检查 iPhone 横屏紧凑布局下左侧工具栏、右侧面板的最低可视高度。
 
 `runtime_acceptance_test.sh` 的补充退出码：
 

@@ -6,7 +6,8 @@ App 层设备布局指标：集中 iPhone 与 iPad 的尺寸决策。位于 `Kid
 
 - 判断当前是否为紧凑 iPhone 布局。
 - 输出右侧面板、底部工具坞、画笔卡片、历史缩略图等固定尺寸和安全区距离。
-- 保持 iPhone 与 iPad 的现有视觉尺寸不变，让 `KCMainViewController` 不再直接散落设备尺寸三元表达式。
+- 输出左侧工具栏的顶部偏移和可视高度比例，保证 iPhone 横屏下工具入口不显得被截断。
+- 统一管理 iPhone 与 iPad 的视觉尺寸差异，让 `KCMainViewController` 不再直接散落设备尺寸三元表达式。
 
 ## 2. 边界
 
@@ -19,6 +20,7 @@ App 层设备布局指标：集中 iPhone 与 iPad 的尺寸决策。位于 `Kid
 - `KCMainViewController.layoutMetrics` 通过 `UIDevice.current.userInterfaceIdiom` 构造当前指标。
 - 控制器的 `rightPanelWidth()`、`bottomDockWidth()`、`brushCardWidth()` 等方法暂时保留为薄转发，降低本次改动对现有调用点的影响。
 - T056 后底部工具坞约束到 `safeAreaLayoutGuide.bottomAnchor`，由 `bottomDockBottomInset` 提供 iPhone/iPad 差异距离，避免横屏贴近系统安全区。
+- T068 后 iPhone 横屏紧凑布局会提高左侧工具栏和右侧面板的可视高度，并略收紧底部 Dock 与画笔卡片；iPad 仍保持原尺寸。
 - `scripts/validate_project.py` 校验新文件已进入 App target Sources，并守护关键 iPhone/iPad 尺寸值。
 
 ## 4. 验收规则
@@ -26,3 +28,4 @@ App 层设备布局指标：集中 iPhone 与 iPad 的尺寸决策。位于 `Kid
 - 不允许把右侧面板、底部工具坞、画笔卡片、历史缩略图的设备尺寸判断重新散落回 `KCMainViewController`。
 - 不允许底部工具坞重新约束到裸 `view.bottomAnchor`。
 - iPhone 与 iPad build、runtime smoke 必须通过。
+- `scripts/runtime_acceptance_test.sh "iPhone 17 Pro" layout-safe-area` 必须验证左侧工具栏与右侧面板最低可视高度。

@@ -25,7 +25,7 @@ struct KCDeviceLayoutMetrics {
     }
 
     var rightPanelTopOffset: CGFloat {
-        isCompactPhoneLayout ? 128.0 : 150.0
+        isCompactPhoneLayout ? 104.0 : 150.0
     }
 
     var rightPanelTrailingOffset: CGFloat {
@@ -33,7 +33,15 @@ struct KCDeviceLayoutMetrics {
     }
 
     var rightPanelBottomGap: CGFloat {
-        isCompactPhoneLayout ? -10.0 : -16.0
+        isCompactPhoneLayout ? -8.0 : -16.0
+    }
+
+    var leftRailTopOffset: CGFloat {
+        isCompactPhoneLayout ? 118.0 : 150.0
+    }
+
+    var leftRailHeightMultiplier: CGFloat {
+        isCompactPhoneLayout ? 0.60 : 0.46
     }
 
     var rightPanelInnerInset: CGFloat {
@@ -49,11 +57,11 @@ struct KCDeviceLayoutMetrics {
     }
 
     var bottomDockHeight: CGFloat {
-        isCompactPhoneLayout ? 74.0 : 98.0
+        isCompactPhoneLayout ? 70.0 : 98.0
     }
 
     var bottomDockBottomInset: CGFloat {
-        isCompactPhoneLayout ? -8.0 : -18.0
+        isCompactPhoneLayout ? -4.0 : -18.0
     }
 
     var bottomDockTitleWidth: CGFloat {
@@ -77,11 +85,11 @@ struct KCDeviceLayoutMetrics {
     }
 
     var brushCardWidth: CGFloat {
-        isCompactPhoneLayout ? 104.0 : 126.0
+        isCompactPhoneLayout ? 100.0 : 126.0
     }
 
     var brushCardHeight: CGFloat {
-        isCompactPhoneLayout ? 54.0 : 68.0
+        isCompactPhoneLayout ? 50.0 : 68.0
     }
 
     var brushCardIconSize: CGFloat {
