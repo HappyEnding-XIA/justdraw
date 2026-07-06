@@ -341,7 +341,7 @@ Feature 拆分进度（App 层 Feature 类型 + KCDomain 纯逻辑）：
 - 色盘、贴纸分组与线稿模板的**元数据**外置为 package resource `Resources/content.json`，由 `KCContentCatalogDefaults.decodedContent(from:)` 解码；JSON 缺失、损坏或色盘数量不完整时回退到逐字一致的硬编码 `Fallback`。
 - 调色板（24/36 色）以 `KCHexColor` 形式从 JSON 解码，`palette.36` 的前 24 色必须与 `palette.24` 一致。
 - 打包入口 `KCBundledContentCatalog`（Sendable）一次性暴露色盘 + 贴纸分组 + 线稿模板，供 App 层注入。
-- App 主路径通过 `KCAppCompositionRoot` 装配 `KCBundledContentCatalog` 并构造注入 `KCMainViewController`；控制器据此派生色盘、贴纸分类、线稿顺序与标题，不再硬编码这些内容。线稿的程序化绘制闭包仍保留在 App 层（UIKit/Core Graphics），由 catalog id 映射到对应闭包。
+- App 主路径通过 `KCAppCompositionRoot` 装配 `KCBundledContentCatalog` 并构造注入 `KCMainViewController`；控制器据此派生色盘、贴纸分类、线稿顺序与标题，不再硬编码这些内容。线稿的程序化几何由 `KCDrawingEngine.KCLineArtDrawing` 提供，App adapter 只负责把 `CGPath` 包装为 `UIBezierPath` 并交给现有描边函数。
 - 详见 `docs/modules/KCContentCatalog.md`。
 
 ### 6.9 `KCEditorPanelsFeature`
@@ -390,7 +390,7 @@ Feature 拆分进度（App 层 Feature 类型 + KCDomain 纯逻辑）：
 
 - 触摸绘制、撤销栈、贴纸手势与 Core Graphics 绘制仍留在 `KCDrawingCanvasView`
 - 保存、草稿、历史、相册导入导出仍由 `KCMainViewController` 协调
-- 线稿程序化绘制闭包仍留在 App 层，后续再迁移到绘制能力边界
+- 线稿程序化绘制几何已迁入 `KCDrawingEngine`，App 层只保留 UIKit 描边适配
 
 演进原则：`KCCanvasFeature` 是主画布 Feature 的聚合入口，但不重新实现底层绘制能力；控制器可以逐步把“状态决策”和“依赖装配”迁入 Feature，视觉和运行行为必须保持 iPhone + iPad 双端稳定。
 
@@ -616,7 +616,7 @@ flowchart TD
 |:---|:---|:---|:---|
 | `KCDrawingEngineAdapter` 实例化 / 协议化 / DI 化 | 已完成（T036）。App 通过 `KCDrawingEngineProviding` 协议依赖绘制能力，默认 adapter 由 Composition Root 注入 | 后续如出现多绘制实现或 mock 需求，在协议下扩展实现 | 保持 `KCDrawingEngineProviding` 协议、Composition Root 注入、双端构建与现有绘制测试通过 |
 | 色盘 JSON 化 | 已完成（T037）。24/36 色盘已进入 `KCContentCatalog` package resource，App 仍通过 `KCBundledContentCatalog` 消费 | 需要运营配置、多语言色盘命名、或远端内容下发时，在现有 JSON schema 上扩展 | JSON 资源解析测试覆盖，颜色顺序与现有 UI 无回归 |
-| 线稿绘制闭包迁移到 DrawingEngine | 暂缓。涉及视觉/像素回归 | 画布 Feature 边界稳定后，单独迁移程序化线稿绘制 | 线稿数量、id、顺序不变，截图/像素或人工视觉验收通过 |
+| 线稿绘制闭包迁移到 DrawingEngine | 已完成（T038）。线稿 id/title/order 仍由 `KCContentCatalog` 提供，几何由 `KCLineArtDrawing` 输出 `CGPath` 指令，App adapter 转成 UIKit 描边 | 后续如要新增线稿或调整视觉，在 DrawingEngine 内扩展并补视觉验收 | 线稿数量、id、顺序不变，DrawingEngine 单测、validator、双端构建与运行时烟测通过 |
 | 继续拆 `KCMainViewController` | 持续推进，按最小边界拆分 | 控制器新增职责前，优先评估能否进入 Feature | validator 覆盖新边界，iPhone/iPad build 与 runtime smoke 通过 |
 
 ## 13. 最终建议

@@ -40,10 +40,10 @@
 3. **消费**（`KidCanvas/KCMainViewController.swift` `viewDidLoad`）：
    - 色盘：`contentCatalog.palette(for: .standard/.extended).colors.map { UIColor(kcHex: $0) }`。`UIColor(kcHex:)` 是 App 层胶水扩展（KCCommon 无 UIKit），用归一化分量无损还原 `KCHexColor → UIColor`。
    - 贴纸分类：`stickerCategories = stickerGroups.map(\.title)`；`stickerSymbolsByCategory = Dictionary(uniqueKeysWithValues: stickerGroups.map { ($0.title, $0.symbols) })`（要求 group title 唯一，由测试守护）。
-   - 线稿：`makeLineArtItems()` 按 `contentCatalog.lineArtTemplates` 的顺序与 `template.title` 产出；程序化绘制闭包按 `id` 收录在控制器内，命中则注入。
+   - 线稿：`makeLineArtItems()` 按 `contentCatalog.lineArtTemplates` 的顺序与 `template.title` 产出；程序化绘制几何由 `KCDrawingEngine.KCLineArtDrawing` 按 id 提供。
 
 ## 4. 边界与遗留
 
-- **线稿绘制闭包留在 App 层**：`KCLineArtTemplate` 只描述元数据；实际的程序化 `UIBezierPath` 绘制（UIKit/Core Graphics）仍在 `KCMainViewController.makeLineArtItems()` 内，通过 catalog id → 绘制闭包的局部映射衔接。后续若把绘制迁入 engine，需先补视觉/像素回归。
+- **线稿元数据与几何分离**：`KCLineArtTemplate` 只描述元数据；实际程序化几何在 `KCDrawingEngine.KCLineArtDrawing` 内生成 `CGPath` 指令，App adapter 只做 `UIBezierPath` 包装与描边转发。
 - **硬编码 fallback 只作兜底**：色盘、贴纸、线稿的主路径均来自 `Resources/content.json`；`Fallback` 只在资源缺失、为空或解码失败时使用。
 - 控制器不得再硬编码贴纸分组 / 线稿元数据 / 色盘取值，`scripts/validate_project.py` 有正向（消费 catalog）与禁止（硬编码回退）校验守护。

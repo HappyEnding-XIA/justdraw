@@ -35,6 +35,10 @@ protocol KCDrawingEngineProviding: AnyObject {
     func historyClampedPageIndex(_ pageIndex: Int, sessionCount: Int, pageSize: Int) -> Int
     func historySessionIndex(thumbIndex: Int, pageIndex: Int, pageSize: Int) -> Int
     func toolStateChipTitle(toolMode: Int, brushStyle: Int) -> String
+    func lineArtDrawingBlock(
+        templateId: String,
+        stroke: @escaping (_ path: UIBezierPath, _ lineWidth: CGFloat) -> Void
+    ) -> ((CGRect) -> Void)?
 }
 
 /// 把无 UIKit 依赖的 `KCDrawingEngine` 算法桥接给画布侧。
@@ -259,6 +263,25 @@ final class KCDrawingEngineAdapter: NSObject, KCDrawingEngineProviding {
             return ""
         }
         return KCToolStateChipTitle.title(tool: tool, brush: brush)
+    }
+
+    // MARK: - 线稿绘制（KCDrawingEngine 边界）
+
+    /// 返回线稿绘制闭包。几何路径由无 UIKit 依赖的 `KCLineArtDrawing` 生成，
+    /// App 层只把 `CGPath` 包装成 `UIBezierPath` 并交给现有描边函数。
+    func lineArtDrawingBlock(
+        templateId: String,
+        stroke: @escaping (_ path: UIBezierPath, _ lineWidth: CGFloat) -> Void
+    ) -> ((CGRect) -> Void)? {
+        guard KCLineArtDrawing.supportedTemplateIds.contains(templateId) else { return nil }
+        return { rect in
+            guard let lineArtStrokes = KCLineArtDrawing.strokes(forTemplateId: templateId, in: rect) else {
+                return
+            }
+            for lineArtStroke in lineArtStrokes {
+                stroke(UIBezierPath(cgPath: lineArtStroke.path), lineArtStroke.lineWidth)
+            }
+        }
     }
 
     // MARK: - 私有枚举映射（Int → Swift 枚举）

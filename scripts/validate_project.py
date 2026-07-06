@@ -247,6 +247,7 @@ def app_feature_checks(
     crayon_grain_text,
     sticker_constraints_text,
     history_paging_text,
+    line_art_drawing_text,
     composition_root_text,
     catalog_text,
     content_picker_feature_text,
@@ -416,6 +417,12 @@ def app_feature_checks(
     checks.append(require_count_at_least(catalog_text, r'"category": "', 8, "Built-in line-art templates live in the content catalog"))
     checks.append(require_count_at_least(catalog_text, r'"[a-z0-9.]+\.fill"|"rainbow"|"camera\.macro"', 12, "Built-in sticker symbols live in the content catalog"))
     checks.append(require_text(main_text, "contentCatalog.lineArtTemplates", "Line-art order and titles are driven by the content catalog"))
+    checks.append(require_text(line_art_drawing_text, "public enum KCLineArtDrawing", "Line-art drawing geometry lives in KCDrawingEngine"))
+    checks.append(require_text(line_art_drawing_text, "public static let supportedTemplateIds", "DrawingEngine declares supported line-art ids"))
+    checks.append(require_text(drawing_bridge_text, "KCLineArtDrawing.strokes(forTemplateId:", "Drawing adapter bridges line-art geometry from DrawingEngine"))
+    checks.append(require_text(main_text, "self.drawingEngine.lineArtDrawingBlock(templateId:", "Main view controller delegates line-art drawing to the drawing engine"))
+    checks.append(forbid_text(main_text, "let bunny: (CGRect) -> Void", "Line-art bunny closure moved out of the main view controller"))
+    checks.append(forbid_text(main_text, "\"bunny\": bunny", "Line-art drawing map moved out of the main view controller"))
     checks.append(require_text(content_picker_feature_text, "contentCatalog.stickerGroups", "Sticker groups are sourced from the content catalog via the content picker feature"))
     checks.append(require_text(content_picker_feature_text, "map(\\.title)", "Sticker categories are derived from catalog sticker groups in the content picker feature"))
     checks.append(forbid_text(main_text, 'stickerCategories = ["Animals"', "Sticker categories are no longer hardcoded in the main view controller"))
@@ -619,6 +626,7 @@ def main():
     crayon_grain_text = (ROOT / "Packages" / "KidCanvasModules" / "Sources" / "KCDrawingEngine" / "KCCrayonGrain.swift").read_text(encoding="utf-8")
     sticker_constraints_text = (ROOT / "Packages" / "KidCanvasModules" / "Sources" / "KCDomain" / "KCStickerConstraints.swift").read_text(encoding="utf-8")
     history_paging_text = (ROOT / "Packages" / "KidCanvasModules" / "Sources" / "KCDomain" / "KCHistoryPaging.swift").read_text(encoding="utf-8")
+    line_art_drawing_text = (ROOT / "Packages" / "KidCanvasModules" / "Sources" / "KCDrawingEngine" / "KCLineArtDrawing.swift").read_text(encoding="utf-8")
     composition_root_text = (ROOT / "KidCanvas" / "KCAppCompositionRoot.swift").read_text(encoding="utf-8")
     catalog_text = (ROOT / "Packages" / "KidCanvasModules" / "Sources" / "KCContentCatalog" / "Resources" / "content.json").read_text(encoding="utf-8")
     content_picker_feature_text = (ROOT / "KidCanvas" / "KCContentPickerFeature.swift").read_text(encoding="utf-8")
@@ -647,6 +655,7 @@ def main():
         crayon_grain_text,
         sticker_constraints_text,
         history_paging_text,
+        line_art_drawing_text,
         composition_root_text,
         catalog_text,
         content_picker_feature_text,
