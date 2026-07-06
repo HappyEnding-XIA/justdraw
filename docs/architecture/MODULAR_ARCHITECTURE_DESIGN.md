@@ -393,6 +393,7 @@ Feature 拆分进度（App 层 Feature 类型 + KCDomain 纯逻辑）：
 
 - 创建并配置 `KCDrawingCanvasView`
 - 输出 undo / redo / save 按钮可用性的 `ActionState`
+- 应用 undo / redo / save 动作按钮 enabled、alpha、背景色和 save tint 外观
 - 封装画布是否有可保存内容的判断
 - 封装贴纸默认 symbol fallback
 - 封装当前填充色读取

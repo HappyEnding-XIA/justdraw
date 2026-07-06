@@ -2404,25 +2404,12 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
 
     func refreshActionButtons() {
         let actionState = self.canvasFeature.actionState(for: self.canvasView)
-        self.undoButton.isEnabled = actionState.canUndo
-        self.redoButton.isEnabled = actionState.canRedo
-        self.saveButton.isEnabled = actionState.canSave
-
-        self.undoButton.alpha = self.undoButton.isEnabled ? 1.0 : 0.55
-        self.redoButton.alpha = self.redoButton.isEnabled ? 1.0 : 0.55
-        self.saveButton.alpha = self.saveButton.isEnabled ? 1.0 : 0.6
-        self.undoButton.backgroundColor = self.undoButton.isEnabled
-            ? UIColor(white: 1.0, alpha: 0.76)
-            : UIColor(white: 1.0, alpha: 0.62)
-        self.redoButton.backgroundColor = self.redoButton.isEnabled
-            ? UIColor(white: 1.0, alpha: 0.76)
-            : UIColor(white: 1.0, alpha: 0.62)
-        self.saveButton.backgroundColor = self.saveButton.isEnabled
-            ? UIColor(red: 0.54, green: 0.80, blue: 0.98, alpha: 1.0)
-            : UIColor(white: 1.0, alpha: 0.72)
-        self.saveButton.tintColor = self.saveButton.isEnabled
-            ? UIColor(red: 0.19, green: 0.26, blue: 0.33, alpha: 1.0)
-            : UIColor(red: 0.55, green: 0.60, blue: 0.67, alpha: 0.7)
+        self.canvasFeature.applyActionButtonAppearance(
+            state: actionState,
+            undoButton: self.undoButton,
+            redoButton: self.redoButton,
+            saveButton: self.saveButton
+        )
     }
 
     // MARK: - 按压反馈
