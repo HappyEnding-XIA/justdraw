@@ -210,6 +210,7 @@ def delivery_acceptance_checks():
     checklist_path = ROOT / "docs" / "testing" / "DELIVERY_ACCEPTANCE_CHECKLIST.md"
     runtime_docs_path = ROOT / "docs" / "testing" / "RUNTIME_SMOKE_TEST.md"
     docs_index_path = ROOT / "docs" / "README.md"
+    runtime_smoke_path = ROOT / "scripts" / "runtime_smoke_test.sh"
     runtime_acceptance_path = ROOT / "scripts" / "runtime_acceptance_test.sh"
 
     if not checklist_path.exists():
@@ -218,6 +219,7 @@ def delivery_acceptance_checks():
     checklist_text = checklist_path.read_text(encoding="utf-8")
     runtime_docs_text = runtime_docs_path.read_text(encoding="utf-8") if runtime_docs_path.exists() else ""
     docs_index_text = docs_index_path.read_text(encoding="utf-8")
+    runtime_smoke_text = runtime_smoke_path.read_text(encoding="utf-8") if runtime_smoke_path.exists() else ""
     runtime_acceptance_text = runtime_acceptance_path.read_text(encoding="utf-8") if runtime_acceptance_path.exists() else ""
 
     checks.append(ok("Delivery acceptance checklist exists"))
@@ -266,6 +268,11 @@ def delivery_acceptance_checks():
     checks.append(require_text(checklist_text, "文档同步", "Delivery checklist requires documentation sync in delivery records"))
     checks.append(require_text(runtime_docs_text, "runtime_acceptance_test.sh", "Runtime testing docs cover runtime acceptance"))
     checks.append(require_text(runtime_docs_text, "空画布保存反馈", "Runtime testing docs explain the empty-canvas save acceptance"))
+    checks.append(require_text(runtime_smoke_text, "NORMALIZE_LANDSCAPE_SCREENSHOT", "Runtime smoke test normalizes landscape screenshot observation"))
+    checks.append(require_text(runtime_smoke_text, "shot_width", "Runtime smoke test reads screenshot width"))
+    checks.append(require_text(runtime_smoke_text, "shot_height", "Runtime smoke test reads screenshot height"))
+    checks.append(require_text(runtime_smoke_text, "LANDSCAPE_SHOT", "Runtime smoke test writes a normalized landscape screenshot"))
+    checks.append(require_text(runtime_smoke_text, "_landscape.png", "Runtime smoke test names normalized landscape screenshots"))
     return checks
 
 
@@ -644,6 +651,8 @@ def app_feature_checks(
     checks.append(ok("App locks to light appearance in Info.plist") if plist.get("UIUserInterfaceStyle") == "Light" else fail("UIUserInterfaceStyle is not locked to Light"))
     checks.append(require_text(scene_text, "window.overrideUserInterfaceStyle = .light", "Window locks to light appearance"))
     checks.append(require_text(scene_text, "mainViewController.overrideUserInterfaceStyle = .light", "Root view controller locks to light appearance"))
+    checks.append(require_text(scene_text, "requestLandscapeGeometry(for: windowScene)", "Scene startup requests landscape geometry"))
+    checks.append(require_text(scene_text, "UIWindowScene.GeometryPreferences.iOS(interfaceOrientations: .landscape)", "Landscape geometry request uses iOS scene preferences"))
     checks.append(require_text(main_text, "canvasContainer.leadingAnchor.constraint(equalTo: self.view.leadingAnchor)", "Canvas is pinned to the left screen edge"))
     checks.append(require_text(main_text, "canvasContainer.trailingAnchor.constraint(equalTo: self.view.trailingAnchor)", "Canvas is pinned to the right screen edge"))
     checks.append(require_text(main_text, "canvasContainer.topAnchor.constraint(equalTo: self.view.topAnchor)", "Canvas is pinned to the top screen edge"))
@@ -803,8 +812,14 @@ def app_feature_checks(
     checks.append(require_text(kc_editor_panels_collapse_state_text, "public struct KCEditorPanelsCollapseState", "Collapse-state decisions are extracted to KCDomain"))
     checks.append(require_text(main_text, "var collapsiblePanels", "Collapsible panel groups are tracked for hide/show"))
     checks.append(require_text(main_text, "self.collapsiblePanels = [topLeft, topRight, leftRail, rightScrollView, bottomDock]", "Collapse hides all five floating panel groups at once"))
+    checks.append(require_text(main_text, "let safeArea = self.view.safeAreaLayoutGuide", "Floating editor controls use the safe area as their layout boundary"))
+    checks.append(require_text(main_text, "topLeft.leadingAnchor.constraint(equalTo: safeArea.leadingAnchor", "Top-left controls avoid the landscape safe-area edge"))
+    checks.append(require_text(main_text, "topRight.trailingAnchor.constraint(equalTo: safeArea.trailingAnchor", "Top-right controls avoid the landscape safe-area edge"))
+    checks.append(require_text(main_text, "leftRail.leadingAnchor.constraint(equalTo: safeArea.leadingAnchor", "Left tool rail avoids the landscape safe-area edge"))
+    checks.append(require_text(main_text, "rightScrollView.trailingAnchor.constraint(equalTo: safeArea.trailingAnchor", "Right panel avoids the landscape safe-area edge"))
+    checks.append(require_text(main_text, "toggle.trailingAnchor.constraint(equalTo: self.view.safeAreaLayoutGuide.trailingAnchor", "Collapse toggle avoids the safe-area edge"))
     checks.append(require_regex(main_text, r"leftRail\.widthAnchor\.constraint\(equalToConstant: 80\.0\)", "Left tool rail uses compact iPhone-friendly width"))
-    checks.append(require_regex(main_text, r"leftRail\.heightAnchor\.constraint\(equalTo: self\.view\.heightAnchor, multiplier: 0\.46\)", "Left tool rail height is viewport-relative for iPhone landscape"))
+    checks.append(require_regex(main_text, r"leftRail\.heightAnchor\.constraint\(equalTo: safeArea\.heightAnchor, multiplier: 0\.46\)", "Left tool rail height is safe-area-relative for iPhone landscape"))
     checks.append(require_regex(main_text, r"func buildLeftRail[\s\S]*let toolScrollView = UIScrollView\(\)[\s\S]*toolScrollView\.alwaysBounceVertical = true[\s\S]*toolScrollView\.addSubview\(stack\)", "Left tool rail is vertically scrollable on compact iPhone screens"))
     checks.append(require_regex(main_text, r"func buildLeftRail[\s\S]*toolScrollView\.clipsToBounds = true[\s\S]*toolScrollView\.addSubview\(stack\)", "Left tool rail clips scrolling tools inside its capsule"))
     checks.append(require_regex(editor_ui_factory_text, r"func railToolButton[\s\S]*button\.widthAnchor\.constraint\(equalToConstant: 56\.0\)[\s\S]*button\.heightAnchor\.constraint\(equalToConstant: 56\.0\)", "Left tool buttons use compact stable dimensions"))
@@ -846,7 +861,7 @@ def app_feature_checks(
     checks.append(require_text(main_text, "return self.layoutMetrics.rightPanelWidth", "Right panel width is delegated to KCDeviceLayoutMetrics"))
     checks.append(require_text(main_text, "return self.layoutMetrics.bottomDockWidth", "Bottom dock width is delegated to KCDeviceLayoutMetrics"))
     checks.append(require_text(main_text, "return self.layoutMetrics.brushCardWidth", "Brush card width is delegated to KCDeviceLayoutMetrics"))
-    checks.append(require_text(main_text, "bottomDock.bottomAnchor.constraint(equalTo: self.view.safeAreaLayoutGuide.bottomAnchor", "Bottom brush dock respects the safe area"))
+    checks.append(require_text(main_text, "bottomDock.bottomAnchor.constraint(equalTo: safeArea.bottomAnchor", "Bottom brush dock respects the safe area"))
     checks.append(require_regex(main_text, r"rightScrollView\.clipsToBounds = true", "Right menu clips content inside its scroll container"))
     checks.append(require_regex(main_text, r"func paletteColorButtonSize\(\) -> CGFloat[\s\S]*return self\.isCompactPhoneLayout \? 26\.0 : self\.contentPicker\.paletteColorButtonSize", "Color swatches shrink inside compact iPhone right menu"))
     checks.append(require_regex(main_text, r"func buildBottomDock[\s\S]*scrollView\.clipsToBounds = true[\s\S]*panel\.addSubview\(scrollView\)", "Bottom brush dock clips horizontal scroll content"))

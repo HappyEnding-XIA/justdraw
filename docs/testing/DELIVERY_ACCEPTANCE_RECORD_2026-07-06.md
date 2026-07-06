@@ -11,7 +11,7 @@
 | 设备 2 | iPad Pro 11 M4，UDID `89B67EE3-75AB-4E06-BD8C-BC1B52339E0A` |
 | 方向 | 横屏优先；工程仍支持 iPhone + iPad |
 | 语言 | 默认简体中文，英文资源保留 |
-| 烟测截图 | `/tmp/kc_smoke_iPhone_17_Pro.png`、`/tmp/kc_smoke_iPad_Pro_11_M4.png` |
+| 烟测截图 | 原始截图：`/tmp/kc_smoke_iPhone_17_Pro.png`、`/tmp/kc_smoke_iPad_Pro_11_M4.png`；横屏观察图：`/tmp/kc_smoke_iPhone_17_Pro_landscape.png`、`/tmp/kc_smoke_iPad_Pro_11_M4_landscape.png` |
 
 ## 2. 自动验收结果
 
@@ -22,8 +22,8 @@
 | `swift test` | 通过 | 156 tests, 0 failures |
 | iPhone 17 Pro 构建 | 通过 | `xcodebuild -project KidCanvas.xcodeproj -scheme KidCanvas -destination 'platform=iOS Simulator,name=iPhone 17 Pro' build -quiet` |
 | iPad Pro 11 M4 构建 | 通过 | `xcodebuild -project KidCanvas.xcodeproj -scheme KidCanvas -destination 'platform=iOS Simulator,name=iPad Pro 11 M4' build -quiet` |
-| iPhone 17 Pro runtime smoke | 通过 | 启动成功、进程存活、截图非空 |
-| iPad Pro 11 M4 runtime smoke | 通过 | 启动成功、进程存活、截图非空 |
+| iPhone 17 Pro runtime smoke | 通过 | 启动成功、进程存活、截图非空；原始截图为竖屏 framebuffer，脚本已生成横屏观察图 `/tmp/kc_smoke_iPhone_17_Pro_landscape.png` |
+| iPad Pro 11 M4 runtime smoke | 通过 | 启动成功、进程存活、截图非空；原始截图为竖屏 framebuffer，脚本已生成横屏观察图 `/tmp/kc_smoke_iPad_Pro_11_M4_landscape.png` |
 | iPhone 17 Pro runtime acceptance | 通过 | 空画布保存反馈 Debug 探针：`passed=true`，保存按钮可点，失败 Toast 可见，历史 0→0 |
 | iPad Pro 11 M4 runtime acceptance | 通过 | 空画布保存反馈 Debug 探针：`passed=true`，保存按钮可点，失败 Toast 可见，历史 1→1 |
 | `git diff --check` | 通过 | 无空白错误 |
@@ -51,6 +51,7 @@
 - T062：印章交互反馈优化已完成代码和自动验收，真实双指手势仍需人工点验。
 - T063：相册导入/保存链路代码检查和自动验收通过；保存 Toast 已补齐双语文字，中文默认显示“已保存 / 无法保存”。
 - T065：修复空画布保存反馈不可触发；保存按钮空画布时视觉弱化但保持可点击，点击后显示“无法保存”；`scripts/runtime_acceptance_test.sh` 已在 iPhone/iPad 通过。
+- T066：横屏安全区与 smoke 截图归一化已完成自动验收；App 启动请求横屏 scene geometry，浮动控件改用 safe area 约束，`runtime_smoke_test.sh` 会生成横屏观察图便于首屏无遮挡人工检查。
 
 ## 5. 当前风险
 
@@ -59,6 +60,7 @@
 | 阻塞 | 暂无自动验收发现的阻塞问题 | 人工点验如发现阻塞，回写看板为新任务 |
 | 非阻塞 | 系统 Photos 选择器、权限弹窗和保存到系统相册无法由 runtime smoke 证明 | 需要在 iPhone/iPad 模拟器或真机手动完成 |
 | 非阻塞 | 烟测截图中保留了历史画布内容 | 人工验收前新建画布即可，不影响构建和启动结论 |
+| 非阻塞 | `simctl io screenshot` 在当前 Simulator 上输出竖屏 framebuffer | 已由 smoke 脚本生成 `_landscape.png` 横屏观察图；最终仍以人工在模拟器窗口/真机横屏点验为准 |
 
 ## 6. 阶段结论
 

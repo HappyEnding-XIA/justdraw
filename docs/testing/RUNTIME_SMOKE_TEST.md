@@ -24,7 +24,7 @@ scripts/runtime_acceptance_test.sh "iPhone 17 Pro"
 scripts/runtime_acceptance_test.sh "iPad Pro 11 M4"
 ```
 
-脚本流程：清理 `._*` → 按设备名解析 UDID → 启动设备 → Debug 构建 → 安装 → 启动 → 轮询进程存活 → 等待 UI 渲染 → 重试截图直到文件大小达到阈值 → 截图到 `/tmp/kc_smoke_<device>.png`。
+脚本流程：清理 `._*` → 按设备名解析 UDID → 启动设备 → Debug 构建 → 安装 → 启动 → 轮询进程存活 → 等待 UI 渲染 → 重试截图直到文件大小达到阈值 → 必要时生成横屏观察图 → 截图到 `/tmp/kc_smoke_<device>.png`。
 
 可选环境变量：
 
@@ -36,9 +36,10 @@ scripts/runtime_acceptance_test.sh "iPad Pro 11 M4"
 - `SCREENSHOT_RETRY_INTERVAL`：截图过小时的重试间隔秒数，默认 `1`。
 - `SCREENSHOT_MIN_BYTES`：截图最小文件大小阈值，默认 `20000`。
 - `LAUNCH_TIMEOUT_SECONDS`：`simctl launch` 最大等待秒数，默认 `30`。
+- `NORMALIZE_LANDSCAPE_SCREENSHOT`：原始截图为竖屏 framebuffer 时，是否额外生成 `_landscape.png` 横屏观察图，默认 `1`。
 - `runtime_acceptance_test.sh` 额外支持 `WAIT_SECONDS`：等待 App 写出验收 JSON 的最长秒数，默认 `10`。
 
-以上数值型环境变量都必须是大于 0 的整数，否则脚本会以退出码 `8` 结束。
+以上数值型环境变量都必须是大于 0 的整数，`NORMALIZE_LANDSCAPE_SCREENSHOT` 必须是 `0` 或 `1`，否则脚本会以退出码 `8` 结束。
 
 ## 退出码
 
@@ -52,6 +53,7 @@ scripts/runtime_acceptance_test.sh "iPad Pro 11 M4"
 | 6 | 启动后进程未存活（崩溃）|
 | 7 | 截图为空或过小，UI 可能尚未渲染完成 |
 | 8 | 环境变量配置非法 |
+| 9 | 无法读取截图尺寸或无法生成横屏观察图 |
 
 `runtime_acceptance_test.sh` 的补充退出码：
 
@@ -99,6 +101,21 @@ xcrun simctl spawn "<UDID>" log stream --predicate 'process == "KidCanvas"' --le
 
 ```bash
 SCREENSHOT_WAIT_SECONDS=6 SCREENSHOT_RETRY_COUNT=8 scripts/runtime_smoke_test.sh "iPad Pro 11 M4"
+```
+
+### 原始截图不是横屏比例
+
+某些 Simulator 设备即使 App scene 已是横屏，`simctl io screenshot` 得到的原始 framebuffer 仍可能是竖屏比例。脚本默认会额外生成 `_landscape.png` 横屏观察图供人工查看，例如：
+
+```text
+/tmp/kc_smoke_iPhone_17_Pro_landscape.png
+/tmp/kc_smoke_iPad_Pro_11_M4_landscape.png
+```
+
+只在排查截图旋转本身时临时关闭：
+
+```bash
+NORMALIZE_LANDSCAPE_SCREENSHOT=0 scripts/runtime_smoke_test.sh "iPhone 17 Pro"
 ```
 
 ### 外置盘 AppleDouble 文件

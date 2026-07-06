@@ -8,7 +8,7 @@
 
 | 编号 | 流程 | 交付标准 | 自动验证 | 人工触控 |
 |---|---|---|---|---|
-| F01 | 启动 | iPhone/iPad 模拟器可安装、启动、截图非空、不崩溃 | `runtime_smoke_test.sh` | 检查首屏控件无遮挡 |
+| F01 | 启动 | iPhone/iPad 模拟器可安装、启动、截图非空，并生成横屏观察图、不崩溃 | `runtime_smoke_test.sh` | 检查首屏控件无遮挡 |
 | F02 | 画笔 | 铅笔、钢笔、蜡笔可切换；宽度预览和笔触可用 | `validate_project.py` + `swift test` | 手绘连续线条 |
 | F03 | 橡皮 | 橡皮可切换 circle/cloud/star；尺寸预览和擦除可用 | `validate_project.py` + `swift test` | 擦除已有笔触 |
 | F04 | 填色 | 填色工具存在并通过 Swift flood fill 执行 | `validate_project.py` + `swift test` | 点按封闭区域填色 |
@@ -70,7 +70,7 @@ git diff --check
 - 指定模拟器启动。
 - Debug 构建、安装、启动。
 - 进程存活检查。
-- 首屏截图生成与非空检查。
+- 首屏截图生成、非空检查；原始截图为竖屏 framebuffer 时生成横屏观察图。
 
 `runtime_acceptance_test.sh` 已覆盖：
 

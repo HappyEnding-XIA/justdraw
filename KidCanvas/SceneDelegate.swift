@@ -6,6 +6,7 @@
 //
 
 import UIKit
+import KCCommon
 
 /// 使用 `@objc(KDSceneDelegate)` 暴露类名，与 Info.plist 中
 /// `UIApplicationSceneManifest` 引用的类名保持一致。
@@ -27,5 +28,13 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
         window.rootViewController = mainViewController
         window.makeKeyAndVisible()
         self.window = window
+        self.requestLandscapeGeometry(for: windowScene)
+    }
+
+    private func requestLandscapeGeometry(for windowScene: UIWindowScene) {
+        let preferences = UIWindowScene.GeometryPreferences.iOS(interfaceOrientations: .landscape)
+        windowScene.requestGeometryUpdate(preferences) { error in
+            KCLog.warning("横屏几何请求失败: \(error.localizedDescription)")
+        }
     }
 }

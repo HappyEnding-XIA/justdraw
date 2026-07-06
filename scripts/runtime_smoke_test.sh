@@ -26,6 +26,7 @@ SCREENSHOT_RETRY_COUNT="${SCREENSHOT_RETRY_COUNT:-5}"
 SCREENSHOT_RETRY_INTERVAL="${SCREENSHOT_RETRY_INTERVAL:-1}"
 SCREENSHOT_MIN_BYTES="${SCREENSHOT_MIN_BYTES:-20000}"
 LAUNCH_TIMEOUT_SECONDS="${LAUNCH_TIMEOUT_SECONDS:-30}"
+NORMALIZE_LANDSCAPE_SCREENSHOT="${NORMALIZE_LANDSCAPE_SCREENSHOT:-1}"
 
 # 项目根目录（本脚本位于 <root>/scripts/）。
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -52,11 +53,21 @@ require_positive_integer() {
   fi
 }
 
+require_boolean_integer() {
+  local name="$1"
+  local value="${!name}"
+  if [ "$value" != 0 ] && [ "$value" != 1 ]; then
+    red "错误：$name 必须是 0 或 1，当前值：$value"
+    exit 8
+  fi
+}
+
 require_positive_integer SCREENSHOT_WAIT_SECONDS
 require_positive_integer SCREENSHOT_RETRY_COUNT
 require_positive_integer SCREENSHOT_RETRY_INTERVAL
 require_positive_integer SCREENSHOT_MIN_BYTES
 require_positive_integer LAUNCH_TIMEOUT_SECONDS
+require_boolean_integer NORMALIZE_LANDSCAPE_SCREENSHOT
 
 # 1. 清理外置盘 AppleDouble 临时文件（validator 会把 ._*.m 当成 OC 源码导致假失败）。
 step "清理 ._*/.!* 临时文件"
@@ -224,6 +235,34 @@ if [ "$shot_ready" != 1 ]; then
   fi
   red "这通常表示 UI 仍未渲染完成或截图为空白，可调大 SCREENSHOT_WAIT_SECONDS / SCREENSHOT_RETRY_COUNT 后重试。"
   exit 7
+fi
+
+if [ "$NORMALIZE_LANDSCAPE_SCREENSHOT" = 1 ]; then
+  shot_width="$(sips -g pixelWidth "$SHOT" 2>/dev/null | awk '/pixelWidth/ {print $2; exit}')"
+  shot_height="$(sips -g pixelHeight "$SHOT" 2>/dev/null | awk '/pixelHeight/ {print $2; exit}')"
+  if [ -z "$shot_width" ] || [ -z "$shot_height" ]; then
+    red "无法读取截图尺寸，最后文件: $SHOT"
+    exit 9
+  fi
+  if [ "$shot_width" -le "$shot_height" ]; then
+    LANDSCAPE_SHOT="${SHOT%.png}_landscape.png"
+    cp "$SHOT" "$LANDSCAPE_SHOT"
+    if [[ "$DEVICE_NAME" == iPad* ]]; then
+      sips -r 90 "$LANDSCAPE_SHOT" >/dev/null
+    else
+      sips -r -90 "$LANDSCAPE_SHOT" >/dev/null
+    fi
+    landscape_width="$(sips -g pixelWidth "$LANDSCAPE_SHOT" 2>/dev/null | awk '/pixelWidth/ {print $2; exit}')"
+    landscape_height="$(sips -g pixelHeight "$LANDSCAPE_SHOT" 2>/dev/null | awk '/pixelHeight/ {print $2; exit}')"
+    if [ -z "$landscape_width" ] || [ -z "$landscape_height" ] || [ "$landscape_width" -le "$landscape_height" ]; then
+      red "无法生成横屏观察截图，原图尺寸：${shot_width}x${shot_height}"
+      exit 9
+    fi
+    green "原始截图为竖屏 framebuffer: ${shot_width}x${shot_height}"
+    green "已生成横屏观察截图: $LANDSCAPE_SHOT (${landscape_width}x${landscape_height})"
+  else
+    green "截图方向校验通过: ${shot_width}x${shot_height}"
+  fi
 fi
 
 echo

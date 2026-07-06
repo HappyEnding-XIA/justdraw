@@ -356,6 +356,7 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
         //（colorsPanel/sizePanel/historyPanel 都在 rightScrollView 内，
         // 所以隐藏它即可一并覆盖这三者。）
         self.collapsiblePanels = [topLeft, topRight, leftRail, rightScrollView, bottomDock]
+        let safeArea = self.view.safeAreaLayoutGuide
 
         NSLayoutConstraint.activate([
             canvasContainer.leadingAnchor.constraint(equalTo: self.view.leadingAnchor),
@@ -368,19 +369,19 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
             self.canvasView.topAnchor.constraint(equalTo: canvasContainer.topAnchor),
             self.canvasView.bottomAnchor.constraint(equalTo: canvasContainer.bottomAnchor),
 
-            topLeft.leadingAnchor.constraint(equalTo: self.view.leadingAnchor, constant: 34.0),
-            topLeft.topAnchor.constraint(equalTo: self.view.topAnchor, constant: 30.0),
+            topLeft.leadingAnchor.constraint(equalTo: safeArea.leadingAnchor, constant: 24.0),
+            topLeft.topAnchor.constraint(equalTo: safeArea.topAnchor, constant: 24.0),
 
-            topRight.trailingAnchor.constraint(equalTo: self.view.trailingAnchor, constant: -34.0),
-            topRight.topAnchor.constraint(equalTo: self.view.topAnchor, constant: 30.0),
+            topRight.trailingAnchor.constraint(equalTo: safeArea.trailingAnchor, constant: -24.0),
+            topRight.topAnchor.constraint(equalTo: safeArea.topAnchor, constant: 24.0),
 
-            leftRail.leadingAnchor.constraint(equalTo: self.view.leadingAnchor, constant: 38.0),
-            leftRail.topAnchor.constraint(equalTo: self.view.topAnchor, constant: 170.0),
+            leftRail.leadingAnchor.constraint(equalTo: safeArea.leadingAnchor, constant: 24.0),
+            leftRail.topAnchor.constraint(equalTo: safeArea.topAnchor, constant: 150.0),
             leftRail.widthAnchor.constraint(equalToConstant: 80.0),
-            leftRail.heightAnchor.constraint(equalTo: self.view.heightAnchor, multiplier: 0.46),
+            leftRail.heightAnchor.constraint(equalTo: safeArea.heightAnchor, multiplier: 0.46),
 
-            rightScrollView.trailingAnchor.constraint(equalTo: self.view.trailingAnchor, constant: self.rightPanelTrailingOffset()),
-            rightScrollView.topAnchor.constraint(equalTo: self.view.topAnchor, constant: self.rightPanelTopOffset()),
+            rightScrollView.trailingAnchor.constraint(equalTo: safeArea.trailingAnchor, constant: self.rightPanelTrailingOffset()),
+            rightScrollView.topAnchor.constraint(equalTo: safeArea.topAnchor, constant: self.rightPanelTopOffset()),
             rightScrollView.bottomAnchor.constraint(equalTo: bottomDock.topAnchor, constant: self.rightPanelBottomGap()),
             rightScrollView.widthAnchor.constraint(equalToConstant: self.rightPanelOuterWidth()),
 
@@ -396,7 +397,7 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
 
             bottomDock.centerXAnchor.constraint(equalTo: self.view.centerXAnchor),
             bottomDock.widthAnchor.constraint(equalToConstant: self.bottomDockWidth()),
-            bottomDock.bottomAnchor.constraint(equalTo: self.view.safeAreaLayoutGuide.bottomAnchor, constant: self.bottomDockBottomInset()),
+            bottomDock.bottomAnchor.constraint(equalTo: safeArea.bottomAnchor, constant: self.bottomDockBottomInset()),
             bottomDock.heightAnchor.constraint(equalToConstant: self.bottomDockHeight())
         ])
 
@@ -435,8 +436,8 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
         self.toolStateLabel = label
 
         NSLayoutConstraint.activate([
-            toggle.trailingAnchor.constraint(equalTo: self.view.trailingAnchor, constant: -20.0),
-            toggle.bottomAnchor.constraint(equalTo: self.view.bottomAnchor, constant: -28.0),
+            toggle.trailingAnchor.constraint(equalTo: self.view.safeAreaLayoutGuide.trailingAnchor, constant: -20.0),
+            toggle.bottomAnchor.constraint(equalTo: self.view.safeAreaLayoutGuide.bottomAnchor, constant: -20.0),
 
             chip.trailingAnchor.constraint(equalTo: toggle.leadingAnchor, constant: -10.0),
             chip.centerYAnchor.constraint(equalTo: toggle.centerYAnchor),
