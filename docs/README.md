@@ -21,3 +21,8 @@
 ## Release
 
 - [Changelog](./release/CHANGELOG.md)
+
+## Testing
+
+- [Delivery Acceptance Checklist](./testing/DELIVERY_ACCEPTANCE_CHECKLIST.md)
+- [Runtime Smoke Test](./testing/RUNTIME_SMOKE_TEST.md)

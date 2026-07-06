@@ -2,6 +2,10 @@
 /* Key set must stay aligned with zh-Hans.lproj/Localizable.strings. */
 
 /* Top toolbar */
+"top.palette.title" = "Palette";
+"top.new-canvas.title" = "New Canvas";
+"top.undo.title" = "Undo";
+"top.redo.title" = "Redo";
 "top.open-latest.title" = "Open Latest";
 "top.line-art.title" = "Line Art";
 "top.import-photo.title" = "Import Photo";
@@ -11,15 +15,15 @@
 "tool.brush.title" = "Brush";
 "tool.eraser.title" = "Eraser";
 "tool.fill.title" = "Fill";
-"tool.sticker.title" = "Sticker";
+"tool.sticker.title" = "Stamp";
 "tool.picker.title" = "Eyedropper";
 
 /* Panel titles */
 "panel.colors.title" = "Colors";
-"panel.brush-sticker.title" = "Brush / Sticker";
-"panel.stickers.title" = "Stickers";
+"panel.brush-sticker.title" = "Brush / Stamp";
+"panel.stickers.title" = "Stamps";
 "panel.eraser.title" = "Eraser";
-"panel.sticker-edit.title" = "Sticker Edit";
+"panel.sticker-edit.title" = "Stamp Edit";
 "panel.history.title" = "History";
 "panel.brushes.title" = "Brushes";
 
@@ -46,37 +50,37 @@
 "eraser.cloud.title" = "Cloud Eraser";
 "eraser.star.title" = "Star Eraser";
 
-/* Sticker edit */
-"sticker.bring-forward.title" = "Bring Sticker Forward";
-"sticker.delete.title" = "Delete Sticker";
+/* Stamp edit */
+"sticker.bring-forward.title" = "Bring Stamp Forward";
+"sticker.delete.title" = "Delete Stamp";
 
-/* Sticker categories */
+/* Stamp categories */
 "sticker.category.animals.title" = "Animals";
 "sticker.category.nature.title" = "Nature";
 "sticker.category.decor.title" = "Decor";
 "sticker.category.faces.title" = "Faces";
-"sticker.category.accessibility" = "%@ Stickers";
+"sticker.category.accessibility" = "%@ Stamps";
 
-/* Sticker symbol accessibility labels */
-"sticker.symbol.star" = "Star Sticker";
-"sticker.symbol.heart" = "Heart Sticker";
-"sticker.symbol.sun" = "Sun Sticker";
-"sticker.symbol.leaf" = "Leaf Sticker";
-"sticker.symbol.cloud" = "Cloud Sticker";
-"sticker.symbol.moon" = "Moon Sticker";
-"sticker.symbol.rainbow" = "Rainbow Sticker";
-"sticker.symbol.flower" = "Flower Sticker";
-"sticker.symbol.butterfly" = "Butterfly Sticker";
-"sticker.symbol.paw" = "Paw Sticker";
-"sticker.symbol.gift" = "Gift Sticker";
-"sticker.symbol.smile" = "Smile Sticker";
-"sticker.symbol.default" = "Sticker";
+/* Stamp symbol accessibility labels */
+"sticker.symbol.star" = "Star Stamp";
+"sticker.symbol.heart" = "Heart Stamp";
+"sticker.symbol.sun" = "Sun Stamp";
+"sticker.symbol.leaf" = "Leaf Stamp";
+"sticker.symbol.cloud" = "Cloud Stamp";
+"sticker.symbol.moon" = "Moon Stamp";
+"sticker.symbol.rainbow" = "Rainbow Stamp";
+"sticker.symbol.flower" = "Flower Stamp";
+"sticker.symbol.butterfly" = "Butterfly Stamp";
+"sticker.symbol.paw" = "Paw Stamp";
+"sticker.symbol.gift" = "Gift Stamp";
+"sticker.symbol.smile" = "Smile Stamp";
+"sticker.symbol.default" = "Stamp";
 
 /* Collapsed tool-state chip title */
 "chip.title.eraser" = "Eraser";
 "chip.title.fill" = "Fill";
 "chip.title.picker" = "Eyedropper";
-"chip.title.sticker" = "Sticker";
+"chip.title.sticker" = "Stamp";
 "chip.title.pencil" = "Pencil";
 "chip.title.pen" = "Pen";
 "chip.title.crayon" = "Crayon";

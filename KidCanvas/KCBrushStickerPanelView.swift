@@ -11,7 +11,6 @@ import QuartzCore
 /// 画笔、贴纸、橡皮与贴纸编辑面板的 UIKit 组装器。
 /// 只负责视图创建、约束和按钮外观，不持有画布状态。
 final class KCBrushStickerPanelView {
-
     struct Texts {
         let brushStickerTitle: String
         let sizeSliderAccessibility: String
@@ -65,6 +64,9 @@ final class KCBrushStickerPanelView {
         shell.translatesAutoresizingMaskIntoConstraints = false
         shell.backgroundColor = UIColor(white: 1.0, alpha: 0.58)
         shell.layer.cornerRadius = 24.0
+        shell.layer.cornerCurve = .continuous
+        shell.layer.borderWidth = 1.0
+        shell.layer.borderColor = UIColor(white: 1.0, alpha: 0.54).cgColor
         panel.addSubview(shell)
 
         let sizeSlider = UISlider()
@@ -83,6 +85,7 @@ final class KCBrushStickerPanelView {
         sizePreviewView.translatesAutoresizingMaskIntoConstraints = false
         sizePreviewView.backgroundColor = UIColor(white: 1.0, alpha: 0.72)
         sizePreviewView.layer.cornerRadius = 24.0
+        sizePreviewView.layer.cornerCurve = .continuous
         sizePreviewView.layer.borderWidth = 1.0
         sizePreviewView.layer.borderColor = UIColor(white: 1.0, alpha: 0.74).cgColor
         shell.addSubview(sizePreviewView)
@@ -130,11 +133,7 @@ final class KCBrushStickerPanelView {
             button.setImage(categoryImage, for: .normal)
             button.accessibilityLabel = stickerCategoryAccessibilityProvider(category)
             button.accessibilityIdentifier = "sticker.category.\(category.lowercased())"
-            button.tintColor = UIColor(red: 0.47, green: 0.52, blue: 0.58, alpha: 1.0)
-            button.backgroundColor = UIColor(white: 1.0, alpha: 0.62)
-            button.layer.cornerRadius = 15.0
-            button.layer.borderWidth = 1.0
-            button.layer.borderColor = UIColor(white: 1.0, alpha: 0.70).cgColor
+            applyPillSelectionAppearance(to: button, active: false)
             button.addTarget(target, action: stickerCategoryAction, for: .touchUpInside)
             registerPressFeedback(button)
             stickerCategoryRow.addArrangedSubview(button)
@@ -296,11 +295,7 @@ final class KCBrushStickerPanelView {
             let button = UIButton(type: .system)
             button.translatesAutoresizingMaskIntoConstraints = false
             button.setImage(imageProvider(symbol), for: .normal)
-            button.tintColor = UIColor(red: 0.24, green: 0.29, blue: 0.35, alpha: 1.0)
-            button.backgroundColor = UIColor(white: 1.0, alpha: 0.76)
-            button.layer.cornerRadius = 18.0
-            button.layer.borderWidth = 1.0
-            button.layer.borderColor = UIColor(white: 1.0, alpha: 0.72).cgColor
+            applyStampButtonAppearance(to: button, active: false, enabled: true)
             button.widthAnchor.constraint(equalToConstant: 44.0).isActive = true
             button.heightAnchor.constraint(equalToConstant: 44.0).isActive = true
             button.accessibilityIdentifier = symbol
@@ -322,15 +317,7 @@ final class KCBrushStickerPanelView {
         for button in buttons {
             let category = categoryResolver(button)
             let active = category == selectedCategory
-            button.backgroundColor = active
-                ? UIColor(red: 0.97, green: 0.86, blue: 0.48, alpha: 1.0)
-                : UIColor(white: 1.0, alpha: 0.62)
-            button.tintColor = active
-                ? UIColor(red: 0.39, green: 0.26, blue: 0.0, alpha: 1.0)
-                : UIColor(red: 0.47, green: 0.52, blue: 0.58, alpha: 1.0)
-            button.layer.borderColor = (active
-                ? UIColor(white: 1.0, alpha: 0.92)
-                : UIColor(white: 1.0, alpha: 0.70)).cgColor
+            applyPillSelectionAppearance(to: button, active: active)
         }
     }
 
@@ -339,11 +326,37 @@ final class KCBrushStickerPanelView {
         deleteButton.isEnabled = enabled
         frontButton.alpha = enabled ? 1.0 : 0.55
         deleteButton.alpha = enabled ? 1.0 : 0.55
-        frontButton.backgroundColor = enabled
-            ? UIColor(white: 1.0, alpha: 0.82)
-            : UIColor(white: 1.0, alpha: 0.62)
-        deleteButton.backgroundColor = enabled
-            ? UIColor(white: 1.0, alpha: 0.82)
-            : UIColor(white: 1.0, alpha: 0.62)
+        applyStampButtonAppearance(to: frontButton, active: false, enabled: enabled)
+        applyStampButtonAppearance(to: deleteButton, active: false, enabled: enabled)
+    }
+
+    private func applyPillSelectionAppearance(to button: UIButton, active: Bool) {
+        button.backgroundColor = active ? KCEditorVisualStyle.accentColor : KCEditorVisualStyle.pillBackgroundColor
+        button.tintColor = active ? KCEditorVisualStyle.accentInkColor : KCEditorVisualStyle.mutedInkColor
+        button.layer.cornerRadius = 15.0
+        button.layer.cornerCurve = .continuous
+        button.layer.borderWidth = 1.0
+        button.layer.borderColor = active ? KCEditorVisualStyle.activeBorderColor : KCEditorVisualStyle.borderColor
+        button.layer.shadowColor = KCEditorVisualStyle.shadowColor
+        button.layer.shadowOpacity = active ? 0.07 : 0.03
+        button.layer.shadowRadius = active ? 6.0 : 3.0
+        button.layer.shadowOffset = CGSize(width: 0.0, height: active ? 3.0 : 1.0)
+    }
+
+    private func applyStampButtonAppearance(to button: UIButton, active: Bool, enabled: Bool) {
+        button.tintColor = enabled
+            ? (active ? KCEditorVisualStyle.accentInkColor : KCEditorVisualStyle.inkColor)
+            : KCEditorVisualStyle.mutedInkColor
+        button.backgroundColor = enabled
+            ? (active ? KCEditorVisualStyle.accentColor : KCEditorVisualStyle.compactBackgroundColor)
+            : KCEditorVisualStyle.disabledBackgroundColor
+        button.layer.cornerRadius = 18.0
+        button.layer.cornerCurve = .continuous
+        button.layer.borderWidth = 1.0
+        button.layer.borderColor = active ? KCEditorVisualStyle.activeBorderColor : KCEditorVisualStyle.borderColor
+        button.layer.shadowColor = KCEditorVisualStyle.shadowColor
+        button.layer.shadowOpacity = enabled ? 0.05 : 0.0
+        button.layer.shadowRadius = 5.0
+        button.layer.shadowOffset = CGSize(width: 0.0, height: 2.0)
     }
 }

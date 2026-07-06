@@ -32,6 +32,17 @@ App target（`KidCanvas/`）内以 `.lproj` 变体组承载本地化资源：
 
 > 不引入第三方本地化库；统一走 `NSLocalizedString` + `KCL10n`。
 
+## 产品命名：印章 / Stamp
+
+T055 起，用户可见的 `sticker` 能力统一命名为“印章 / Stamp”：
+
+- 左侧工具入口显示“印章 / Stamp”。
+- 右侧面板标题显示“画笔 / 印章”与“印章 / Stamps”。
+- 印章编辑按钮显示“印章前移 / Bring Stamp Forward”“删除印章 / Delete Stamp”。
+- 折叠态芯片、分类无障碍标签、符号无障碍标签统一使用“印章 / Stamp”。
+
+内部实现暂不改名：`tool.sticker.*` key、`KDToolMode.sticker`、`KCSticker*`、`stickerGroups` 和内容目录 schema 仍作为稳定内部标识保留。后续若要做数据模型改名，必须单独排期，并包含 archive/session 兼容与迁移验证。
+
 ## KCDomain 与本地化
 
 `KCDomain`（SPM，无 UIKit）中的纯展示型 helper 只返回**稳定的本地化 key（ASCII）**，
@@ -44,11 +55,12 @@ App target（`KidCanvas/`）内以 `.lproj` 变体组承载本地化资源：
 | `KCHistoryThumbStatus.accessibilityPrefix` | `history.thumb.*` key | `KCL10n.historyThumbPrefix(...)` |
 
 分类标题（Animals/Nature/Decor/Faces）在 `content.json` 中作为**稳定标识**保留英文，
-由 `KCL10n.stickerCategoryTitle(_:)` 映射为本地化展示名。
+由 `KCL10n.stickerCategoryTitle(_:)` 映射为本地化展示名；分类与符号的用户可见无障碍文案展示为印章语义。
 
 ## 命名规范
 
 - key 形式：`<域>.<对象>.<属性>`，如 `toolbar.colors.title`、`brush.pencil.title`、`action.customColor.title`。
+- 顶部按钮的无障碍文案也必须走 `top.*.title`，例如 `top.palette.title`、`top.new-canvas.title`、`top.undo.title`、`top.redo.title`。
 - 新增文案流程：① 在 `zh-Hans.lproj/Localizable.strings` 和 `en.lproj/Localizable.strings`
   **同时**加 key；② 在 `KCL10n` 补类型安全入口；③ 在调用处使用 `KCL10n.xxx`。
 - 用户可见文案不得硬编码在控制器/Feature 中；中文值只存在于 `.strings`，Swift 源码只引用 key。
@@ -60,8 +72,10 @@ App target（`KidCanvas/`）内以 `.lproj` 变体组承载本地化资源：
 - zh-Hans / en 的 `Localizable.strings` 与 `InfoPlist.strings` 均存在；
 - 两种语言的 `Localizable.strings` key 集合**对齐**（多/缺 key 会失败）；
 - `KCLocalizedStrings.swift` 入口存在且走 `NSLocalizedString`；
+- 顶部工具栏按钮无障碍文案必须通过 `KCL10n` 访问，禁止 `Palette` / `New Canvas` / `Undo` / `Redo` 回流到控制器硬编码；
 - 两种语言的 `InfoPlist.strings` 均覆盖相册权限 key；
 - 工程 `developmentRegion = zh-Hans`、`knownRegions` 含 zh-Hans + en、`.strings` 经变体组进 Resources。
+- 印章产品文案校验：`tool.sticker.title`、`panel.stickers.title`、`sticker.*` 编辑/无障碍文案与 `chip.title.sticker` 必须展示为“印章 / Stamp”。
 
 > T025 起不再「简单禁止 UI 源码中文字符」；改为上述正向本地化检查。Swift 源码不含
 > 中文值（中文集中在 `.strings`），由 key 对齐 + 入口检查 + T026 的英文硬编码禁止项共同保证。

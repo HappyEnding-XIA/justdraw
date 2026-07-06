@@ -2,6 +2,10 @@
 /* 命名规范：<域>.<对象>.<属性>；新增文案先在此处与 en.lproj 同时加 key。 */
 
 /* 顶部工具栏 */
+"top.palette.title" = "调色板";
+"top.new-canvas.title" = "新画布";
+"top.undo.title" = "撤销";
+"top.redo.title" = "重做";
 "top.open-latest.title" = "打开最近";
 "top.line-art.title" = "线稿";
 "top.import-photo.title" = "导入照片";
@@ -11,15 +15,15 @@
 "tool.brush.title" = "画笔";
 "tool.eraser.title" = "橡皮";
 "tool.fill.title" = "填充";
-"tool.sticker.title" = "贴纸";
+"tool.sticker.title" = "印章";
 "tool.picker.title" = "取色器";
 
 /* 面板标题 */
 "panel.colors.title" = "颜色";
-"panel.brush-sticker.title" = "画笔 / 贴纸";
-"panel.stickers.title" = "贴纸";
+"panel.brush-sticker.title" = "画笔 / 印章";
+"panel.stickers.title" = "印章";
 "panel.eraser.title" = "橡皮";
-"panel.sticker-edit.title" = "贴纸编辑";
+"panel.sticker-edit.title" = "印章编辑";
 "panel.history.title" = "历史";
 "panel.brushes.title" = "画笔";
 
@@ -46,37 +50,37 @@
 "eraser.cloud.title" = "云朵橡皮";
 "eraser.star.title" = "星形橡皮";
 
-/* 贴纸编辑 */
-"sticker.bring-forward.title" = "贴纸前移";
-"sticker.delete.title" = "删除贴纸";
+/* 印章编辑 */
+"sticker.bring-forward.title" = "印章前移";
+"sticker.delete.title" = "删除印章";
 
-/* 贴纸分类 */
+/* 印章分类 */
 "sticker.category.animals.title" = "动物";
 "sticker.category.nature.title" = "自然";
 "sticker.category.decor.title" = "装饰";
 "sticker.category.faces.title" = "表情";
-"sticker.category.accessibility" = "%@ 贴纸";
+"sticker.category.accessibility" = "%@ 印章";
 
-/* 贴纸符号无障碍标签 */
-"sticker.symbol.star" = "星星贴纸";
-"sticker.symbol.heart" = "爱心贴纸";
-"sticker.symbol.sun" = "太阳贴纸";
-"sticker.symbol.leaf" = "树叶贴纸";
-"sticker.symbol.cloud" = "云朵贴纸";
-"sticker.symbol.moon" = "月亮贴纸";
-"sticker.symbol.rainbow" = "彩虹贴纸";
-"sticker.symbol.flower" = "花朵贴纸";
-"sticker.symbol.butterfly" = "蝴蝶贴纸";
-"sticker.symbol.paw" = "爪印贴纸";
-"sticker.symbol.gift" = "礼物贴纸";
-"sticker.symbol.smile" = "笑脸贴纸";
-"sticker.symbol.default" = "贴纸";
+/* 印章符号无障碍标签 */
+"sticker.symbol.star" = "星星印章";
+"sticker.symbol.heart" = "爱心印章";
+"sticker.symbol.sun" = "太阳印章";
+"sticker.symbol.leaf" = "树叶印章";
+"sticker.symbol.cloud" = "云朵印章";
+"sticker.symbol.moon" = "月亮印章";
+"sticker.symbol.rainbow" = "彩虹印章";
+"sticker.symbol.flower" = "花朵印章";
+"sticker.symbol.butterfly" = "蝴蝶印章";
+"sticker.symbol.paw" = "爪印印章";
+"sticker.symbol.gift" = "礼物印章";
+"sticker.symbol.smile" = "笑脸印章";
+"sticker.symbol.default" = "印章";
 
 /* 折叠态工具芯片标题 */
 "chip.title.eraser" = "橡皮";
 "chip.title.fill" = "填充";
 "chip.title.picker" = "取色器";
-"chip.title.sticker" = "贴纸";
+"chip.title.sticker" = "印章";
 "chip.title.pencil" = "铅笔";
 "chip.title.pen" = "钢笔";
 "chip.title.crayon" = "蜡笔";

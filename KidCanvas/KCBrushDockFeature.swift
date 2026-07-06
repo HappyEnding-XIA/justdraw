@@ -72,8 +72,9 @@ final class KCBrushDockFeature {
     func applySelectionAppearance(to button: KDBrushButton, active: Bool) {
         button.backgroundColor = active ? self.activeBackgroundColor : self.inactiveBackgroundColor
         button.layer.borderColor = (active ? self.activeBorderColor : self.inactiveBorderColor).cgColor
-        button.layer.shadowOpacity = active ? 0.20 : 0.12
-        button.transform = active ? CGAffineTransform(scaleX: 1.03, y: 1.03) : .identity
+        button.layer.shadowOpacity = active ? 0.14 : 0.08
+        button.layer.shadowRadius = active ? 10.0 : 7.0
+        button.transform = active ? CGAffineTransform(scaleX: 1.02, y: 1.02) : .identity
     }
 }
 

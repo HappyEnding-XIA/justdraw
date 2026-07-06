@@ -386,7 +386,7 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
 
             bottomDock.centerXAnchor.constraint(equalTo: self.view.centerXAnchor),
             bottomDock.widthAnchor.constraint(equalToConstant: self.bottomDockWidth()),
-            bottomDock.bottomAnchor.constraint(equalTo: self.view.bottomAnchor, constant: self.bottomDockBottomInset()),
+            bottomDock.bottomAnchor.constraint(equalTo: self.view.safeAreaLayoutGuide.bottomAnchor, constant: self.bottomDockBottomInset()),
             bottomDock.heightAnchor.constraint(equalToConstant: self.bottomDockHeight())
         ])
 
@@ -608,10 +608,10 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
         let newButton = self.iconButtonWithSymbolName("plus", accentColor: nil)
         self.undoButton = self.iconButtonWithSymbolName("arrow.uturn.backward", accentColor: nil)
         self.redoButton = self.iconButtonWithSymbolName("arrow.uturn.forward", accentColor: nil)
-        self.applyAccessibilityLabel("Palette", identifier: "top.palette", toControl: brandButton)
-        self.applyAccessibilityLabel("New Canvas", identifier: "top.new-canvas", toControl: newButton)
-        self.applyAccessibilityLabel("Undo", identifier: "top.undo", toControl: self.undoButton)
-        self.applyAccessibilityLabel("Redo", identifier: "top.redo", toControl: self.redoButton)
+        self.applyAccessibilityLabel(KCL10n.paletteTitle, identifier: "top.palette", toControl: brandButton)
+        self.applyAccessibilityLabel(KCL10n.newCanvasTitle, identifier: "top.new-canvas", toControl: newButton)
+        self.applyAccessibilityLabel(KCL10n.undoTitle, identifier: "top.undo", toControl: self.undoButton)
+        self.applyAccessibilityLabel(KCL10n.redoTitle, identifier: "top.redo", toControl: self.redoButton)
 
         newButton.addTarget(self, action: #selector(didTapNewCanvas), for: .touchUpInside)
         self.undoButton.addTarget(self, action: #selector(didTapUndo), for: .touchUpInside)

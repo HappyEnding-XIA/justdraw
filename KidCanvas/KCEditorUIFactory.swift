@@ -7,6 +7,79 @@
 
 import UIKit
 
+/// 编辑器通用视觉 token。只放颜色、圆角、阴影等外观常量，不承载业务含义。
+enum KCEditorVisualStyle {
+    static let inkColor = UIColor(red: 0.18, green: 0.24, blue: 0.31, alpha: 1.0)
+    static let mutedInkColor = UIColor(red: 0.48, green: 0.52, blue: 0.58, alpha: 1.0)
+    static let accentColor = UIColor(red: 0.97, green: 0.86, blue: 0.48, alpha: 1.0)
+    static let accentInkColor = UIColor(red: 0.39, green: 0.26, blue: 0.0, alpha: 1.0)
+    static let raisedBackgroundColor = UIColor(white: 1.0, alpha: 0.86)
+    static let compactBackgroundColor = UIColor(white: 1.0, alpha: 0.80)
+    static let pillBackgroundColor = UIColor(white: 1.0, alpha: 0.68)
+    static let disabledBackgroundColor = UIColor(white: 1.0, alpha: 0.58)
+    static let borderColor = UIColor(white: 1.0, alpha: 0.78).cgColor
+    static let activeBorderColor = UIColor(white: 1.0, alpha: 0.94).cgColor
+    static let subtleBorderColor = UIColor(red: 0.17, green: 0.22, blue: 0.30, alpha: 0.08).cgColor
+    static let shadowColor = UIColor(red: 0.37, green: 0.32, blue: 0.24, alpha: 1.0).cgColor
+
+    static func applyFloatingPanelChrome(to panel: UIView, blurView: UIVisualEffectView) {
+        panel.backgroundColor = UIColor.clear
+        panel.layer.cornerRadius = 26.0
+        panel.layer.cornerCurve = .continuous
+        panel.layer.shadowColor = shadowColor
+        panel.layer.shadowOpacity = 0.10
+        panel.layer.shadowRadius = 20.0
+        panel.layer.shadowOffset = CGSize(width: 0.0, height: 10.0)
+
+        blurView.layer.cornerRadius = 26.0
+        blurView.layer.cornerCurve = .continuous
+        blurView.layer.masksToBounds = true
+        blurView.layer.borderColor = UIColor(white: 1.0, alpha: 0.72).cgColor
+        blurView.layer.borderWidth = 1.0
+        blurView.contentView.backgroundColor = UIColor(white: 1.0, alpha: 0.24)
+    }
+
+    static func applyRaisedButtonAppearance(
+        to button: UIButton,
+        cornerRadius: CGFloat,
+        backgroundColor: UIColor = raisedBackgroundColor,
+        shadowOpacity: Float = 0.10,
+        shadowRadius: CGFloat = 9.0,
+        shadowOffset: CGSize = CGSize(width: 0.0, height: 5.0)
+    ) {
+        button.backgroundColor = backgroundColor
+        button.layer.cornerRadius = cornerRadius
+        button.layer.cornerCurve = .continuous
+        button.layer.borderWidth = 1.0
+        button.layer.borderColor = borderColor
+        button.layer.shadowColor = shadowColor
+        button.layer.shadowOpacity = shadowOpacity
+        button.layer.shadowRadius = shadowRadius
+        button.layer.shadowOffset = shadowOffset
+    }
+
+    static func applyCompactButtonAppearance(to button: UIButton, accent: Bool, cornerRadius: CGFloat = 16.0) {
+        button.backgroundColor = accent ? accentColor : compactBackgroundColor
+        button.tintColor = accent ? accentInkColor : inkColor
+        button.layer.cornerRadius = cornerRadius
+        button.layer.cornerCurve = .continuous
+        button.layer.borderWidth = 1.0
+        button.layer.borderColor = borderColor
+    }
+
+    static func applySmallToolButtonAppearance(to button: UIButton, accent: Bool) {
+        applyRaisedButtonAppearance(
+            to: button,
+            cornerRadius: 16.0,
+            backgroundColor: accent ? accentColor : compactBackgroundColor,
+            shadowOpacity: 0.05,
+            shadowRadius: 5.0,
+            shadowOffset: CGSize(width: 0.0, height: 2.0)
+        )
+        button.tintColor = accent ? accentInkColor : inkColor
+    }
+}
+
 /// App 层编辑器 UI 工厂：集中通用 UIKit 控件的样式创建。
 /// 只负责外观和固定尺寸，不绑定业务事件，不访问画布/会话状态。
 struct KCEditorUIFactory {
@@ -14,21 +87,11 @@ struct KCEditorUIFactory {
 
     func floatingPanel() -> UIView {
         let panel = UIView()
-        panel.backgroundColor = UIColor.clear
-        panel.layer.cornerRadius = 30.0
-        panel.layer.shadowColor = UIColor(red: 0.34, green: 0.26, blue: 0.14, alpha: 1.0).cgColor
-        panel.layer.shadowOpacity = 0.14
-        panel.layer.shadowRadius = 26.0
-        panel.layer.shadowOffset = CGSize(width: 0, height: 14)
 
         let effect = UIBlurEffect(style: .systemThinMaterialLight)
         let blurView = UIVisualEffectView(effect: effect)
         blurView.translatesAutoresizingMaskIntoConstraints = false
-        blurView.layer.cornerRadius = 30.0
-        blurView.layer.masksToBounds = true
-        blurView.layer.borderColor = UIColor(white: 1.0, alpha: 0.66).cgColor
-        blurView.layer.borderWidth = 1.0
-        blurView.contentView.backgroundColor = UIColor(white: 1.0, alpha: 0.28)
+        KCEditorVisualStyle.applyFloatingPanelChrome(to: panel, blurView: blurView)
         panel.addSubview(blurView)
 
         NSLayoutConstraint.activate([
@@ -44,15 +107,12 @@ struct KCEditorUIFactory {
     func iconButton(symbolName: String, accentColor: UIColor?) -> UIButton {
         let button = UIButton(type: .system)
         button.translatesAutoresizingMaskIntoConstraints = false
-        button.backgroundColor = accentColor ?? UIColor(white: 1.0, alpha: 0.76)
-        button.layer.cornerRadius = 18.0
-        button.layer.borderWidth = 1.0
-        button.layer.borderColor = UIColor(white: 1.0, alpha: 0.72).cgColor
-        button.layer.shadowColor = UIColor(red: 0.47, green: 0.40, blue: 0.29, alpha: 1.0).cgColor
-        button.layer.shadowOpacity = 0.12
-        button.layer.shadowRadius = 10.0
-        button.layer.shadowOffset = CGSize(width: 0, height: 6)
-        button.tintColor = UIColor(red: 0.19, green: 0.26, blue: 0.33, alpha: 1.0)
+        KCEditorVisualStyle.applyRaisedButtonAppearance(
+            to: button,
+            cornerRadius: 18.0,
+            backgroundColor: accentColor ?? KCEditorVisualStyle.raisedBackgroundColor
+        )
+        button.tintColor = KCEditorVisualStyle.inkColor
         let configuration = UIImage.SymbolConfiguration(pointSize: 20.0, weight: .bold)
         let image = UIImage(systemName: symbolName, withConfiguration: configuration)
         button.setImage(image, for: .normal)
@@ -66,16 +126,17 @@ struct KCEditorUIFactory {
     func historyThumbButton() -> UIButton {
         let button = UIButton(type: .custom)
         button.translatesAutoresizingMaskIntoConstraints = false
-        button.layer.cornerRadius = 20.0
         button.clipsToBounds = true
+        KCEditorVisualStyle.applyRaisedButtonAppearance(
+            to: button,
+            cornerRadius: 20.0,
+            backgroundColor: UIColor(red: 1.0, green: 0.995, blue: 0.98, alpha: 1.0),
+            shadowOpacity: 0.06,
+            shadowRadius: 8.0
+        )
+        button.layer.borderColor = KCEditorVisualStyle.subtleBorderColor
         button.layer.borderWidth = 2.0
-        button.layer.borderColor = UIColor(red: 0.17, green: 0.22, blue: 0.30, alpha: 0.08).cgColor
-        button.backgroundColor = UIColor(red: 1.0, green: 0.995, blue: 0.98, alpha: 1.0)
         button.imageView?.contentMode = .scaleAspectFill
-        button.layer.shadowColor = UIColor(red: 0.40, green: 0.32, blue: 0.22, alpha: 1.0).cgColor
-        button.layer.shadowOpacity = 0.08
-        button.layer.shadowRadius = 10.0
-        button.layer.shadowOffset = CGSize(width: 0, height: 6)
         let configuration = UIImage.SymbolConfiguration(pointSize: 24.0, weight: .semibold)
         let placeholder = UIImage(systemName: "photo", withConfiguration: configuration)?
             .withTintColor(UIColor(red: 0.62, green: 0.67, blue: 0.74, alpha: 0.52), renderingMode: .alwaysOriginal)
@@ -87,17 +148,15 @@ struct KCEditorUIFactory {
     func railToolButton(symbolName: String, slim: Bool) -> KDToolButton {
         let button = KDToolButton(type: .system)
         button.translatesAutoresizingMaskIntoConstraints = false
-        button.tintColor = UIColor(red: 0.19, green: 0.26, blue: 0.33, alpha: 1.0)
-        button.backgroundColor = slim
-            ? UIColor(red: 0.96, green: 0.85, blue: 0.48, alpha: 1.0)
-            : UIColor(white: 1.0, alpha: 0.82)
-        button.layer.cornerRadius = 20.0
-        button.layer.borderWidth = 1.0
-        button.layer.borderColor = UIColor(white: 1.0, alpha: 0.72).cgColor
-        button.layer.shadowColor = UIColor(red: 0.47, green: 0.40, blue: 0.29, alpha: 1.0).cgColor
-        button.layer.shadowOpacity = 0.08
-        button.layer.shadowRadius = 8.0
-        button.layer.shadowOffset = CGSize(width: 0, height: 4)
+        KCEditorVisualStyle.applyRaisedButtonAppearance(
+            to: button,
+            cornerRadius: 20.0,
+            backgroundColor: slim ? KCEditorVisualStyle.accentColor : KCEditorVisualStyle.raisedBackgroundColor,
+            shadowOpacity: 0.07,
+            shadowRadius: 7.0,
+            shadowOffset: CGSize(width: 0.0, height: 4.0)
+        )
+        button.tintColor = slim ? KCEditorVisualStyle.accentInkColor : KCEditorVisualStyle.inkColor
         let configuration = UIImage.SymbolConfiguration(pointSize: 20.0, weight: .bold)
         let image = UIImage(systemName: symbolName, withConfiguration: configuration)
         button.setImage(image, for: .normal)
@@ -123,13 +182,12 @@ struct KCEditorUIFactory {
         button.setTitle(title, for: .normal)
         button.titleLabel?.font = UIFont.systemFont(ofSize: 13.0, weight: .bold)
         button.setTitleColor(
-            active ? UIColor(red: 0.39, green: 0.26, blue: 0.0, alpha: 1.0) : UIColor(red: 0.49, green: 0.53, blue: 0.59, alpha: 1.0),
+            active ? KCEditorVisualStyle.accentInkColor : KCEditorVisualStyle.mutedInkColor,
             for: .normal
         )
-        button.backgroundColor = active ? UIColor(red: 0.97, green: 0.86, blue: 0.48, alpha: 1.0) : UIColor.clear
-        button.layer.cornerRadius = 16.0
+        KCEditorVisualStyle.applyCompactButtonAppearance(to: button, accent: active, cornerRadius: 16.0)
+        button.backgroundColor = active ? KCEditorVisualStyle.accentColor : UIColor.clear
         button.layer.borderWidth = active ? 1.0 : 0.0
-        button.layer.borderColor = UIColor(white: 1.0, alpha: 0.76).cgColor
         return button
     }
 
@@ -138,28 +196,24 @@ struct KCEditorUIFactory {
         button.setTitle(title, for: .normal)
         button.titleLabel?.font = UIFont.systemFont(ofSize: 13.0, weight: .bold)
         button.setTitleColor(
-            accent ? UIColor(red: 0.39, green: 0.26, blue: 0.0, alpha: 1.0) : UIColor(red: 0.23, green: 0.28, blue: 0.35, alpha: 1.0),
+            accent ? KCEditorVisualStyle.accentInkColor : KCEditorVisualStyle.inkColor,
             for: .normal
         )
-        button.backgroundColor = accent ? UIColor(red: 0.97, green: 0.86, blue: 0.48, alpha: 1.0) : UIColor(white: 1.0, alpha: 0.82)
-        button.layer.cornerRadius = 18.0
-        button.layer.borderWidth = 1.0
-        button.layer.borderColor = UIColor(white: 1.0, alpha: 0.72).cgColor
+        KCEditorVisualStyle.applyRaisedButtonAppearance(
+            to: button,
+            cornerRadius: 18.0,
+            backgroundColor: accent ? KCEditorVisualStyle.accentColor : KCEditorVisualStyle.raisedBackgroundColor,
+            shadowOpacity: 0.06,
+            shadowRadius: 6.0,
+            shadowOffset: CGSize(width: 0.0, height: 3.0)
+        )
         return button
     }
 
     func smallToolButton(symbolName: String, accent: Bool) -> UIButton {
         let button = UIButton(type: .system)
         button.translatesAutoresizingMaskIntoConstraints = false
-        button.tintColor = accent
-            ? UIColor(red: 0.39, green: 0.26, blue: 0.0, alpha: 1.0)
-            : UIColor(red: 0.23, green: 0.28, blue: 0.35, alpha: 1.0)
-        button.backgroundColor = accent
-            ? UIColor(red: 0.97, green: 0.86, blue: 0.48, alpha: 1.0)
-            : UIColor(white: 1.0, alpha: 0.82)
-        button.layer.cornerRadius = 16.0
-        button.layer.borderWidth = 1.0
-        button.layer.borderColor = UIColor(white: 1.0, alpha: 0.72).cgColor
+        KCEditorVisualStyle.applySmallToolButtonAppearance(to: button, accent: accent)
         let configuration = UIImage.SymbolConfiguration(pointSize: 16.0, weight: .bold)
         let image = UIImage(systemName: symbolName, withConfiguration: configuration)
         button.setImage(image, for: .normal)
@@ -170,14 +224,14 @@ struct KCEditorUIFactory {
     func toolCardButton(symbolName: String, accentColor: UIColor, title: String) -> KDBrushButton {
         let button = KDBrushButton(type: .system)
         button.translatesAutoresizingMaskIntoConstraints = false
-        button.backgroundColor = UIColor(white: 1.0, alpha: 0.84)
-        button.layer.cornerRadius = metrics.isCompactPhoneLayout ? 22.0 : 28.0
-        button.layer.borderWidth = 1.0
-        button.layer.borderColor = UIColor(white: 1.0, alpha: 0.72).cgColor
-        button.layer.shadowColor = UIColor(red: 0.47, green: 0.40, blue: 0.29, alpha: 1.0).cgColor
-        button.layer.shadowOpacity = 0.12
-        button.layer.shadowRadius = metrics.isCompactPhoneLayout ? 7.0 : 10.0
-        button.layer.shadowOffset = CGSize(width: 0, height: metrics.isCompactPhoneLayout ? 4.0 : 6.0)
+        KCEditorVisualStyle.applyRaisedButtonAppearance(
+            to: button,
+            cornerRadius: metrics.isCompactPhoneLayout ? 22.0 : 24.0,
+            backgroundColor: KCEditorVisualStyle.raisedBackgroundColor,
+            shadowOpacity: 0.09,
+            shadowRadius: metrics.isCompactPhoneLayout ? 6.0 : 8.0,
+            shadowOffset: CGSize(width: 0.0, height: metrics.isCompactPhoneLayout ? 3.0 : 5.0)
+        )
         button.widthAnchor.constraint(equalToConstant: metrics.brushCardWidth).isActive = true
         button.heightAnchor.constraint(equalToConstant: metrics.brushCardHeight).isActive = true
 
@@ -192,7 +246,7 @@ struct KCEditorUIFactory {
         label.translatesAutoresizingMaskIntoConstraints = false
         label.text = title
         label.font = UIFont.systemFont(ofSize: metrics.brushCardLabelFontSize, weight: .semibold)
-        label.textColor = UIColor(red: 0.16, green: 0.22, blue: 0.28, alpha: 1.0)
+        label.textColor = KCEditorVisualStyle.inkColor
 
         let halo = UIView()
         halo.translatesAutoresizingMaskIntoConstraints = false

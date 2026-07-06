@@ -20,7 +20,7 @@ final class KCToolRailFeature {
             KCToolRailItem(id: "brush", mode: .brush, symbolName: "pencil.tip", title: KCL10n.toolBrushTitle),
             KCToolRailItem(id: "eraser", mode: .eraser, symbolName: "eraser", title: KCL10n.toolEraserTitle),
             KCToolRailItem(id: "fill", mode: .fill, symbolName: "paintbrush.pointed", title: KCL10n.toolFillTitle),
-            KCToolRailItem(id: "sticker", mode: .sticker, symbolName: "star.circle", title: KCL10n.toolStickerTitle),
+            KCToolRailItem(id: "sticker", mode: .sticker, symbolName: "seal.fill", title: KCL10n.toolStickerTitle),
             KCToolRailItem(id: "eyedropper", mode: .picker, symbolName: "eyedropper.halffull", title: KCL10n.toolPickerTitle)
         ]
     }
@@ -40,7 +40,8 @@ final class KCToolRailFeature {
             ? self.activeBackgroundColor
             : (self.accentColor(for: button.toolMode) ?? self.defaultBackgroundColor)
         button.layer.borderColor = (active ? self.activeBorderColor : self.inactiveBorderColor).cgColor
-        button.layer.shadowOpacity = active ? 0.14 : 0.08
+        button.layer.shadowOpacity = active ? 0.12 : 0.06
+        button.layer.shadowRadius = active ? 8.0 : 6.0
         button.transform = .identity
     }
 }

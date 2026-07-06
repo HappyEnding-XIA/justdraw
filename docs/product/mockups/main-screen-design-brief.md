@@ -82,7 +82,7 @@ Include:
 - Brush
 - Eraser
 - Fill
-- Sticker
+- Stamp
 - Eyedropper
 
 Design notes:
@@ -114,7 +114,7 @@ Include:
 - Color section
 - Brush size section
 - Recent colors
-- Sticker preview strip
+- Stamp preview strip
 - Draft / history preview area
 
 Design notes:

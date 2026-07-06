@@ -53,7 +53,7 @@ struct KCDeviceLayoutMetrics {
     }
 
     var bottomDockBottomInset: CGFloat {
-        isCompactPhoneLayout ? -12.0 : -22.0
+        isCompactPhoneLayout ? -8.0 : -18.0
     }
 
     var bottomDockTitleWidth: CGFloat {

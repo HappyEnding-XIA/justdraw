@@ -64,6 +64,67 @@ def localization_checks(zh_localizable, en_localizable, zh_info_plist, en_info_p
     if l10n_entry.exists():
         entry_text = l10n_entry.read_text(encoding="utf-8")
         checks.append(require_text(entry_text, "NSLocalizedString", "Localization entry routes through NSLocalizedString"))
+        for top_toolbar_entry in [
+            "static var paletteTitle: String",
+            "static var newCanvasTitle: String",
+            "static var undoTitle: String",
+            "static var redoTitle: String",
+        ]:
+            checks.append(require_text(entry_text, top_toolbar_entry, f"Localization entry exposes top toolbar text: {top_toolbar_entry}"))
+
+    # T055: 产品侧将贴纸能力命名为“印章 / Stamp”。内部仍沿用 sticker key/id 作为稳定模型，
+    # 但用户可见的工具、面板、编辑按钮、芯片和无障碍文案必须展示为印章语义。
+    expected_product_strings = [
+        (zh_localizable, "zh-Hans", [
+            '"tool.sticker.title" = "印章";',
+            '"panel.brush-sticker.title" = "画笔 / 印章";',
+            '"panel.stickers.title" = "印章";',
+            '"panel.sticker-edit.title" = "印章编辑";',
+            '"sticker.bring-forward.title" = "印章前移";',
+            '"sticker.delete.title" = "删除印章";',
+            '"sticker.category.accessibility" = "%@ 印章";',
+            '"sticker.symbol.default" = "印章";',
+            '"chip.title.sticker" = "印章";',
+        ]),
+        (en_localizable, "en", [
+            '"tool.sticker.title" = "Stamp";',
+            '"panel.brush-sticker.title" = "Brush / Stamp";',
+            '"panel.stickers.title" = "Stamps";',
+            '"panel.sticker-edit.title" = "Stamp Edit";',
+            '"sticker.bring-forward.title" = "Bring Stamp Forward";',
+            '"sticker.delete.title" = "Delete Stamp";',
+            '"sticker.category.accessibility" = "%@ Stamps";',
+            '"sticker.symbol.default" = "Stamp";',
+            '"chip.title.sticker" = "Stamp";',
+        ]),
+    ]
+    for path, locale_label, expected_lines in expected_product_strings:
+        if not path.exists():
+            continue
+        locale_text = path.read_text(encoding="utf-8")
+        for expected_line in expected_lines:
+            checks.append(require_text(locale_text, expected_line, f"{locale_label} sticker product text is stamp-facing: {expected_line}"))
+
+    expected_top_toolbar_strings = [
+        (zh_localizable, "zh-Hans", [
+            '"top.palette.title" = "调色板";',
+            '"top.new-canvas.title" = "新画布";',
+            '"top.undo.title" = "撤销";',
+            '"top.redo.title" = "重做";',
+        ]),
+        (en_localizable, "en", [
+            '"top.palette.title" = "Palette";',
+            '"top.new-canvas.title" = "New Canvas";',
+            '"top.undo.title" = "Undo";',
+            '"top.redo.title" = "Redo";',
+        ]),
+    ]
+    for path, locale_label, expected_lines in expected_top_toolbar_strings:
+        if not path.exists():
+            continue
+        locale_text = path.read_text(encoding="utf-8")
+        for expected_line in expected_lines:
+            checks.append(require_text(locale_text, expected_line, f"{locale_label} top toolbar text is localized: {expected_line}"))
 
     # InfoPlist.strings must localize the photo permission keys in both languages.
     for locale_label, info_path in [("zh-Hans", zh_info_plist), ("en", en_info_plist)]:
@@ -89,8 +150,87 @@ def preview_checks(preview_text):
     checks.append(require_count_at_least(preview_text, r'class="[^"]*brush-card', 3, "Preview bottom dock shows brush cards"))
     checks.append(require_count_at_least(preview_text, r'class="[^"]*brush-tip', 3, "Preview brush cards show colored tips"))
     checks.append(require_count_at_least(preview_text, r'class="[^"]*color-dot', 12, "Preview color panel shows visible color dots"))
-    checks.append(require_count_at_least(preview_text, r'class="[^"]*sticker-cat', 4, "Preview sticker panel shows category icons"))
-    checks.append(require_count_at_least(preview_text, r'class="[^"]*sticker-pill', 4, "Preview sticker panel shows stickers for the active category"))
+    checks.append(require_count_at_least(preview_text, r'class="[^"]*sticker-cat', 4, "Preview stamp panel shows category icons"))
+    checks.append(require_count_at_least(preview_text, r'class="[^"]*sticker-pill', 4, "Preview stamp panel shows stamps for the active category"))
+    return checks
+
+
+def product_stamp_naming_checks():
+    checks = []
+    product_paths = [
+        ROOT / "docs" / "product" / "prd.md",
+        ROOT / "docs" / "product" / "mockups" / "main-screen-design-brief.md",
+        ROOT / "docs" / "product" / "mockups" / "ui-preview.html",
+        ROOT / "docs" / "product" / "mockups" / "ui-preview.svg",
+    ]
+    combined_product_text = ""
+    for path in product_paths:
+        if not path.exists():
+            checks.append(fail(f"Product document exists: {path.relative_to(ROOT)}"))
+            continue
+        text = path.read_text(encoding="utf-8")
+        combined_product_text += f"\n--- {path.relative_to(ROOT)} ---\n{text}"
+        checks.append(ok(f"Product document exists: {path.relative_to(ROOT)}"))
+        checks.append(forbid_text(text, "Sticker", f"{path.relative_to(ROOT)} has no user-visible Sticker wording"))
+        checks.append(forbid_text(text, "Stickers", f"{path.relative_to(ROOT)} has no user-visible Stickers wording"))
+        checks.append(forbid_text(text, "贴纸", f"{path.relative_to(ROOT)} has no user-visible 贴纸 wording"))
+
+    checks.append(require_text(combined_product_text, "印章", "Product docs use the Chinese stamp product term"))
+    checks.append(require_text(combined_product_text, "Stamp", "Product mockups use the English stamp product term"))
+    checks.append(require_text(combined_product_text, "支持 iPhone 和 iPad", "PRD states iPhone and iPad support"))
+    checks.append(require_text(combined_product_text, "横屏优先", "PRD states landscape-first orientation"))
+    checks.append(forbid_text(combined_product_text, "仅支持 iOS iPad", "PRD no longer states iPad-only support"))
+    checks.append(forbid_text(combined_product_text, "仅支持 iPad", "PRD no longer states iPad-only final product"))
+    checks.append(forbid_text(combined_product_text, 'aria-label="sticker"', "Mockup accessibility text does not expose sticker wording"))
+    checks.append(forbid_text(combined_product_text, 'data-tip="Sticker"', "Mockup tooltip text does not expose Sticker wording"))
+    return checks
+
+
+def delivery_acceptance_checks():
+    checks = []
+    checklist_path = ROOT / "docs" / "testing" / "DELIVERY_ACCEPTANCE_CHECKLIST.md"
+    docs_index_path = ROOT / "docs" / "README.md"
+
+    if not checklist_path.exists():
+        return [fail("Delivery acceptance checklist exists")]
+
+    checklist_text = checklist_path.read_text(encoding="utf-8")
+    docs_index_text = docs_index_path.read_text(encoding="utf-8")
+
+    checks.append(ok("Delivery acceptance checklist exists"))
+    checks.append(require_text(docs_index_text, "./testing/DELIVERY_ACCEPTANCE_CHECKLIST.md", "Docs index links the delivery acceptance checklist"))
+
+    required_flows = [
+        "F01 | 启动",
+        "F02 | 画笔",
+        "F03 | 橡皮",
+        "F04 | 填色",
+        "F05 | 取色",
+        "F06 | 印章",
+        "F07 | 颜色面板",
+        "F08 | 自定义色",
+        "F09 | 保存",
+        "F10 | 历史",
+        "F11 | 相册导入",
+        "F12 | 线稿",
+    ]
+    for flow in required_flows:
+        checks.append(require_text(checklist_text, flow, f"Delivery checklist covers core flow: {flow}"))
+
+    required_commands = [
+        "python3 scripts/validate_project.py",
+        "swift test",
+        "xcodebuild -project KidCanvas.xcodeproj -scheme KidCanvas -destination 'platform=iOS Simulator,name=iPhone 17 Pro' build -quiet",
+        "xcodebuild -project KidCanvas.xcodeproj -scheme KidCanvas -destination 'platform=iOS Simulator,name=iPad Pro 11 M4' build -quiet",
+        'scripts/runtime_smoke_test.sh "iPhone 17 Pro"',
+        'scripts/runtime_smoke_test.sh "iPad Pro 11 M4"',
+        "git diff --check",
+    ]
+    for command in required_commands:
+        checks.append(require_text(checklist_text, command, f"Delivery checklist documents required command: {command}"))
+
+    checks.append(require_text(checklist_text, "人工触控", "Delivery checklist separates manual touch acceptance from automated checks"))
+    checks.append(require_text(checklist_text, "文档同步", "Delivery checklist requires documentation sync in delivery records"))
     return checks
 
 
@@ -480,6 +620,24 @@ def app_feature_checks(
     checks.append(require_text(editor_ui_factory_text, "func panelTitleLabel(_ title: String) -> UILabel", "Panel title label creation lives in KCEditorUIFactory"))
     checks.append(require_text(editor_ui_factory_text, "func segmentButton(title: String, active: Bool) -> UIButton", "Segment button creation lives in KCEditorUIFactory"))
     checks.append(require_text(editor_ui_factory_text, "func toolCardButton(symbolName: String, accentColor: UIColor, title: String) -> KDBrushButton", "Brush card creation lives in KCEditorUIFactory"))
+    checks.append(require_text(editor_ui_factory_text, "enum KCEditorVisualStyle", "Editor visual style tokens are centralized"))
+    checks.append(forbid_text(editor_ui_factory_text, "private enum KCEditorVisualStyle", "Editor visual style tokens are reusable across App UI helpers"))
+    checks.append(require_text(editor_ui_factory_text, "cornerCurve = .continuous", "Editor controls use continuous corners for a more polished surface"))
+    checks.append(require_text(editor_ui_factory_text, "applyFloatingPanelChrome", "Floating panel glass/chrome styling is centralized"))
+    checks.append(require_text(editor_ui_factory_text, "applyRaisedButtonAppearance", "Raised button styling is centralized"))
+    checks.append(require_text(editor_ui_factory_text, "applyCompactButtonAppearance", "Compact button styling is centralized"))
+    checks.append(require_text(editor_ui_factory_text, "applySmallToolButtonAppearance", "Small tool button styling is centralized without overlapping helper calls"))
+    checks.append(require_text(editor_ui_factory_text, "KCEditorVisualStyle.applyFloatingPanelChrome", "Floating panels use centralized chrome styling"))
+    checks.append(require_count_at_least(editor_ui_factory_text, r"KCEditorVisualStyle\.applyRaisedButtonAppearance", 4, "Primary editor buttons reuse raised-button styling"))
+    checks.append(require_count_at_least(editor_ui_factory_text, r"KCEditorVisualStyle\.applyCompactButtonAppearance", 1, "Compact editor controls reuse compact-button styling"))
+    checks.append(require_text(editor_ui_factory_text, "KCEditorVisualStyle.applySmallToolButtonAppearance", "Small editor controls reuse the dedicated small-button styling"))
+    checks.append(require_text(brush_sticker_panel_text, "func applyPillSelectionAppearance", "Brush/stamp panel centralizes pill selection styling"))
+    checks.append(require_text(brush_sticker_panel_text, "func applyStampButtonAppearance", "Brush/stamp panel centralizes stamp button styling"))
+    checks.append(require_text(brush_sticker_panel_text, "button.layer.cornerCurve = .continuous", "Brush/stamp panel buttons use continuous corners"))
+    checks.append(require_text(brush_sticker_panel_text, "KCEditorVisualStyle.accentColor", "Brush/stamp panel reuses shared editor visual tokens"))
+    checks.append(require_text(brush_sticker_panel_text, "KCEditorVisualStyle.shadowColor", "Brush/stamp panel reuses shared shadow token"))
+    checks.append(forbid_text(brush_sticker_panel_text, "activePillBackgroundColor", "Brush/stamp panel does not duplicate active pill color tokens"))
+    checks.append(forbid_text(brush_sticker_panel_text, "inactiveButtonBackgroundColor", "Brush/stamp panel does not duplicate button color tokens"))
     checks.append(require_text(main_text, "private var editorUIFactory: KCEditorUIFactory", "Main view controller delegates common UI creation to KCEditorUIFactory"))
     checks.append(require_text(main_text, "return self.editorUIFactory.floatingPanel()", "Floating panel helper delegates to KCEditorUIFactory"))
     checks.append(require_text(pbx_text, "KCPressFeedbackController.swift in Sources", "Press feedback controller is included in the app target sources"))
@@ -589,6 +747,7 @@ def app_feature_checks(
     checks.append(require_text(tool_rail_feature_text, 'id: "eraser"', "Tool Rail feature declares the eraser item"))
     checks.append(require_text(tool_rail_feature_text, 'id: "fill"', "Tool Rail feature declares the fill item"))
     checks.append(require_text(tool_rail_feature_text, 'id: "sticker"', "Tool Rail feature declares the sticker item"))
+    checks.append(require_text(tool_rail_feature_text, 'KCToolRailItem(id: "sticker", mode: .sticker, symbolName: "seal.fill"', "Product-facing stamp tool uses a stamp-like SF Symbol"))
     checks.append(require_text(tool_rail_feature_text, 'id: "eyedropper"', "Tool Rail feature declares the eyedropper item"))
     checks.append(require_text(main_text, "private(set) lazy var toolRailFeature: KCToolRailFeature", "Main view controller owns a Tool Rail feature instance"))
     checks.append(require_text(main_text, "let items = self.toolRailFeature.toolItems()", "Main view controller delegates tool rail item creation to KCToolRailFeature"))
@@ -611,6 +770,7 @@ def app_feature_checks(
     checks.append(require_text(main_text, "return self.layoutMetrics.rightPanelWidth", "Right panel width is delegated to KCDeviceLayoutMetrics"))
     checks.append(require_text(main_text, "return self.layoutMetrics.bottomDockWidth", "Bottom dock width is delegated to KCDeviceLayoutMetrics"))
     checks.append(require_text(main_text, "return self.layoutMetrics.brushCardWidth", "Brush card width is delegated to KCDeviceLayoutMetrics"))
+    checks.append(require_text(main_text, "bottomDock.bottomAnchor.constraint(equalTo: self.view.safeAreaLayoutGuide.bottomAnchor", "Bottom brush dock respects the safe area"))
     checks.append(require_regex(main_text, r"rightScrollView\.clipsToBounds = true", "Right menu clips content inside its scroll container"))
     checks.append(require_regex(main_text, r"func paletteColorButtonSize\(\) -> CGFloat[\s\S]*return self\.isCompactPhoneLayout \? 26\.0 : self\.contentPicker\.paletteColorButtonSize", "Color swatches shrink inside compact iPhone right menu"))
     checks.append(require_regex(main_text, r"func buildBottomDock[\s\S]*scrollView\.clipsToBounds = true[\s\S]*panel\.addSubview\(scrollView\)", "Bottom brush dock clips horizontal scroll content"))
@@ -759,6 +919,17 @@ def app_feature_checks(
     # T026: tool menus/titles/hints are localized through KCL10n; the key English hardcodes
     # must not return to user-visible UI paths, and the controller must route through KCL10n.
     checks.append(require_regex(main_text, r"KCL10n\.", "Main view controller routes user-visible text through the KCL10n localization entry"))
+    for hardcoded_top_label in [
+        'applyAccessibilityLabel("Palette"',
+        'applyAccessibilityLabel("New Canvas"',
+        'applyAccessibilityLabel("Undo"',
+        'applyAccessibilityLabel("Redo"',
+    ]:
+        checks.append(forbid_text(main_text, hardcoded_top_label, f"Top toolbar accessibility text is not hardcoded: {hardcoded_top_label}"))
+    checks.append(require_text(main_text, "self.applyAccessibilityLabel(KCL10n.paletteTitle", "Top palette accessibility text is localized"))
+    checks.append(require_text(main_text, "self.applyAccessibilityLabel(KCL10n.newCanvasTitle", "Top new-canvas accessibility text is localized"))
+    checks.append(require_text(main_text, "self.applyAccessibilityLabel(KCL10n.undoTitle", "Top undo accessibility text is localized"))
+    checks.append(require_text(main_text, "self.applyAccessibilityLabel(KCL10n.redoTitle", "Top redo accessibility text is localized"))
     checks.append(forbid_text(main_text, 'panelTitleLabel("Colors")', "Colors panel title is localized (no hardcoded English)"))
     checks.append(forbid_text(main_text, 'panelTitleLabel("Stickers")', "Stickers panel title is localized (no hardcoded English)"))
     checks.append(forbid_text(main_text, 'panelTitleLabel("Eraser")', "Eraser panel title is localized (no hardcoded English)"))
@@ -992,6 +1163,8 @@ def main():
     checks.extend(apple_double_checks())
     checks.extend(architecture_reality_checks())
     checks.extend(module_documentation_checks())
+    checks.extend(delivery_acceptance_checks())
+    checks.extend(product_stamp_naming_checks())
     checks.extend(app_feature_checks(
         main_text,
         canvas_text,

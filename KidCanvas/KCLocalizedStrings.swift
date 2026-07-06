@@ -32,6 +32,10 @@ enum KCL10n {
 
     // MARK: - 顶部工具栏
 
+    static var paletteTitle: String { tr("top.palette.title") }
+    static var newCanvasTitle: String { tr("top.new-canvas.title") }
+    static var undoTitle: String { tr("top.undo.title") }
+    static var redoTitle: String { tr("top.redo.title") }
     static var openLatestTitle: String { tr("top.open-latest.title") }
     static var lineArtTitle: String { tr("top.line-art.title") }
     static var importPhotoTitle: String { tr("top.import-photo.title") }
@@ -73,7 +77,7 @@ enum KCL10n {
     static var penTitle: String { tr("brush.pen.title") }
     static var crayonTitle: String { tr("brush.crayon.title") }
 
-    // MARK: - 粗细 / 橡皮 / 贴纸编辑
+    // MARK: - 粗细 / 橡皮 / 印章编辑
 
     static var sizeSliderAccessibility: String { tr("size.slider.accessibility") }
     static var circleEraserTitle: String { tr("eraser.circle.title") }
@@ -82,9 +86,10 @@ enum KCL10n {
     static var bringStickerForwardTitle: String { tr("sticker.bring-forward.title") }
     static var deleteStickerTitle: String { tr("sticker.delete.title") }
 
-    // MARK: - 贴纸分类
+    // MARK: - 印章分类
 
     /// 分类稳定标识（与 `content.json` 的 `stickerGroups[].title` 一致）→ 本地化展示名。
+    /// 产品侧展示为“印章”，内部仍沿用 sticker 稳定模型和资源 schema。
     static func stickerCategoryTitle(_ categoryIdentifier: String) -> String {
         switch categoryIdentifier {
         case "Animals": return tr("sticker.category.animals.title")
@@ -95,12 +100,12 @@ enum KCL10n {
         }
     }
 
-    /// 分类稳定标识 → 「<分类> 贴纸」无障碍标签。
+    /// 分类稳定标识 → 「<分类> 印章」无障碍标签。
     static func stickerCategoryAccessibility(_ categoryIdentifier: String) -> String {
         String(format: tr("sticker.category.accessibility"), stickerCategoryTitle(categoryIdentifier))
     }
 
-    /// 贴纸本地化 key（由 `KCStickerCategoryMapping` 返回）→ 本地化无障碍标签。
+    /// 印章本地化 key（由 `KCStickerCategoryMapping` 返回）→ 本地化无障碍标签。
     static func stickerSymbolAccessibility(_ localizationKey: String) -> String {
         tr(localizationKey)
     }

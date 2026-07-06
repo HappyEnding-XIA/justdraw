@@ -6,7 +6,7 @@ App 层画笔 Dock Feature：集中底部画笔项配置，包括画笔 id、`KD
 
 - 提供底部 Dock 当前支持的画笔项列表：铅笔、钢笔、蜡笔。
 - 统一维护画笔卡片强调色，按 `KDBrushStyle` 匹配，不依赖展示文案。
-- 判断 Dock 按钮是否匹配当前工具 / 当前画笔，并统一应用选中态样式。
+- 判断 Dock 按钮是否匹配当前工具 / 当前画笔，并统一应用选中态背景、边框、阴影和轻量缩放。
 - 输出 `KCBrushDockItem` DTO，供 `KCMainViewController` 创建按钮、设置无障碍标识和绑定事件。
 
 ## 2. 边界
@@ -20,7 +20,7 @@ App 层画笔 Dock Feature：集中底部画笔项配置，包括画笔 id、`KD
 - `KCMainViewController.brushDockFeature` 持有 `KCBrushDockFeature` 实例。
 - `buildBottomDock(_:)` 通过 `brushDockFeature.brushItems()` 获取画笔配置，再交给 `toolCardButtonWithSymbolName(...)` 创建卡片按钮。
 - `refreshBrushDockSelection()` 委托 `brushDockFeature.isButton(...)` 和 `applySelectionAppearance(...)` 处理选中态判断与外观。
-- `scripts/validate_project.py` 校验新文件已进入 App target Sources，并防止画笔 tuple 配置、`brushColor` 决策和 Dock 选中态样式回流主控制器。
+- `scripts/validate_project.py` 校验新文件已进入 App target Sources，并防止画笔 tuple 配置、`brushColor` 决策和 Dock 选中态样式回流主控制器；T056 后基础卡片质感来自 `KCEditorUIFactory`，本 Feature 只叠加选中态。
 
 ## 4. 验收规则
 
