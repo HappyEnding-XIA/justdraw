@@ -250,6 +250,7 @@ def app_feature_checks(
     composition_root_text,
     catalog_text,
     content_picker_feature_text,
+    canvas_feature_text,
     kc_content_picker_layout_text,
     kc_recent_color_queue_text,
     kc_sticker_category_mapping_text,
@@ -429,7 +430,7 @@ def app_feature_checks(
     checks.append(require_text(main_text, "func normalizedImage", "Album import rejects invalid image dimensions"))
     checks.append(require_text(main_text, "UIImageWriteToSavedPhotosAlbum", "Save to Photos exists"))
     checks.append(require_regex(main_text, r"func didTapSaveSession[\s\S]*hasVisibleContent[\s\S]*showSaveToastWithSuccess\(false\)", "Save action refuses empty canvas before creating history or Photos output", re.S))
-    checks.append(require_regex(main_text, r"func refreshActionButtons[\s\S]*saveButton\.isEnabled = self\.canvasView\.hasVisibleContent\(\)", "Save button is disabled for empty canvas"))
+    checks.append(require_regex(main_text, r"func refreshActionButtons[\s\S]*self\.canvasFeature\.actionState\(for: self\.canvasView\)[\s\S]*saveButton\.isEnabled = actionState\.canSave", "Save button is disabled for empty canvas"))
     checks.append(require_regex(main_text, r"saveButton\.tintColor = self\.saveButton\.isEnabled[\s\S]*0\.55[\s\S]*0\.60[\s\S]*0\.67", "Disabled save button icon is visually muted"))
     checks.append(require_text(session_store_bridge_text, "generateThumbnail", "History thumbnails are generated"))
     checks.append(require_text(kc_session_store_text, '"draft.png"', "Draft session persistence exists"))
@@ -471,11 +472,21 @@ def app_feature_checks(
     checks.append(require_regex(main_text, r"self\.history\.thumbStatus\([\s\S]*status\.borderWidth[\s\S]*status\.isEmphasized", "History thumbnails apply KCDomain thumb-status decisions via the history feature"))
     checks.append(require_text(main_text, "self.history.borderColor(for: status)", "History thumbnail border color is delegated to the history feature"))
     checks.append(require_text(history_feature_text, "func canDeleteHistory(", "Delete-history availability is decided by the history feature"))
+    # T033: canvas creation and action-state decisions are now behind the App-layer
+    # KCCanvasFeature boundary. The controller keeps UIKit coordination, but it should
+    # no longer create the canvas view or compute undo/redo/save availability directly.
+    checks.append(require_text(canvas_feature_text, "final class KCCanvasFeature", "Canvas Feature boundary exists"))
+    checks.append(require_text(canvas_feature_text, "func makeCanvasView(delegate:", "Canvas Feature creates configured canvas views"))
+    checks.append(require_text(canvas_feature_text, "struct ActionState", "Canvas Feature exposes a typed action state"))
+    checks.append(require_text(canvas_feature_text, "canSave: canvasView.hasVisibleContent()", "Canvas Feature owns visible-content save availability"))
+    checks.append(require_text(main_text, "private(set) lazy var canvasFeature: KCCanvasFeature", "Main view controller owns a Canvas Feature instance"))
+    checks.append(require_text(main_text, "self.canvasFeature.makeCanvasView(delegate: self)", "Main view controller delegates canvas creation to KCCanvasFeature"))
+    checks.append(require_regex(main_text, r"func refreshActionButtons[\s\S]*self\.canvasFeature\.actionState\(for: self\.canvasView\)[\s\S]*self\.saveButton\.isEnabled = actionState\.canSave", "Save button availability is delegated to KCCanvasFeature"))
     checks.append(require_regex(main_text, r"func openSession[\s\S]*preserveUnsavedActiveSessionDraftIfNeeded\(\)[\s\S]*self\.sessionStore\.clearDraft\(\)", "Opening another history item preserves dirty edits without clearing their draft"))
     checks.append(require_regex(main_text, r"func preserveUnsavedActiveSessionDraftIfNeeded[\s\S]*self\.sessionStore\.saveDraftImage\(snapshot\)[\s\S]*return true", "Dirty active saved sessions can be synchronously preserved as draft"))
     checks.append(require_regex(main_text, r"func didTapNewCanvas[\s\S]*self\.suppressNextDraftSave = true[\s\S]*self\.canvasView\.startBlankCanvas\(\)", "New canvas starts a clean blank session without creating a draft"))
     checks.append(require_regex(main_text, r"func didTapDeleteLatestSession[\s\S]*shouldDeleteDraft[\s\S]*self\.suppressNextDraftSave = true[\s\S]*self\.canvasView\.startBlankCanvas\(\)", "Deleting the active draft starts a clean blank session"))
-    checks.append(require_regex(main_text, r"func saveDraftIfNeeded[\s\S]*self\.activeSession != nil && !self\.activeSessionHasUnsavedChanges[\s\S]*return[\s\S]*self\.canvasView\.hasVisibleContent\(\)", "Draft autosave skips only unchanged saved sessions"))
+    checks.append(require_regex(main_text, r"func saveDraftIfNeeded[\s\S]*self\.activeSession != nil && !self\.activeSessionHasUnsavedChanges[\s\S]*return[\s\S]*self\.canvasFeature\.hasVisibleContent\(self\.canvasView\)", "Draft autosave skips only unchanged saved sessions"))
     checks.append(require_text(main_text, "line-art.picker", "Line-art picker has an automation identifier"))
     checks.append(require_text(main_text, "draftSaveTimer?.invalidate()", "Draft save timer is invalidated during destructive state changes"))
     checks.append(require_regex(main_text, r"preserveUnsavedActiveSessionDraftIfNeeded\(\)[\s\S]*self\.sessionStore\.clearDraft\(\)[\s\S]*self\.canvasView\.loadLineArtImage\(lineArt\)", "Line-art loading preserves dirty edits before replacing the canvas", re.S))
@@ -582,6 +593,7 @@ def main():
     composition_root_text = (ROOT / "KidCanvas" / "KCAppCompositionRoot.swift").read_text(encoding="utf-8")
     catalog_text = (ROOT / "Packages" / "KidCanvasModules" / "Sources" / "KCContentCatalog" / "Resources" / "content.json").read_text(encoding="utf-8")
     content_picker_feature_text = (ROOT / "KidCanvas" / "KCContentPickerFeature.swift").read_text(encoding="utf-8")
+    canvas_feature_text = (ROOT / "KidCanvas" / "KCCanvasFeature.swift").read_text(encoding="utf-8")
     kc_content_picker_layout_text = (ROOT / "Packages" / "KidCanvasModules" / "Sources" / "KCDomain" / "KCContentPickerLayout.swift").read_text(encoding="utf-8")
     kc_recent_color_queue_text = (ROOT / "Packages" / "KidCanvasModules" / "Sources" / "KCDomain" / "KCRecentColorQueue.swift").read_text(encoding="utf-8")
     kc_sticker_category_mapping_text = (ROOT / "Packages" / "KidCanvasModules" / "Sources" / "KCDomain" / "KCStickerCategoryMapping.swift").read_text(encoding="utf-8")
@@ -609,6 +621,7 @@ def main():
         composition_root_text,
         catalog_text,
         content_picker_feature_text,
+        canvas_feature_text,
         kc_content_picker_layout_text,
         kc_recent_color_queue_text,
         kc_sticker_category_mapping_text,

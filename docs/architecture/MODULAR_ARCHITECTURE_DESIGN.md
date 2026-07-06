@@ -375,14 +375,23 @@ Feature 拆分进度（App 层 Feature 类型 + KCDomain 纯逻辑）：
 
 ### 6.11 `KCCanvasFeature`
 
-职责：
+当前状态：已建立 App 层最小边界。
 
-- 主画布页面
-- 编排画布、历史、面板、导入、保存、导出流程
-- 承接编辑器状态
-- 连接各个能力模块
+已承接职责：
 
-这是 Feature 层的聚合入口，但它不应该重新实现底层能力。
+- 创建并配置 `KCDrawingCanvasView`
+- 输出 undo / redo / save 按钮可用性的 `ActionState`
+- 封装画布是否有可保存内容的判断
+- 封装贴纸默认 symbol fallback
+- 封装当前填充色读取
+
+暂不承接职责：
+
+- 触摸绘制、撤销栈、贴纸手势与 Core Graphics 绘制仍留在 `KCDrawingCanvasView`
+- 保存、草稿、历史、相册导入导出仍由 `KCMainViewController` 协调
+- 线稿程序化绘制闭包仍留在 App 层，后续再迁移到绘制能力边界
+
+演进原则：`KCCanvasFeature` 是主画布 Feature 的聚合入口，但不重新实现底层绘制能力；控制器可以逐步把“状态决策”和“依赖装配”迁入 Feature，视觉和运行行为必须保持 iPhone + iPad 双端稳定。
 
 ## 7. SPM 组织方案
 
@@ -599,6 +608,15 @@ flowchart TD
 - 第一阶段不做多 target 产品拆分
 - 第一阶段不做云同步、账号体系、社区分享
 - 第一阶段不引入大型第三方架构框架
+
+### 12.3 下一阶段暂缓技术债
+
+| 技术债 | 当前决策 | 后续触发条件 | 验收口径 |
+|:---|:---|:---|:---|
+| `KCDrawingEngineAdapter` 实例化 / 协议化 / DI 化 | 暂缓。当前 adapter 无状态，静态调用风险低 | `KCCanvasFeature` 继续承接画布能力编排，或出现 mock / 多实现测试需求 | 有协议抽象、Composition Root 注入、双端构建与现有绘制测试通过 |
+| 色盘 JSON 化 | 暂缓。App 已通过 `KCContentCatalog` 消费色盘，色盘仍是模块内集中数据源 | 需要运营配置、多语言色盘命名、或远端内容下发 | JSON 资源解析测试覆盖，颜色顺序与现有 UI 无回归 |
+| 线稿绘制闭包迁移到 DrawingEngine | 暂缓。涉及视觉/像素回归 | 画布 Feature 边界稳定后，单独迁移程序化线稿绘制 | 线稿数量、id、顺序不变，截图/像素或人工视觉验收通过 |
+| 继续拆 `KCMainViewController` | 持续推进，按最小边界拆分 | 控制器新增职责前，优先评估能否进入 Feature | validator 覆盖新边界，iPhone/iPad build 与 runtime smoke 通过 |
 
 ## 13. 最终建议
 

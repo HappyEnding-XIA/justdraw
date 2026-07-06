@@ -21,6 +21,11 @@ BUNDLE_ID="com.kidcanvas.drawing"
 CONFIGURATION="${CONFIGURATION:-Debug}"
 DERIVED_DATA="${DERIVED_DATA:-/tmp/kc-dd}"
 SCREENSHOT_DIR="${SCREENSHOT_DIR:-/tmp}"
+SCREENSHOT_WAIT_SECONDS="${SCREENSHOT_WAIT_SECONDS:-3}"
+SCREENSHOT_RETRY_COUNT="${SCREENSHOT_RETRY_COUNT:-5}"
+SCREENSHOT_RETRY_INTERVAL="${SCREENSHOT_RETRY_INTERVAL:-1}"
+SCREENSHOT_MIN_BYTES="${SCREENSHOT_MIN_BYTES:-20000}"
+LAUNCH_TIMEOUT_SECONDS="${LAUNCH_TIMEOUT_SECONDS:-30}"
 
 # 项目根目录（本脚本位于 <root>/scripts/）。
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -80,13 +85,36 @@ xcrun simctl install "$UDID" "$APP"
 
 # 6. 启动并捕获输出（启动失败通常是 FBS code 4，属宿主机环境问题）。
 step "启动 $BUNDLE_ID"
-if ! LAUNCH_OUT="$(xcrun simctl launch "$UDID" "$BUNDLE_ID" 2>&1)"; then
+LAUNCH_OUT_FILE="$(mktemp /tmp/kc_smoke_launch.XXXXXX)"
+xcrun simctl launch "$UDID" "$BUNDLE_ID" >"$LAUNCH_OUT_FILE" 2>&1 &
+LAUNCH_PID="$!"
+launch_elapsed=0
+while kill -0 "$LAUNCH_PID" 2>/dev/null; do
+  if [ "$launch_elapsed" -ge "$LAUNCH_TIMEOUT_SECONDS" ]; then
+    kill "$LAUNCH_PID" 2>/dev/null || true
+    wait "$LAUNCH_PID" 2>/dev/null || true
+    LAUNCH_OUT="$(cat "$LAUNCH_OUT_FILE" 2>/dev/null || true)"
+    rm -f "$LAUNCH_OUT_FILE"
+    red "启动超时（超过 ${LAUNCH_TIMEOUT_SECONDS}s）：$LAUNCH_OUT"
+    red "这通常是宿主机 CoreSimulator/LaunchServices 卡住，不一定是代码问题。"
+    red "处理方法见 docs/testing/RUNTIME_SMOKE_TEST.md「CoreSimulator 卡住」。"
+    exit 5
+  fi
+  sleep 1
+  launch_elapsed=$((launch_elapsed + 1))
+done
+
+if ! wait "$LAUNCH_PID"; then
+  LAUNCH_OUT="$(cat "$LAUNCH_OUT_FILE" 2>/dev/null || true)"
+  rm -f "$LAUNCH_OUT_FILE"
   red "启动失败：$LAUNCH_OUT"
   red "若提示 'FBSOpenApplication Error Code 4'，通常是宿主机 CoreSimulator/"
   red "LaunchServices 数据库污染，不是代码问题（原 OC 版同样无法启动）。"
   red "处理方法见 docs/testing/RUNTIME_SMOKE_TEST.md「CoreSimulator 卡住」。"
   exit 5
 fi
+LAUNCH_OUT="$(cat "$LAUNCH_OUT_FILE" 2>/dev/null || true)"
+rm -f "$LAUNCH_OUT_FILE"
 PID="$(printf '%s' "$LAUNCH_OUT" | grep -oE '[0-9]+$' || true)"
 green "启动成功，PID=$PID"
 
@@ -108,11 +136,38 @@ else
   exit 6
 fi
 
-# 8. 截图。
+# 8. 截图。启动后 UI 渲染可能比进程存活稍晚，先等待再重试截图，
+# 避免 iPad 偶发抓到启动早期白屏。
 SHOT="$SCREENSHOT_DIR/kc_smoke_${DEVICE_NAME// /_}.png"
+step "等待 UI 渲染 ${SCREENSHOT_WAIT_SECONDS}s"
+sleep "$SCREENSHOT_WAIT_SECONDS"
+
 step "截图 → $SHOT"
-xcrun simctl io "$UDID" screenshot "$SHOT" >/dev/null 2>&1
-green "截图已保存: $SHOT"
+shot_ready=0
+for attempt in $(seq 1 "$SCREENSHOT_RETRY_COUNT"); do
+  xcrun simctl io "$UDID" screenshot "$SHOT" >/dev/null 2>&1 || true
+  shot_size=0
+  if [ -f "$SHOT" ]; then
+    shot_size="$(stat -f%z "$SHOT" 2>/dev/null || echo 0)"
+  fi
+
+  if [ "$shot_size" -ge "$SCREENSHOT_MIN_BYTES" ]; then
+    shot_ready=1
+    green "截图已保存: $SHOT (${shot_size} bytes)"
+    break
+  fi
+
+  if [ "$attempt" -lt "$SCREENSHOT_RETRY_COUNT" ]; then
+    blue "截图过小（${shot_size} bytes），等待 ${SCREENSHOT_RETRY_INTERVAL}s 后重试 ${attempt}/${SCREENSHOT_RETRY_COUNT}"
+    sleep "$SCREENSHOT_RETRY_INTERVAL"
+  fi
+done
+
+if [ "$shot_ready" != 1 ]; then
+  red "截图未达到最小大小 ${SCREENSHOT_MIN_BYTES} bytes，最后文件: $SHOT"
+  red "这通常表示 UI 仍未渲染完成或截图为空白，可调大 SCREENSHOT_WAIT_SECONDS / SCREENSHOT_RETRY_COUNT 后重试。"
+  exit 7
+fi
 
 echo
 green "✓ 运行时烟测通过 ($DEVICE_NAME)"

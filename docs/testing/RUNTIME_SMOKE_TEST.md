@@ -18,9 +18,18 @@ scripts/runtime_smoke_test.sh
 scripts/runtime_smoke_test.sh "iPad Pro 11 M4"
 ```
 
-脚本流程：清理 `._*` → 按设备名解析 UDID → 启动设备 → Debug 构建 → 安装 → 启动 → 等待 3 秒检查进程存活 → 截图到 `/tmp/kc_smoke_<device>.png`。
+脚本流程：清理 `._*` → 按设备名解析 UDID → 启动设备 → Debug 构建 → 安装 → 启动 → 轮询进程存活 → 等待 UI 渲染 → 重试截图直到文件大小达到阈值 → 截图到 `/tmp/kc_smoke_<device>.png`。
 
-可选环境变量：`CONFIGURATION`（默认 `Debug`）、`DERIVED_DATA`（默认 `/tmp/kc-dd`）、`SCREENSHOT_DIR`（默认 `/tmp`）。
+可选环境变量：
+
+- `CONFIGURATION`：构建配置，默认 `Debug`。
+- `DERIVED_DATA`：构建产物目录，默认 `/tmp/kc-dd`。
+- `SCREENSHOT_DIR`：截图输出目录，默认 `/tmp`。
+- `SCREENSHOT_WAIT_SECONDS`：启动成功后等待 UI 渲染的秒数，默认 `3`。
+- `SCREENSHOT_RETRY_COUNT`：截图最大重试次数，默认 `5`。
+- `SCREENSHOT_RETRY_INTERVAL`：截图过小时的重试间隔秒数，默认 `1`。
+- `SCREENSHOT_MIN_BYTES`：截图最小文件大小阈值，默认 `20000`。
+- `LAUNCH_TIMEOUT_SECONDS`：`simctl launch` 最大等待秒数，默认 `30`。
 
 ## 退出码
 
@@ -30,8 +39,9 @@ scripts/runtime_smoke_test.sh "iPad Pro 11 M4"
 | 2 | 指定设备不存在 |
 | 3 | 构建失败（日志 `/tmp/kc_smoke_build.log`）|
 | 4 | 找不到产物 `.app` |
-| 5 | 启动失败（常见 `FBSOpenApplication` code 4）|
+| 5 | 启动失败或启动超时（常见 `FBSOpenApplication` code 4 / CoreSimulator 卡住）|
 | 6 | 启动后进程未存活（崩溃）|
+| 7 | 截图为空或过小，UI 可能尚未渲染完成 |
 
 ## 故障排查
 
@@ -65,6 +75,14 @@ xcrun simctl spawn "<UDID>" log stream --predicate 'process == "KidCanvas"' --le
 ```
 
 对照改动定位。OC→Swift 转换若有备份（`/tmp/*.bak`），可对比转换前后行为。
+
+### 截图过小或白屏
+
+脚本会先等待 `SCREENSHOT_WAIT_SECONDS`，再最多重试 `SCREENSHOT_RETRY_COUNT` 次截图，并用 `SCREENSHOT_MIN_BYTES` 过滤明显空白或未渲染完成的截图。iPad 模拟器偶发启动早期白屏时，可临时调大等待时间：
+
+```bash
+SCREENSHOT_WAIT_SECONDS=6 SCREENSHOT_RETRY_COUNT=8 scripts/runtime_smoke_test.sh "iPad Pro 11 M4"
+```
 
 ## 环境依赖
 

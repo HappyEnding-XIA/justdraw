@@ -105,6 +105,8 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
     private(set) lazy var editorPanels: KCEditorPanelsFeature = KCEditorPanelsFeature()
     /// 历史 Feature（缩略图槽位状态推导 + 删除可用性），T024 抽出。
     private(set) lazy var history: KCHistoryFeature = KCHistoryFeature()
+    /// 主画布 Feature（画布创建 + 画布动作状态），T033 抽出最小边界。
+    private(set) lazy var canvasFeature: KCCanvasFeature = KCCanvasFeature()
     var sessions: [KCSessionMetadata] = []
     var activeSession: KCSessionMetadata?
     var selectedHistorySession: KCSessionMetadata?
@@ -288,10 +290,7 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
         self.view.addSubview(canvasContainer)
         self.canvasContainerView = canvasContainer
 
-        self.canvasView = KCDrawingCanvasView()
-        self.canvasView.translatesAutoresizingMaskIntoConstraints = false
-        self.canvasView.delegate = self
-        self.canvasView.clipsToBounds = true
+        self.canvasView = self.canvasFeature.makeCanvasView(delegate: self)
         canvasContainer.addSubview(self.canvasView)
         self.installCanvasGesturesOnView(self.canvasView)
 
@@ -1452,7 +1451,9 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
     // MARK: - 线稿项
 
     func makeLineArtItems() -> [KDLineArtItem] {
-        weak var weakSelf = self
+        let stroke: (UIBezierPath, CGFloat) -> Void = { [weak self] path, width in
+            self?.strokePath(path, width: width)
+        }
         // 程序化绘制闭包按线稿 id 收录（绘制留在 App 层 UIKit/Core Graphics）；
         // 展示顺序与标题由 contentCatalog.lineArtTemplates 驱动。
         let bunny: (CGRect) -> Void = { (rect: CGRect) in
@@ -1461,29 +1462,29 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
 
             let leftEar = UIBezierPath(roundedRect: CGRect(x: centerX - 132.0, y: centerY - 220.0, width: 54.0, height: 150.0), cornerRadius: 28.0)
             let rightEar = UIBezierPath(roundedRect: CGRect(x: centerX + 78.0, y: centerY - 220.0, width: 54.0, height: 150.0), cornerRadius: 28.0)
-            weakSelf?.strokePath(leftEar, width: 12.0)
-            weakSelf?.strokePath(rightEar, width: 12.0)
+            stroke(leftEar, 12.0)
+            stroke(rightEar, 12.0)
 
-            weakSelf?.strokePath(UIBezierPath(ovalIn: CGRect(x: centerX - 138.0, y: centerY - 108.0, width: 276.0, height: 216.0)), width: 12.0)
-            weakSelf?.strokePath(UIBezierPath(ovalIn: CGRect(x: centerX - 80.0, y: centerY - 18.0, width: 160.0, height: 120.0)), width: 12.0)
-            weakSelf?.strokePath(UIBezierPath(ovalIn: CGRect(x: centerX - 88.0, y: centerY + 82.0, width: 72.0, height: 52.0)), width: 12.0)
-            weakSelf?.strokePath(UIBezierPath(ovalIn: CGRect(x: centerX + 16.0, y: centerY + 82.0, width: 72.0, height: 52.0)), width: 12.0)
-            weakSelf?.strokePath(UIBezierPath(ovalIn: CGRect(x: centerX - 86.0, y: centerY - 20.0, width: 36.0, height: 48.0)), width: 12.0)
-            weakSelf?.strokePath(UIBezierPath(ovalIn: CGRect(x: centerX + 50.0, y: centerY - 20.0, width: 36.0, height: 48.0)), width: 12.0)
+            stroke(UIBezierPath(ovalIn: CGRect(x: centerX - 138.0, y: centerY - 108.0, width: 276.0, height: 216.0)), 12.0)
+            stroke(UIBezierPath(ovalIn: CGRect(x: centerX - 80.0, y: centerY - 18.0, width: 160.0, height: 120.0)), 12.0)
+            stroke(UIBezierPath(ovalIn: CGRect(x: centerX - 88.0, y: centerY + 82.0, width: 72.0, height: 52.0)), 12.0)
+            stroke(UIBezierPath(ovalIn: CGRect(x: centerX + 16.0, y: centerY + 82.0, width: 72.0, height: 52.0)), 12.0)
+            stroke(UIBezierPath(ovalIn: CGRect(x: centerX - 86.0, y: centerY - 20.0, width: 36.0, height: 48.0)), 12.0)
+            stroke(UIBezierPath(ovalIn: CGRect(x: centerX + 50.0, y: centerY - 20.0, width: 36.0, height: 48.0)), 12.0)
 
             let nose = UIBezierPath()
             nose.move(to: CGPoint(x: centerX, y: centerY + 20.0))
             nose.addLine(to: CGPoint(x: centerX - 24.0, y: centerY + 46.0))
             nose.addLine(to: CGPoint(x: centerX + 24.0, y: centerY + 46.0))
             nose.close()
-            weakSelf?.strokePath(nose, width: 12.0)
+            stroke(nose, 12.0)
 
             let mouth = UIBezierPath()
             mouth.move(to: CGPoint(x: centerX, y: centerY + 46.0))
             mouth.addCurve(to: CGPoint(x: centerX - 34.0, y: centerY + 72.0), controlPoint1: CGPoint(x: centerX - 2.0, y: centerY + 63.0), controlPoint2: CGPoint(x: centerX - 18.0, y: centerY + 76.0))
             mouth.move(to: CGPoint(x: centerX, y: centerY + 46.0))
             mouth.addCurve(to: CGPoint(x: centerX + 34.0, y: centerY + 72.0), controlPoint1: CGPoint(x: centerX + 2.0, y: centerY + 63.0), controlPoint2: CGPoint(x: centerX + 18.0, y: centerY + 76.0))
-            weakSelf?.strokePath(mouth, width: 12.0)
+            stroke(mouth, 12.0)
         }
 
         let car: (CGRect) -> Void = { (rect: CGRect) in
@@ -1502,14 +1503,14 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
             body.addLine(to: CGPoint(x: leftX - 10.0, y: baseY + 24.0))
             body.addCurve(to: CGPoint(x: leftX, y: baseY), controlPoint1: CGPoint(x: leftX - 10.0, y: baseY + 10.0), controlPoint2: CGPoint(x: leftX - 4.0, y: baseY))
             body.close()
-            weakSelf?.strokePath(body, width: 12.0)
+            stroke(body, 12.0)
 
-            weakSelf?.strokePath(UIBezierPath(roundedRect: CGRect(x: leftX + 110.0, y: baseY - 78.0, width: 112.0, height: 76.0), cornerRadius: 18.0), width: 12.0)
-            weakSelf?.strokePath(UIBezierPath(roundedRect: CGRect(x: leftX + 232.0, y: baseY - 78.0, width: 90.0, height: 76.0), cornerRadius: 18.0), width: 12.0)
-            weakSelf?.strokePath(UIBezierPath(ovalIn: CGRect(x: leftX + 52.0, y: baseY + 32.0, width: 96.0, height: 96.0)), width: 12.0)
-            weakSelf?.strokePath(UIBezierPath(ovalIn: CGRect(x: leftX + 296.0, y: baseY + 32.0, width: 96.0, height: 96.0)), width: 12.0)
-            weakSelf?.strokePath(UIBezierPath(ovalIn: CGRect(x: leftX + 76.0, y: baseY + 56.0, width: 48.0, height: 48.0)), width: 12.0)
-            weakSelf?.strokePath(UIBezierPath(ovalIn: CGRect(x: leftX + 320.0, y: baseY + 56.0, width: 48.0, height: 48.0)), width: 12.0)
+            stroke(UIBezierPath(roundedRect: CGRect(x: leftX + 110.0, y: baseY - 78.0, width: 112.0, height: 76.0), cornerRadius: 18.0), 12.0)
+            stroke(UIBezierPath(roundedRect: CGRect(x: leftX + 232.0, y: baseY - 78.0, width: 90.0, height: 76.0), cornerRadius: 18.0), 12.0)
+            stroke(UIBezierPath(ovalIn: CGRect(x: leftX + 52.0, y: baseY + 32.0, width: 96.0, height: 96.0)), 12.0)
+            stroke(UIBezierPath(ovalIn: CGRect(x: leftX + 296.0, y: baseY + 32.0, width: 96.0, height: 96.0)), 12.0)
+            stroke(UIBezierPath(ovalIn: CGRect(x: leftX + 76.0, y: baseY + 56.0, width: 48.0, height: 48.0)), 12.0)
+            stroke(UIBezierPath(ovalIn: CGRect(x: leftX + 320.0, y: baseY + 56.0, width: 48.0, height: 48.0)), 12.0)
         }
 
         let fish: (CGRect) -> Void = { (rect: CGRect) in
@@ -1522,28 +1523,28 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
             body.addCurve(to: CGPoint(x: centerX + 74.0, y: centerY + 118.0), controlPoint1: CGPoint(x: centerX + 148.0, y: centerY - 80.0), controlPoint2: CGPoint(x: centerX + 148.0, y: centerY + 80.0))
             body.addCurve(to: CGPoint(x: centerX - 160.0, y: centerY), controlPoint1: CGPoint(x: centerX + 8.0, y: centerY + 150.0), controlPoint2: CGPoint(x: centerX - 126.0, y: centerY + 122.0))
             body.close()
-            weakSelf?.strokePath(body, width: 12.0)
+            stroke(body, 12.0)
 
             let tail = UIBezierPath()
             tail.move(to: CGPoint(x: centerX + 74.0, y: centerY))
             tail.addLine(to: CGPoint(x: centerX + 208.0, y: centerY - 122.0))
             tail.addLine(to: CGPoint(x: centerX + 208.0, y: centerY + 122.0))
             tail.close()
-            weakSelf?.strokePath(tail, width: 12.0)
+            stroke(tail, 12.0)
 
-            weakSelf?.strokePath(UIBezierPath(ovalIn: CGRect(x: centerX - 96.0, y: centerY - 24.0, width: 46.0, height: 46.0)), width: 12.0)
+            stroke(UIBezierPath(ovalIn: CGRect(x: centerX - 96.0, y: centerY - 24.0, width: 46.0, height: 46.0)), 12.0)
 
             let fin = UIBezierPath()
             fin.move(to: CGPoint(x: centerX - 18.0, y: centerY - 26.0))
             fin.addCurve(to: CGPoint(x: centerX + 48.0, y: centerY - 118.0), controlPoint1: CGPoint(x: centerX - 12.0, y: centerY - 90.0), controlPoint2: CGPoint(x: centerX + 26.0, y: centerY - 112.0))
             fin.addCurve(to: CGPoint(x: centerX + 92.0, y: centerY - 30.0), controlPoint1: CGPoint(x: centerX + 74.0, y: centerY - 116.0), controlPoint2: CGPoint(x: centerX + 98.0, y: centerY - 72.0))
             fin.close()
-            weakSelf?.strokePath(fin, width: 12.0)
+            stroke(fin, 12.0)
 
             let smile = UIBezierPath()
             smile.move(to: CGPoint(x: centerX - 130.0, y: centerY + 18.0))
             smile.addCurve(to: CGPoint(x: centerX - 74.0, y: centerY + 42.0), controlPoint1: CGPoint(x: centerX - 116.0, y: centerY + 42.0), controlPoint2: CGPoint(x: centerX - 90.0, y: centerY + 54.0))
-            weakSelf?.strokePath(smile, width: 12.0)
+            stroke(smile, 12.0)
         }
 
         let flower: (CGRect) -> Void = { (rect: CGRect) in
@@ -1557,29 +1558,29 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
                 CGPoint(x: centerX - 94.0, y: centerY - 34.0)
             ]
             for point in petalCenters {
-                weakSelf?.strokePath(UIBezierPath(ovalIn: CGRect(x: point.x - 54.0, y: point.y - 62.0, width: 108.0, height: 124.0)), width: 12.0)
+                stroke(UIBezierPath(ovalIn: CGRect(x: point.x - 54.0, y: point.y - 62.0, width: 108.0, height: 124.0)), 12.0)
             }
 
-            weakSelf?.strokePath(UIBezierPath(ovalIn: CGRect(x: centerX - 52.0, y: centerY - 52.0, width: 104.0, height: 104.0)), width: 12.0)
+            stroke(UIBezierPath(ovalIn: CGRect(x: centerX - 52.0, y: centerY - 52.0, width: 104.0, height: 104.0)), 12.0)
 
             let stem = UIBezierPath()
             stem.move(to: CGPoint(x: centerX, y: centerY + 54.0))
             stem.addCurve(to: CGPoint(x: centerX - 12.0, y: rect.maxY - 18.0), controlPoint1: CGPoint(x: centerX + 8.0, y: centerY + 136.0), controlPoint2: CGPoint(x: centerX - 18.0, y: centerY + 222.0))
-            weakSelf?.strokePath(stem, width: 12.0)
+            stroke(stem, 12.0)
 
             let leftLeaf = UIBezierPath()
             leftLeaf.move(to: CGPoint(x: centerX - 8.0, y: centerY + 166.0))
             leftLeaf.addCurve(to: CGPoint(x: centerX - 136.0, y: centerY + 136.0), controlPoint1: CGPoint(x: centerX - 38.0, y: centerY + 118.0), controlPoint2: CGPoint(x: centerX - 110.0, y: centerY + 112.0))
             leftLeaf.addCurve(to: CGPoint(x: centerX - 8.0, y: centerY + 166.0), controlPoint1: CGPoint(x: centerX - 114.0, y: centerY + 186.0), controlPoint2: CGPoint(x: centerX - 44.0, y: centerY + 194.0))
             leftLeaf.close()
-            weakSelf?.strokePath(leftLeaf, width: 12.0)
+            stroke(leftLeaf, 12.0)
 
             let rightLeaf = UIBezierPath()
             rightLeaf.move(to: CGPoint(x: centerX - 4.0, y: centerY + 232.0))
             rightLeaf.addCurve(to: CGPoint(x: centerX + 124.0, y: centerY + 198.0), controlPoint1: CGPoint(x: centerX + 26.0, y: centerY + 188.0), controlPoint2: CGPoint(x: centerX + 96.0, y: centerY + 174.0))
             rightLeaf.addCurve(to: CGPoint(x: centerX - 4.0, y: centerY + 232.0), controlPoint1: CGPoint(x: centerX + 104.0, y: centerY + 244.0), controlPoint2: CGPoint(x: centerX + 38.0, y: centerY + 258.0))
             rightLeaf.close()
-            weakSelf?.strokePath(rightLeaf, width: 12.0)
+            stroke(rightLeaf, 12.0)
         }
 
         let house: (CGRect) -> Void = { (rect: CGRect) in
@@ -1594,12 +1595,12 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
             roof.addLine(to: CGPoint(x: centerX, y: wallTop - 130.0))
             roof.addLine(to: CGPoint(x: leftX + houseWidth + 24.0, y: wallTop + 18.0))
             roof.close()
-            weakSelf?.strokePath(roof, width: 12.0)
+            stroke(roof, 12.0)
 
-            weakSelf?.strokePath(UIBezierPath(roundedRect: CGRect(x: leftX, y: wallTop, width: houseWidth, height: 190.0), cornerRadius: 22.0), width: 12.0)
-            weakSelf?.strokePath(UIBezierPath(roundedRect: CGRect(x: centerX - 42.0, y: baseY - 104.0, width: 84.0, height: 104.0), cornerRadius: 18.0), width: 12.0)
-            weakSelf?.strokePath(UIBezierPath(roundedRect: CGRect(x: leftX + 38.0, y: wallTop + 46.0, width: 84.0, height: 72.0), cornerRadius: 18.0), width: 12.0)
-            weakSelf?.strokePath(UIBezierPath(roundedRect: CGRect(x: leftX + houseWidth - 122.0, y: wallTop + 46.0, width: 84.0, height: 72.0), cornerRadius: 18.0), width: 12.0)
+            stroke(UIBezierPath(roundedRect: CGRect(x: leftX, y: wallTop, width: houseWidth, height: 190.0), cornerRadius: 22.0), 12.0)
+            stroke(UIBezierPath(roundedRect: CGRect(x: centerX - 42.0, y: baseY - 104.0, width: 84.0, height: 104.0), cornerRadius: 18.0), 12.0)
+            stroke(UIBezierPath(roundedRect: CGRect(x: leftX + 38.0, y: wallTop + 46.0, width: 84.0, height: 72.0), cornerRadius: 18.0), 12.0)
+            stroke(UIBezierPath(roundedRect: CGRect(x: leftX + houseWidth - 122.0, y: wallTop + 46.0, width: 84.0, height: 72.0), cornerRadius: 18.0), 12.0)
         }
 
         let rocket: (CGRect) -> Void = { (rect: CGRect) in
@@ -1615,30 +1616,30 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
             body.addLine(to: CGPoint(x: centerX - 74.0, y: topY + 150.0))
             body.addCurve(to: CGPoint(x: centerX, y: topY), controlPoint1: CGPoint(x: centerX - 86.0, y: topY + 96.0), controlPoint2: CGPoint(x: centerX - 58.0, y: topY + 38.0))
             body.close()
-            weakSelf?.strokePath(body, width: 12.0)
+            stroke(body, 12.0)
 
-            weakSelf?.strokePath(UIBezierPath(ovalIn: CGRect(x: centerX - 34.0, y: topY + 116.0, width: 68.0, height: 68.0)), width: 12.0)
+            stroke(UIBezierPath(ovalIn: CGRect(x: centerX - 34.0, y: topY + 116.0, width: 68.0, height: 68.0)), 12.0)
 
             let leftFin = UIBezierPath()
             leftFin.move(to: CGPoint(x: centerX - 58.0, y: bottomY - 112.0))
             leftFin.addLine(to: CGPoint(x: centerX - 142.0, y: bottomY - 38.0))
             leftFin.addLine(to: CGPoint(x: centerX - 44.0, y: bottomY - 44.0))
             leftFin.close()
-            weakSelf?.strokePath(leftFin, width: 12.0)
+            stroke(leftFin, 12.0)
 
             let rightFin = UIBezierPath()
             rightFin.move(to: CGPoint(x: centerX + 58.0, y: bottomY - 112.0))
             rightFin.addLine(to: CGPoint(x: centerX + 142.0, y: bottomY - 38.0))
             rightFin.addLine(to: CGPoint(x: centerX + 44.0, y: bottomY - 44.0))
             rightFin.close()
-            weakSelf?.strokePath(rightFin, width: 12.0)
+            stroke(rightFin, 12.0)
 
             let flame = UIBezierPath()
             flame.move(to: CGPoint(x: centerX - 30.0, y: bottomY - 40.0))
             flame.addCurve(to: CGPoint(x: centerX, y: bottomY + 34.0), controlPoint1: CGPoint(x: centerX - 14.0, y: bottomY - 4.0), controlPoint2: CGPoint(x: centerX - 6.0, y: bottomY + 12.0))
             flame.addCurve(to: CGPoint(x: centerX + 30.0, y: bottomY - 40.0), controlPoint1: CGPoint(x: centerX + 8.0, y: bottomY + 10.0), controlPoint2: CGPoint(x: centerX + 16.0, y: bottomY - 6.0))
             flame.close()
-            weakSelf?.strokePath(flame, width: 12.0)
+            stroke(flame, 12.0)
         }
 
         let cupcake: (CGRect) -> Void = { (rect: CGRect) in
@@ -1653,7 +1654,7 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
             frosting.addCurve(to: CGPoint(x: centerX + 142.0, y: centerY - 18.0), controlPoint1: CGPoint(x: centerX + 112.0, y: centerY - 116.0), controlPoint2: CGPoint(x: centerX + 150.0, y: centerY - 82.0))
             frosting.addCurve(to: CGPoint(x: centerX - 142.0, y: centerY - 18.0), controlPoint1: CGPoint(x: centerX + 84.0, y: centerY + 16.0), controlPoint2: CGPoint(x: centerX - 84.0, y: centerY + 16.0))
             frosting.close()
-            weakSelf?.strokePath(frosting, width: 12.0)
+            stroke(frosting, 12.0)
 
             let cup = UIBezierPath()
             cup.move(to: CGPoint(x: centerX - 118.0, y: centerY))
@@ -1661,10 +1662,10 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
             cup.addLine(to: CGPoint(x: centerX + 82.0, y: centerY + 158.0))
             cup.addLine(to: CGPoint(x: centerX - 82.0, y: centerY + 158.0))
             cup.close()
-            weakSelf?.strokePath(cup, width: 12.0)
+            stroke(cup, 12.0)
 
             for index in -1...1 {
-                weakSelf?.strokePath(UIBezierPath(ovalIn: CGRect(x: centerX + CGFloat(index) * 58.0 - 12.0, y: centerY - 70.0 + (index == 0 ? -24.0 : 0.0), width: 24.0, height: 24.0)), width: 8.0)
+                stroke(UIBezierPath(ovalIn: CGRect(x: centerX + CGFloat(index) * 58.0 - 12.0, y: centerY - 70.0 + (index == 0 ? -24.0 : 0.0), width: 24.0, height: 24.0)), 8.0)
             }
         }
 
@@ -1681,16 +1682,16 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
             body.addLine(to: CGPoint(x: centerX - 64.0, y: centerY + 84.0))
             body.addCurve(to: CGPoint(x: centerX - 176.0, y: centerY + 16.0), controlPoint1: CGPoint(x: centerX - 118.0, y: centerY + 84.0), controlPoint2: CGPoint(x: centerX - 160.0, y: centerY + 60.0))
             body.close()
-            weakSelf?.strokePath(body, width: 12.0)
+            stroke(body, 12.0)
 
-            weakSelf?.strokePath(UIBezierPath(ovalIn: CGRect(x: centerX + 94.0, y: centerY - 54.0, width: 28.0, height: 28.0)), width: 9.0)
+            stroke(UIBezierPath(ovalIn: CGRect(x: centerX + 94.0, y: centerY - 54.0, width: 28.0, height: 28.0)), 9.0)
 
             let tail = UIBezierPath()
             tail.move(to: CGPoint(x: centerX - 162.0, y: centerY + 20.0))
             tail.addLine(to: CGPoint(x: centerX - 252.0, y: centerY - 44.0))
             tail.addLine(to: CGPoint(x: centerX - 184.0, y: centerY + 64.0))
             tail.close()
-            weakSelf?.strokePath(tail, width: 12.0)
+            stroke(tail, 12.0)
 
             let spikes = UIBezierPath()
             for i in 0..<4 {
@@ -1699,10 +1700,10 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
                 spikes.addLine(to: CGPoint(x: x + 26.0, y: centerY - 142.0))
                 spikes.addLine(to: CGPoint(x: x + 52.0, y: centerY - 96.0))
             }
-            weakSelf?.strokePath(spikes, width: 12.0)
+            stroke(spikes, 12.0)
 
-            weakSelf?.strokePath(UIBezierPath(roundedRect: CGRect(x: centerX - 52.0, y: centerY + 78.0, width: 42.0, height: 88.0), cornerRadius: 16.0), width: 12.0)
-            weakSelf?.strokePath(UIBezierPath(roundedRect: CGRect(x: centerX + 58.0, y: centerY + 78.0, width: 42.0, height: 88.0), cornerRadius: 16.0), width: 12.0)
+            stroke(UIBezierPath(roundedRect: CGRect(x: centerX - 52.0, y: centerY + 78.0, width: 42.0, height: 88.0), cornerRadius: 16.0), 12.0)
+            stroke(UIBezierPath(roundedRect: CGRect(x: centerX + 58.0, y: centerY + 78.0, width: 42.0, height: 88.0), cornerRadius: 16.0), 12.0)
         }
 
         let drawings: [String: (CGRect) -> Void] = [
@@ -1793,9 +1794,7 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
             ])
         }
 
-        if self.canvasView.currentColor != nil {
-            self.selectColor(self.canvasView.currentColor, sender: nil)
-        }
+        self.selectColor(self.canvasView.currentColor, sender: nil)
     }
 
     func reloadRecentColorRow() {
@@ -1863,7 +1862,11 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
         }
 
         self.refreshStickerCategoryButtons()
-        self.selectStickerSymbol(self.canvasView.currentStickerSymbol ?? self.currentStickerSymbols().first!)
+        let selectedSymbol = self.canvasFeature.resolvedStickerSymbol(
+            currentSymbol: self.canvasView.currentStickerSymbol,
+            availableSymbols: self.currentStickerSymbols()
+        )
+        self.selectStickerSymbol(selectedSymbol)
     }
 
     func refreshStickerCategoryButtons() {
@@ -2121,7 +2124,7 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
         var previewDiameter = min(36.0, max(8.0, CGFloat(self.sizeSlider.value)))
         let center = CGPoint(x: bounds.midX, y: bounds.midY)
         var path: UIBezierPath?
-        var fillColor: UIColor = self.canvasView.currentColor ?? UIColor(red: 0.94, green: 0.43, blue: 0.45, alpha: 1.0)
+        var fillColor: UIColor = self.canvasFeature.currentFillColor(for: self.canvasView)
         var strokeColor: UIColor = UIColor(white: 1.0, alpha: 0.92)
         var alpha: CGFloat = 1.0
 
@@ -2305,7 +2308,7 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
     @objc func didTapCustomColor() {
         let picker = UIColorPickerViewController()
         picker.delegate = self
-        picker.selectedColor = self.canvasView.currentColor ?? UIColor.systemRed
+        picker.selectedColor = self.canvasView.currentColor
         picker.modalPresentationStyle = .popover
         let popover = picker.popoverPresentationController
         popover?.sourceView = self.customColorButton ?? self.view
@@ -2380,7 +2383,7 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
     }
 
     @objc func didTapSaveSession() {
-        if !self.canvasView.hasVisibleContent() {
+        if !self.canvasFeature.hasVisibleContent(self.canvasView) {
             self.showSaveToastWithSuccess(false)
             return
         }
@@ -2583,9 +2586,11 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
         button.layer.shadowRadius = 10.0
         button.layer.shadowOffset = CGSize(width: 0, height: 6)
         button.tag = index
-        button.setImage(self.thumbnailImageForLineArtItem(item), for: .normal)
+        var configuration = UIButton.Configuration.plain()
+        configuration.image = self.thumbnailImageForLineArtItem(item)
+        configuration.contentInsets = NSDirectionalEdgeInsets(top: 14.0, leading: 18.0, bottom: 14.0, trailing: 18.0)
+        button.configuration = configuration
         button.imageView?.contentMode = .scaleAspectFit
-        button.imageEdgeInsets = UIEdgeInsets(top: 14.0, left: 18.0, bottom: 14.0, right: 18.0)
         self.applyAccessibilityLabel(KCL10n.lineArtTitle(item.title), identifier: "line-art.\(item.title.lowercased())", toControl: button)
         self.registerPressFeedbackForControl(button)
         return button
@@ -2784,7 +2789,7 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
     }
 
     func preserveUnsavedActiveSessionDraftIfNeeded() -> Bool {
-        if self.activeSession == nil || !self.activeSessionHasUnsavedChanges || !self.canvasView.hasVisibleContent() {
+        if self.activeSession == nil || !self.activeSessionHasUnsavedChanges || !self.canvasFeature.hasVisibleContent(self.canvasView) {
             return false
         }
 
@@ -2920,9 +2925,10 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
     }
 
     func refreshActionButtons() {
-        self.undoButton.isEnabled = self.canvasView.canUndo()
-        self.redoButton.isEnabled = self.canvasView.canRedo()
-        self.saveButton.isEnabled = self.canvasView.hasVisibleContent()
+        let actionState = self.canvasFeature.actionState(for: self.canvasView)
+        self.undoButton.isEnabled = actionState.canUndo
+        self.redoButton.isEnabled = actionState.canRedo
+        self.saveButton.isEnabled = actionState.canSave
 
         self.undoButton.alpha = self.undoButton.isEnabled ? 1.0 : 0.55
         self.redoButton.alpha = self.redoButton.isEnabled ? 1.0 : 0.55
@@ -3087,7 +3093,7 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
             return
         }
 
-        if !self.canvasView.hasVisibleContent() {
+        if !self.canvasFeature.hasVisibleContent(self.canvasView) {
             self.sessionStore.clearDraft()
             self.refreshHistoryUI()
             return
