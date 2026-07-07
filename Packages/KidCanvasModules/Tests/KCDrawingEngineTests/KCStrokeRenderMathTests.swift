@@ -39,9 +39,9 @@ final class StrokeRenderMathTests: XCTestCase {
 
     func testCrayonFormula() {
         let metrics = KCStrokeRenderMath.metrics(for: stroke(tool: .brush, brush: .crayon, width: 10, pressure: 1.0))
-        // 蜡笔基础笔画保持半透明，蜡感由断续纹理和颗粒层共同形成。
-        XCTAssertEqual(metrics.alpha, 0.28, accuracy: 1e-9)
-        XCTAssertEqual(metrics.renderedLineWidth, 18.4, accuracy: 1e-9)
+        // 蜡笔基础笔画必须退后，蜡感由断续蜡痕和颗粒层共同形成。
+        XCTAssertEqual(metrics.alpha, 0.22, accuracy: 1e-9)
+        XCTAssertEqual(metrics.renderedLineWidth, 15.2, accuracy: 1e-9)
     }
 
     func testRenderedWidthFloorsToOne() {
@@ -90,8 +90,8 @@ final class StrokeRenderMathTests: XCTestCase {
 
     func testRenderedMetricsCrayonPressureScales() {
         let m = KCStrokeRenderMath.renderedMetrics(brushStyle: .crayon, lineWidth: 8, pressure: 0.5)
-        XCTAssertEqual(m.alpha, 0.23, accuracy: 1e-9)
-        XCTAssertEqual(m.renderedLineWidth, 7.36, accuracy: 1e-9)
+        XCTAssertEqual(m.alpha, 0.16, accuracy: 1e-9)
+        XCTAssertEqual(m.renderedLineWidth, 6.08, accuracy: 1e-9)
     }
 
     func testBrushStylesAreVisuallySeparatedAtSameWidthAndPressure() {
@@ -102,7 +102,13 @@ final class StrokeRenderMathTests: XCTestCase {
         XCTAssertLessThan(pencil.alpha, pen.alpha)
         XCTAssertLessThan(pencil.renderedLineWidth, pen.renderedLineWidth)
         XCTAssertGreaterThan(crayon.renderedLineWidth, pen.renderedLineWidth)
-        XCTAssertGreaterThan(crayon.alpha, pencil.alpha)
+        XCTAssertLessThan(crayon.alpha, pencil.alpha)
+
+        let crayonProfile = KCStrokeRenderMath.renderProfile(brushStyle: .crayon, lineWidth: 16, pressure: 1.0)
+        let waxStrength = crayonProfile.textureLayers
+            .filter { $0.kind == .waxSmear }
+            .reduce(0.0) { $0 + $1.alpha * $1.widthMultiplier }
+        XCTAssertGreaterThan(waxStrength, crayon.alpha * 4.0)
     }
 
     func testBrushRenderProfilesEncodeDifferentTextures() {
@@ -143,8 +149,8 @@ final class StrokeRenderMathTests: XCTestCase {
 
         // 蜡笔的主体应更像堆叠蜡痕，而不是一条高透明度实心粗线。
         XCTAssertLessThanOrEqual(crayon.metrics.alpha, 0.56)
-        XCTAssertTrue(waxLayers.contains { $0.widthMultiplier >= 1.25 && !$0.dashPatternMultipliers.isEmpty })
-        XCTAssertGreaterThanOrEqual(crayon.grainAlpha, 0.52)
+        XCTAssertTrue(waxLayers.contains { $0.widthMultiplier >= 1.45 && !$0.dashPatternMultipliers.isEmpty })
+        XCTAssertGreaterThanOrEqual(crayon.grainAlpha, 0.90)
     }
 
     func testPencilAndCrayonTextureDominatesBaseStroke() {
@@ -164,9 +170,9 @@ final class StrokeRenderMathTests: XCTestCase {
         XCTAssertGreaterThan(pencilSketchStrength, pencil.metrics.alpha * 0.55)
         XCTAssertLessThan(pencil.metrics.renderedLineWidth, pen.metrics.renderedLineWidth * 0.45)
 
-        XCTAssertLessThanOrEqual(crayon.metrics.alpha, 0.38)
-        XCTAssertGreaterThan(crayonWaxStrength, crayon.metrics.alpha * 1.8)
-        XCTAssertGreaterThanOrEqual(crayon.grainAlpha, 0.68)
+        XCTAssertLessThanOrEqual(crayon.metrics.alpha, 0.24)
+        XCTAssertGreaterThan(crayonWaxStrength, crayon.metrics.alpha * 4.0)
+        XCTAssertGreaterThanOrEqual(crayon.grainAlpha, 0.92)
     }
 
     func testUserVisibleBrushSignaturesAreNotWidthOnly() {
@@ -188,9 +194,11 @@ final class StrokeRenderMathTests: XCTestCase {
         XCTAssertEqual(pen.metrics.alpha, 1.0, accuracy: 1e-9)
         XCTAssertEqual(pen.textureLayers.count, 0)
 
-        XCTAssertLessThanOrEqual(crayon.metrics.alpha, 0.30)
-        XCTAssertTrue(waxLayers.contains { $0.widthMultiplier >= 1.25 && $0.alpha >= 0.24 })
-        XCTAssertGreaterThan(waxStrength, crayon.metrics.alpha * 3.0)
-        XCTAssertGreaterThanOrEqual(crayon.grainAlpha, 0.85)
+        XCTAssertLessThanOrEqual(crayon.metrics.alpha, 0.24)
+        XCTAssertTrue(waxLayers.contains { $0.widthMultiplier >= 1.45 && $0.alpha >= 0.22 })
+        XCTAssertTrue(waxLayers.contains { $0.widthMultiplier <= 0.28 && $0.dashPhaseMultiplier > 0.70 })
+        XCTAssertGreaterThan(waxStrength, crayon.metrics.alpha * 4.4)
+        XCTAssertGreaterThanOrEqual(crayon.grainAlpha, 0.92)
+        XCTAssertGreaterThanOrEqual(crayon.grainClipWidthMultiplier, 1.70)
     }
 }

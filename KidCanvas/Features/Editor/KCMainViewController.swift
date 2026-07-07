@@ -111,6 +111,7 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
     private var imageImportGeneration: Int = 0
     private var draftSaveGeneration: Int = 0
     private var lineArtLoadGeneration: Int = 0
+    private var didScheduleStartupDeferredWork = false
     private var activeDraftMatchesCanvas: Bool = false
     private var brushWidthPreferenceSaveTimer: Timer?
     var suppressNextDraftSave: Bool = false
@@ -173,8 +174,7 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
         self.selectStickerSymbol(self.currentStickerSymbols().first!)
         self.refreshEraserShapeButtons()
         self.refreshStickerEditButtons()
-        self.refreshHistoryUI()
-        self.restoreDraftIfNeeded()
+        self.refreshHistoryUI(loadDraftThumbnail: false, preloadThumbnails: false)
         self.refreshActionButtons()
     }
 
@@ -189,6 +189,7 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
 
     override func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
+        self.scheduleStartupDeferredWorkIfNeeded()
 #if DEBUG
         self.runRuntimeAcceptanceProbeIfNeeded()
 #endif
@@ -1000,7 +1001,7 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
 
     // MARK: - 历史
 
-    func refreshHistoryUI() {
+    func refreshHistoryUI(loadDraftThumbnail: Bool = true, preloadThumbnails: Bool = true) {
         self.sessions = self.sessionStore.loadAllSessions()
         let maxPageIndex = self.maxHistoryPageIndex()
         self.historyPageIndex = self.drawingEngine.historyClampedPageIndex(
@@ -1013,7 +1014,7 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
         self.previousHistoryButton.alpha = self.previousHistoryButton.isEnabled ? 1.0 : 0.45
         self.nextHistoryButton.alpha = self.nextHistoryButton.isEnabled ? 1.0 : 0.45
 
-        let draftImage = self.sessionStore.draftThumbnailImage()
+        let draftImage = loadDraftThumbnail ? self.sessionStore.draftThumbnailImage() : self.sessionStore.cachedDraftThumbnailImage()
         let hasDraft = draftImage != nil || self.sessionStore.hasDraft()
         let selectedSession = self.currentSelectedHistorySession()
         let canDeleteHistoryItem = self.history.canDeleteHistory(
@@ -1091,7 +1092,7 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
                     to: button,
                     storedIdentity: &self.historyThumbImageIdentities[index]
                 )
-                button.imageView?.isHidden = image != nil
+                button.imageView?.isHidden = true
                 button.isEnabled = true
                 button.accessibilityLabel = "\(KCL10n.historyThumbPrefix(status.accessibilityPrefix)) \(sessionIndex + 1)"
                 button.transform = status.isEmphasized
@@ -1100,8 +1101,10 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
             }
         }
 
-        self.preloadVisibleHistoryThumbnailsIfNeeded(missingVisibleThumbnailIds)
-        self.preloadAdjacentHistoryThumbnails()
+        if preloadThumbnails {
+            self.preloadVisibleHistoryThumbnailsIfNeeded(missingVisibleThumbnailIds)
+            self.preloadAdjacentHistoryThumbnails()
+        }
     }
 
     private func preloadVisibleHistoryThumbnailsIfNeeded(_ sessionIds: [String]) {
@@ -2516,18 +2519,42 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
 
     // MARK: - 草稿自动保存
 
+    func scheduleStartupDeferredWorkIfNeeded() {
+        guard !self.didScheduleStartupDeferredWork else { return }
+        self.didScheduleStartupDeferredWork = true
+        DispatchQueue.main.async { [weak self] in
+            guard let self else { return }
+            self.refreshHistoryUI(loadDraftThumbnail: false)
+            self.restoreDraftIfNeeded()
+        }
+    }
+
     func restoreDraftIfNeeded() {
         if self.activeSession != nil {
             return
         }
 
-        guard let draftImage = self.sessionStore.loadDraftImage() else {
-            return
-        }
+        let generation = self.draftSaveGeneration + 1
+        self.draftSaveGeneration = generation
+        self.draftPersistenceQueue.async { [weak self] in
+            guard let self else { return }
+            guard let data = self.sessionStore.loadDraftData(),
+                  let draftImage = UIImage(data: data) else { return }
 
-        self.canvasView.restoreCanvas(with: draftImage)
-        self.refreshHistoryUI()
-        self.refreshActionButtons()
+            DispatchQueue.main.async { [weak self] in
+                guard let self else { return }
+                guard self.draftSaveGeneration == generation else { return }
+                guard self.activeSession == nil else { return }
+                guard !self.canvasFeature.hasVisibleContent(self.canvasView) else { return }
+
+                self.sessionStore.cacheLoadedDraftImage(draftImage)
+                self.suppressNextDraftSave = true
+                self.canvasView.restoreCanvas(with: draftImage)
+                self.activeDraftMatchesCanvas = true
+                self.refreshHistoryUI()
+                self.refreshActionButtons()
+            }
+        }
     }
 
     func invalidateDraftSaveTimer() {

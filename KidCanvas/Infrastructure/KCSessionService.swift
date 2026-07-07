@@ -246,11 +246,19 @@ final class KCSessionService: NSObject {
         }
         guard let data = store.loadDraft() else { return nil }
         guard let image = UIImage(data: data) else { return nil }
-        draftImageCache = image
-        if draftThumbnailCache == nil {
-            draftThumbnailCache = Self.generateThumbnail(from: image)
-        }
+        cacheLoadedDraftImage(image)
         return image
+    }
+
+    /// 只读取草稿缩略图内存缓存，不触发读盘或图片解码。
+    @objc func cachedDraftThumbnailImage() -> UIImage? {
+        return draftThumbnailCache
+    }
+
+    /// 缓存已经异步解码出的草稿图，并同步补齐历史栏缩略图缓存。
+    func cacheLoadedDraftImage(_ image: UIImage) {
+        draftImageCache = image
+        draftThumbnailCache = Self.generateThumbnail(from: image)
     }
 
     /// 返回草稿缩略图，供历史面板使用。该路径不长期持有全尺寸草稿图，避免
