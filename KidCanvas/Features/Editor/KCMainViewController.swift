@@ -112,7 +112,20 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
     private let draftPersistenceQueue = DispatchQueue(label: "com.kidcanvas.editor.draft-persistence", qos: .utility)
     private let lineArtRenderingQueue = DispatchQueue(label: "com.kidcanvas.editor.line-art-rendering", qos: .userInitiated)
     private let draftGenerationLock = NSLock()
-    private static let historyThumbnailImageStates: [UIControl.State] = [.normal, .highlighted, .selected, .disabled]
+    private static let historyThumbnailImageStates: [UIControl.State] = [
+        .normal,
+        .highlighted,
+        .selected,
+        .disabled,
+        .focused,
+        .highlighted.union(.selected),
+        .highlighted.union(.focused),
+        .selected.union(.focused),
+        .disabled.union(.selected),
+        .disabled.union(.highlighted),
+        .disabled.union(.focused),
+        .highlighted.union(.selected).union(.focused)
+    ]
     private static let historySlotTransparentImage: UIImage = {
         let renderer = UIGraphicsImageRenderer(size: CGSize(width: 1.0, height: 1.0))
         return renderer.image { _ in }
@@ -2764,14 +2777,24 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
     func scheduleStartupDeferredWorkIfNeeded() {
         guard !self.didScheduleStartupDeferredWork else { return }
         self.didScheduleStartupDeferredWork = true
-        DispatchQueue.main.async { [weak self] in
+        self.scheduleStartupDeferredTask(after: 0.05) { controller in
+            controller.loadColorControlsAfterStartupIfNeeded()
+        }
+        self.scheduleStartupDeferredTask(after: 0.18) { controller in
+            controller.refreshHistorySessionsAsync(loadDraftThumbnail: false)
+        }
+        self.scheduleStartupDeferredTask(after: 0.36) { controller in
+            controller.restoreDraftIfNeeded()
+        }
+        self.scheduleStartupDeferredTask(after: 0.62) { controller in
+            controller.loadStickerButtonsAfterStartupIfNeeded()
+        }
+    }
+
+    private func scheduleStartupDeferredTask(after delay: TimeInterval, perform work: @escaping (KCMainViewController) -> Void) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + delay) { [weak self] in
             guard let self else { return }
-            self.loadColorControlsAfterStartupIfNeeded()
-            self.refreshHistorySessionsAsync(loadDraftThumbnail: false)
-            self.restoreDraftIfNeeded()
-            DispatchQueue.main.async { [weak self] in
-                self?.loadStickerButtonsAfterStartupIfNeeded()
-            }
+            work(self)
         }
     }
 

@@ -22,14 +22,14 @@ T038 后，内置线稿的程序化几何不再放在 `KCMainViewController`。
 
 ## 3. 画笔质感边界
 
-- `KCStrokeRenderMath` 负责三种画笔的基础宽度/透明度差异：铅笔更轻更淡、钢笔完全不透明且宽度稳定、蜡笔保持偏宽但不再只靠粗细区分，基础笔画 alpha 控制在 0.18 以内，主视觉由断续蜡痕和颗粒层承担。
+- `KCStrokeRenderMath` 负责三种画笔的基础宽度/透明度差异：铅笔更轻更淡、钢笔完全不透明且宽度稳定、蜡笔保持偏宽但不再只靠粗细区分，基础笔画 alpha 控制在 0.14 以内，主视觉由断续蜡痕和颗粒层承担。
 - `KCStrokeRenderMath.RenderProfile` 负责输出完整画笔视觉配置：基础度量、端点风格、质感层和颗粒参数。
 - `KCStrokeRenderMath.TextureLayer` 以数据方式描述铅笔柔边、断续石墨草稿线、蜡笔偏移涂抹层和 dash 断续蜡痕，避免把魔法数散落在 UIKit 视图中。
 - `KCDrawingCanvasView` 只消费 `KCDrawingEngineProviding.brushRenderProfile(...)` 并负责 UIKit 光栅化：铅笔柔边与草稿纹理、钢笔利落端点、蜡笔偏移断续蜡痕与颗粒纹理。
 - 画笔质感不得只靠底部 Dock 默认宽度区分；同一宽度和压力下，`KCStrokeRenderMathTests.testBrushStylesAreVisuallySeparatedAtSameWidthAndPressure`、`testBrushRenderProfilesEncodeDifferentTextures` 与 `testPencilAndCrayonTextureDominatesBaseStroke` 必须证明三者基础度量、质感配置和主视觉来源不同。
 - T080 后，铅笔草稿线必须带 dash 断续纹理，蜡笔 profile 必须包含宽蜡痕层和较强颗粒参数；铅笔/蜡笔的基础实线不能盖过纹理，否则真实画布会只剩粗细差异。
-- T081 后，三种画笔按“用户可见笔触签名”验收：铅笔基础 alpha 控制在 0.30 以内并由多层断续石墨线主导；钢笔保持无纹理的高不透明实线；蜡笔基础 alpha 控制在 0.18 以内，并由宽蜡痕、偏移断续蜡痕和高密度颗粒主导。`testUserVisibleBrushSignaturesAreNotWidthOnly` 与 `testCrayonTextureIsDenseEnoughToReadAsWaxInsteadOfWideMarker` 必须守住这些阈值。
-- 蜡笔颗粒宽度必须以 `KCCrayonGrain` 的 `max(0.9, lineWidth * 0.09)` 为单一口径；App adapter 的 `crayonGrainDashWidth(lineWidth:)` 不得使用更细的旧公式，否则真实画布会比引擎测试更平滑。
+- T081 后，三种画笔按“用户可见笔触签名”验收：铅笔基础 alpha 控制在 0.30 以内并由多层断续石墨线主导；钢笔保持无纹理的高不透明实线；蜡笔基础 alpha 控制在 0.14 以内，并由宽蜡痕、偏移断续蜡痕和高密度颗粒主导。`testUserVisibleBrushSignaturesAreNotWidthOnly`、`testCrayonTextureIsDenseEnoughToReadAsWaxInsteadOfWideMarker` 与 `testCrayonTextureIsRoughEnoughForKidDrawing` 必须守住这些阈值。
+- 蜡笔颗粒宽度必须以 `KCCrayonGrain` 的 `max(1.0, lineWidth * 0.12)` 为单一口径；App adapter 的 `crayonGrainDashWidth(lineWidth:)` 不得使用更细的旧公式，否则真实画布会比引擎测试更平滑。
 - 橡皮擦使用独立配置宽度，不能套用铅笔/钢笔/蜡笔质感公式；同一橡皮宽度在三种当前画笔状态下必须得到一致渲染结果。
 
 ## 4. 取色器采样边界
@@ -51,7 +51,7 @@ T038 后，内置线稿的程序化几何不再放在 `KCMainViewController`。
 
 ## 6. 测试与验收
 
-- `KCStrokeRenderMathTests` 覆盖铅笔、钢笔、蜡笔基础度量、纹理强度和用户可见笔触签名，避免三种画笔退化为“只差粗细”；`KCCrayonGrainTests` 同时约束蜡笔颗粒密度和宽线颗粒线宽，防止蜡笔退回平滑粗线；validator 额外守住 App adapter 使用同一颗粒宽度公式。
+- `KCStrokeRenderMathTests` 覆盖铅笔、钢笔、蜡笔基础度量、纹理强度和用户可见笔触签名，避免三种画笔退化为“只差粗细”；`KCCrayonGrainTests` 同时约束蜡笔颗粒密度、纸纹空隙和宽线颗粒线宽，防止蜡笔退回平滑粗线或糊成马克笔；validator 额外守住 App adapter 使用同一颗粒宽度公式。
 - `KCLineArtDrawingTests` 覆盖支持 id 顺序、每个模板的 stroke 数量、路径非空与未知 id 返回 nil。
 - `KCImagePixelSamplerTests` 覆盖 `CGImage` 单点采样与越界保护，防止取色器退回整图解码路径。
 - `KCFloodFillEngineTests.testReturnsZeroWhenSeedEqualsFill` 覆盖同色填充返回 0 的行为，validator 额外守住短路位置。

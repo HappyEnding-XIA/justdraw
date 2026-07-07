@@ -16,7 +16,7 @@ public struct KCCrayonGrainDash {
     public let start: CGPoint
     public let end: CGPoint
     /// 对于给定线宽，所有短线的该值恒定：
-    /// `max(0.9, lineWidth * 0.09)`。
+    /// `max(1.0, lineWidth * 0.12)`。
     public let lineWidth: CGFloat
 
     public init(start: CGPoint, end: CGPoint, lineWidth: CGFloat) {
@@ -40,10 +40,10 @@ public enum KCCrayonGrain {
         // grainBounds = bounds 在四周各向外扩展 lineWidth/2。
         let grainBounds = bounds.insetBy(dx: -lineWidth * 0.5, dy: -lineWidth * 0.5)
 
-        let spacing = max(3.0, lineWidth * 0.24)
+        let spacing = max(3.4, lineWidth * 0.30)
         let columnCount = min(220, max(1, Int(ceil(grainBounds.width / spacing))))
         let rowCount = min(180, max(1, Int(ceil(grainBounds.height / spacing))))
-        let dashWidth = max(0.9, lineWidth * 0.09)
+        let dashWidth = max(1.0, lineWidth * 0.12)
 
         var dashes: [KCCrayonGrainDash] = []
         dashes.reserveCapacity((rowCount + 1) * (columnCount + 1))
@@ -51,12 +51,12 @@ public enum KCCrayonGrain {
         for row in 0...rowCount {
             for column in 0...columnCount {
                 let seed = row * 37 + column * 17
-                let jitterX = CGFloat((seed % 7) - 3) * 0.34
-                let jitterY = CGFloat(((seed / 3) % 7) - 3) * 0.28
+                let jitterX = CGFloat((seed % 7) - 3) * 0.46
+                let jitterY = CGFloat(((seed / 3) % 7) - 3) * 0.38
                 let x = grainBounds.minX + CGFloat(column) * spacing + jitterX
                 let y = grainBounds.minY + CGFloat(row) * spacing + jitterY
-                let dashLength = max(1.6, lineWidth * (0.16 + CGFloat(seed % 5) * 0.030))
-                let yOffsetMagnitude = max(0.8, lineWidth * 0.055)
+                let dashLength = max(1.8, lineWidth * (0.18 + CGFloat(seed % 5) * 0.035))
+                let yOffsetMagnitude = max(0.95, lineWidth * 0.070)
                 let yOffset: CGFloat = (seed % 2 == 0) ? yOffsetMagnitude : -yOffsetMagnitude
                 dashes.append(KCCrayonGrainDash(
                     start: CGPoint(x: x - dashLength * 0.5, y: y),

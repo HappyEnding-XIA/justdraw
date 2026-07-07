@@ -123,8 +123,8 @@ public enum KCStrokeRenderMath {
             alpha = 1.0
             renderedLineWidth = lineWidth * 0.92 * min(1.08, max(0.94, pressure))
         case .crayon:
-            alpha = min(0.18, 0.06 + pressure * 0.10)
-            renderedLineWidth = lineWidth * 1.28 * pressure
+            alpha = min(0.14, 0.045 + pressure * 0.10)
+            renderedLineWidth = lineWidth * 1.34 * pressure
         }
 
         return Metrics(renderedLineWidth: max(1.0, renderedLineWidth), alpha: alpha)
@@ -170,15 +170,16 @@ public enum KCStrokeRenderMath {
                 metrics: metrics,
                 usesButtLineCap: false,
                 textureLayers: [
-                    TextureLayer(kind: .waxSmear, widthMultiplier: 1.70, alpha: 0.28, offsetX: -1.8, offsetY: 0.9, dashPatternMultipliers: [0.66, 0.40, 0.54, 0.46]),
-                    TextureLayer(kind: .waxSmear, widthMultiplier: 1.22, alpha: 0.40, offsetX: -3.6, offsetY: 2.1, dashPatternMultipliers: [0.58, 0.26, 0.42, 0.38], dashPhaseMultiplier: 0.16),
-                    TextureLayer(kind: .waxSmear, widthMultiplier: 0.92, alpha: 0.42, offsetX: 3.2, offsetY: -2.3, dashPatternMultipliers: [0.48, 0.22, 0.34, 0.30], dashPhaseMultiplier: 0.34),
-                    TextureLayer(kind: .waxSmear, widthMultiplier: 0.68, alpha: 0.36, offsetX: -2.0, offsetY: -3.2, dashPatternMultipliers: [0.38, 0.18, 0.28, 0.26], dashPhaseMultiplier: 0.54),
-                    TextureLayer(kind: .waxSmear, widthMultiplier: 0.44, alpha: 0.34, offsetX: 2.3, offsetY: 3.1, dashPatternMultipliers: [0.30, 0.14, 0.22, 0.24], dashPhaseMultiplier: 0.70),
-                    TextureLayer(kind: .waxSmear, widthMultiplier: 0.26, alpha: 0.32, offsetX: -3.9, offsetY: -0.8, dashPatternMultipliers: [0.22, 0.12, 0.16, 0.18], dashPhaseMultiplier: 0.82)
+                    TextureLayer(kind: .waxSmear, widthMultiplier: 1.92, alpha: 0.34, offsetX: -2.2, offsetY: 1.0, dashPatternMultipliers: [0.58, 0.34, 0.48, 0.42]),
+                    TextureLayer(kind: .waxSmear, widthMultiplier: 1.48, alpha: 0.44, offsetX: -3.8, offsetY: 2.3, dashPatternMultipliers: [0.52, 0.24, 0.38, 0.34], dashPhaseMultiplier: 0.16),
+                    TextureLayer(kind: .waxSmear, widthMultiplier: 1.16, alpha: 0.46, offsetX: 3.4, offsetY: -2.5, dashPatternMultipliers: [0.44, 0.20, 0.32, 0.28], dashPhaseMultiplier: 0.34),
+                    TextureLayer(kind: .waxSmear, widthMultiplier: 0.86, alpha: 0.44, offsetX: -2.2, offsetY: -3.4, dashPatternMultipliers: [0.36, 0.16, 0.26, 0.24], dashPhaseMultiplier: 0.54),
+                    TextureLayer(kind: .waxSmear, widthMultiplier: 0.58, alpha: 0.42, offsetX: 2.5, offsetY: 3.3, dashPatternMultipliers: [0.28, 0.13, 0.20, 0.22], dashPhaseMultiplier: 0.70),
+                    TextureLayer(kind: .waxSmear, widthMultiplier: 0.34, alpha: 0.38, offsetX: -4.1, offsetY: -0.9, dashPatternMultipliers: [0.20, 0.10, 0.15, 0.17], dashPhaseMultiplier: 0.84),
+                    TextureLayer(kind: .waxSmear, widthMultiplier: 0.24, alpha: 0.35, offsetX: 3.7, offsetY: -3.6, dashPatternMultipliers: [0.16, 0.09, 0.12, 0.14], dashPhaseMultiplier: 0.96)
                 ],
-                grainAlpha: 0.94,
-                grainClipWidthMultiplier: 1.72
+                grainAlpha: 0.96,
+                grainClipWidthMultiplier: 1.90
             )
         }
     }

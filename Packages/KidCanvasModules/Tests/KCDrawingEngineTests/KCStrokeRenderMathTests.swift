@@ -40,8 +40,8 @@ final class StrokeRenderMathTests: XCTestCase {
     func testCrayonFormula() {
         let metrics = KCStrokeRenderMath.metrics(for: stroke(tool: .brush, brush: .crayon, width: 10, pressure: 1.0))
         // 蜡笔基础实线必须继续退后，主要质感交给断续蜡痕和颗粒层。
-        XCTAssertEqual(metrics.alpha, 0.16, accuracy: 1e-9)
-        XCTAssertEqual(metrics.renderedLineWidth, 12.8, accuracy: 1e-9)
+        XCTAssertEqual(metrics.alpha, 0.14, accuracy: 1e-9)
+        XCTAssertEqual(metrics.renderedLineWidth, 13.4, accuracy: 1e-9)
     }
 
     func testRenderedWidthFloorsToOne() {
@@ -90,8 +90,8 @@ final class StrokeRenderMathTests: XCTestCase {
 
     func testRenderedMetricsCrayonPressureScales() {
         let m = KCStrokeRenderMath.renderedMetrics(brushStyle: .crayon, lineWidth: 8, pressure: 0.5)
-        XCTAssertEqual(m.alpha, 0.11, accuracy: 1e-9)
-        XCTAssertEqual(m.renderedLineWidth, 5.12, accuracy: 1e-9)
+        XCTAssertEqual(m.alpha, 0.095, accuracy: 1e-9)
+        XCTAssertEqual(m.renderedLineWidth, 5.36, accuracy: 1e-9)
     }
 
     func testBrushStylesAreVisuallySeparatedAtSameWidthAndPressure() {
@@ -148,9 +148,9 @@ final class StrokeRenderMathTests: XCTestCase {
         let waxLayers = crayon.textureLayers.filter { $0.kind == .waxSmear }
 
         // 蜡笔的主体应更像堆叠蜡痕，而不是一条高透明度实心粗线。
-        XCTAssertLessThanOrEqual(crayon.metrics.alpha, 0.56)
+        XCTAssertLessThanOrEqual(crayon.metrics.alpha, 0.14)
         XCTAssertTrue(waxLayers.contains { $0.widthMultiplier >= 1.45 && !$0.dashPatternMultipliers.isEmpty })
-        XCTAssertGreaterThanOrEqual(crayon.grainAlpha, 0.90)
+        XCTAssertGreaterThanOrEqual(crayon.grainAlpha, 0.96)
     }
 
     func testPencilAndCrayonTextureDominatesBaseStroke() {
@@ -170,8 +170,8 @@ final class StrokeRenderMathTests: XCTestCase {
         XCTAssertGreaterThan(pencilSketchStrength, pencil.metrics.alpha * 0.55)
         XCTAssertLessThan(pencil.metrics.renderedLineWidth, pen.metrics.renderedLineWidth * 0.45)
 
-        XCTAssertLessThanOrEqual(crayon.metrics.alpha, 0.18)
-        XCTAssertGreaterThan(crayonWaxStrength, crayon.metrics.alpha * 8.0)
+        XCTAssertLessThanOrEqual(crayon.metrics.alpha, 0.14)
+        XCTAssertGreaterThan(crayonWaxStrength, crayon.metrics.alpha * 13.0)
         XCTAssertGreaterThanOrEqual(crayon.grainAlpha, 0.92)
     }
 
@@ -194,12 +194,12 @@ final class StrokeRenderMathTests: XCTestCase {
         XCTAssertEqual(pen.metrics.alpha, 1.0, accuracy: 1e-9)
         XCTAssertEqual(pen.textureLayers.count, 0)
 
-        XCTAssertLessThanOrEqual(crayon.metrics.alpha, 0.18)
+        XCTAssertLessThanOrEqual(crayon.metrics.alpha, 0.14)
         XCTAssertTrue(waxLayers.contains { $0.widthMultiplier >= 1.45 && $0.alpha >= 0.22 })
         XCTAssertTrue(waxLayers.contains { $0.widthMultiplier <= 0.28 && $0.dashPhaseMultiplier > 0.70 })
-        XCTAssertGreaterThan(waxStrength, crayon.metrics.alpha * 8.0)
+        XCTAssertGreaterThan(waxStrength, crayon.metrics.alpha * 13.0)
         XCTAssertGreaterThanOrEqual(crayon.grainAlpha, 0.92)
-        XCTAssertGreaterThanOrEqual(crayon.grainClipWidthMultiplier, 1.70)
+        XCTAssertGreaterThanOrEqual(crayon.grainClipWidthMultiplier, 1.85)
     }
 
     func testCrayonTextureIsDenseEnoughToReadAsWaxInsteadOfWideMarker() {
@@ -208,9 +208,23 @@ final class StrokeRenderMathTests: XCTestCase {
         let waxStrength = waxLayers.reduce(0.0) { $0 + $1.alpha * $1.widthMultiplier }
 
         // 用户可见蜡笔不能靠粗线条撑开，至少两层高透明断续蜡痕要压过基础线。
-        XCTAssertLessThanOrEqual(crayon.metrics.alpha, 0.18)
-        XCTAssertGreaterThanOrEqual(waxLayers.filter { $0.alpha >= 0.38 }.count, 2)
-        XCTAssertTrue(waxLayers.contains { $0.widthMultiplier >= 1.65 && $0.dashPatternMultipliers.first ?? 0.0 <= 0.72 })
-        XCTAssertGreaterThan(waxStrength, crayon.metrics.alpha * 8.5)
+        XCTAssertLessThanOrEqual(crayon.metrics.alpha, 0.14)
+        XCTAssertGreaterThanOrEqual(waxLayers.filter { $0.alpha >= 0.40 }.count, 4)
+        XCTAssertTrue(waxLayers.contains { $0.widthMultiplier >= 1.85 && $0.dashPatternMultipliers.first ?? 0.0 <= 0.60 })
+        XCTAssertGreaterThan(waxStrength, crayon.metrics.alpha * 14.0)
+    }
+
+    func testCrayonTextureIsRoughEnoughForKidDrawing() {
+        let crayon = KCStrokeRenderMath.renderProfile(brushStyle: .crayon, lineWidth: 20, pressure: 1.0)
+        let waxLayers = crayon.textureLayers.filter { $0.kind == .waxSmear }
+        let narrowBrokenLayers = waxLayers.filter { layer in
+            layer.widthMultiplier <= 0.36 && layer.dashPhaseMultiplier >= 0.80
+        }
+
+        // 体感上要更像儿童蜡笔：底色更退后，宽蜡痕负责覆盖，窄碎蜡痕负责粗糙边缘。
+        XCTAssertLessThanOrEqual(crayon.metrics.alpha, 0.14)
+        XCTAssertGreaterThanOrEqual(waxLayers.count, 7)
+        XCTAssertGreaterThanOrEqual(narrowBrokenLayers.count, 2)
+        XCTAssertGreaterThanOrEqual(crayon.grainClipWidthMultiplier, 1.85)
     }
 }
