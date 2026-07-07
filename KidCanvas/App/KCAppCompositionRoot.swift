@@ -7,6 +7,7 @@
 
 import Foundation
 import KCContentCatalog
+import KCDomain
 
 /// App 壳层的 Composition Root：集中装配 App 级依赖（会话服务、内容目录、绘制适配器等），
 /// 并通过构造注入交给使用方（当前仅 `KCMainViewController`）。
@@ -17,6 +18,7 @@ final class KCAppCompositionRoot {
     private let sessionService: KCSessionService
     private let contentCatalog: KCBundledContentCatalog
     private let drawingEngine: KCDrawingEngineProviding
+    private let photoLibraryService: KCPhotoLibraryServicing
 
     init() {
         // 会话服务：内部装配 Swift KCSessionStore + 旧 archive 迁移器。
@@ -26,6 +28,8 @@ final class KCAppCompositionRoot {
         self.contentCatalog = KCBundledContentCatalog()
         // 绘制能力：默认使用 App 层 adapter 连接 UIKit 类型与 SPM 绘制/领域模型。
         self.drawingEngine = KCDrawingEngineAdapter()
+        // 系统相册能力：保存历史成功后作为 best-effort 导出，不影响 App 内保存语义。
+        self.photoLibraryService = KCPhotoLibraryService()
     }
 
     /// 创建主控制器并注入已装配的依赖。
@@ -33,7 +37,8 @@ final class KCAppCompositionRoot {
         KCMainViewController(
             sessionService: sessionService,
             contentCatalog: contentCatalog,
-            drawingEngine: drawingEngine
+            drawingEngine: drawingEngine,
+            photoLibraryService: photoLibraryService
         )
     }
 }

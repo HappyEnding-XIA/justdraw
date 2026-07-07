@@ -42,6 +42,7 @@ enum KCL10n {
     static var saveTitle: String { tr("top.save.title") }
     static var saveSuccessToastTitle: String { tr("toast.save.success") }
     static var saveFailedToastTitle: String { tr("toast.save.failed") }
+    static var photoExportFailedToastTitle: String { tr("toast.photo-export.failed") }
 
     // MARK: - 左侧工具栏
 

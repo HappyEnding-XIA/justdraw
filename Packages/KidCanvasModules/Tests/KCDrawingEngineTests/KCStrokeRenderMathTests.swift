@@ -40,7 +40,7 @@ final class StrokeRenderMathTests: XCTestCase {
     func testCrayonFormula() {
         let metrics = KCStrokeRenderMath.metrics(for: stroke(tool: .brush, brush: .crayon, width: 10, pressure: 1.0))
         // 蜡笔基础实线必须继续退后，主要质感交给断续蜡痕和颗粒层。
-        XCTAssertEqual(metrics.alpha, 0.14, accuracy: 1e-9)
+        XCTAssertEqual(metrics.alpha, 0.098, accuracy: 1e-9)
         XCTAssertEqual(metrics.renderedLineWidth, 13.4, accuracy: 1e-9)
     }
 
@@ -90,7 +90,7 @@ final class StrokeRenderMathTests: XCTestCase {
 
     func testRenderedMetricsCrayonPressureScales() {
         let m = KCStrokeRenderMath.renderedMetrics(brushStyle: .crayon, lineWidth: 8, pressure: 0.5)
-        XCTAssertEqual(m.alpha, 0.095, accuracy: 1e-9)
+        XCTAssertEqual(m.alpha, 0.063, accuracy: 1e-9)
         XCTAssertEqual(m.renderedLineWidth, 5.36, accuracy: 1e-9)
     }
 
@@ -226,5 +226,17 @@ final class StrokeRenderMathTests: XCTestCase {
         XCTAssertGreaterThanOrEqual(waxLayers.count, 7)
         XCTAssertGreaterThanOrEqual(narrowBrokenLayers.count, 2)
         XCTAssertGreaterThanOrEqual(crayon.grainClipWidthMultiplier, 1.85)
+    }
+
+    func testCrayonBaseStrokeStaysBehindChunkyWaxTexture() {
+        let crayon = KCStrokeRenderMath.renderProfile(brushStyle: .crayon, lineWidth: 18, pressure: 1.0)
+        let waxStrength = crayon.textureLayers
+            .filter { $0.kind == .waxSmear }
+            .reduce(0.0) { $0 + $1.alpha * $1.widthMultiplier }
+
+        // 蜡笔优化后，连续基础线只能做底色，视觉主体必须来自宽蜡痕和颗粒。
+        XCTAssertLessThanOrEqual(crayon.metrics.alpha, 0.10)
+        XCTAssertGreaterThan(waxStrength, crayon.metrics.alpha * 22.0)
+        XCTAssertGreaterThanOrEqual(crayon.grainClipWidthMultiplier, 2.0)
     }
 }

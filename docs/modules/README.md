@@ -10,6 +10,7 @@
 - [KCDomain](./KCDomain.md) — UIKit-free 领域模型、协议和纯业务状态决策。
 - [KCDrawingEngine](./KCDrawingEngine.md) — 位图、笔触、橡皮擦、蜡笔纹理与线稿几何生成。
 - [KCSessionPersistence](./KCSessionPersistence.md) — 本地会话、缩略图、草稿和元数据持久化。
+- [KCPhotoLibrary](./KCPhotoLibrary.md) — App 层系统相册导出适配与保存语义拆分。
 - [KCCanvasFeature](./KCCanvasFeature.md) — App 层画布创建、动作状态与动作按钮外观。
 - [KCDrawingCanvasView](./KCDrawingCanvasView.md) — App 层 UIKit/Core Graphics 画布、印章手势与撤销/重做状态。
 - [KCEditorPanelsFeature](./KCEditorPanelsFeature.md) — App 层工具面板收起状态与折叠态工具芯片色块。

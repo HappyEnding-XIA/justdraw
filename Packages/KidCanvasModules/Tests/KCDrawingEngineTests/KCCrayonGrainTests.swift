@@ -12,9 +12,9 @@ final class CrayonGrainTests: XCTestCase {
 
     // 根据产品化蜡笔颗粒数学手工计算的参考用例：
     // bounds {0,0,100,50}，lineWidth 10。
-    // grainBounds {-5,-5,110,60}；spacing = max(3.4, 3) = 3.4；
-    // columnCount = ceil(110/3.4) = 33；rowCount = ceil(60/3.4) = 18；
-    // dash count = (18+1) * (33+1) = 646；dashWidth = max(1.0, 1.2) = 1.2。
+    // grainBounds {-5,-5,110,60}；spacing = max(3.0, 2.4) = 3.0；
+    // columnCount = ceil(110/3.0) = 37；rowCount = ceil(60/3.0) = 20；
+    // dash count = (20+1) * (37+1) = 798；dashWidth = max(1.1, 1.6) = 1.6。
     private static let referenceBounds = CGRect(x: 0, y: 0, width: 100, height: 50)
     private static let referenceLineWidth: CGFloat = 10
 
@@ -27,9 +27,9 @@ final class CrayonGrainTests: XCTestCase {
     func testDashCountAndConstantWidthForReferenceBounds() {
         let dashes = KCCrayonGrain.dashes(pathBounds: CrayonGrainTests.referenceBounds,
                                           lineWidth: CrayonGrainTests.referenceLineWidth)
-        XCTAssertEqual(dashes.count, 646)
+        XCTAssertEqual(dashes.count, 798)
         for dash in dashes {
-            XCTAssertEqual(dash.lineWidth, 1.2, accuracy: 1e-9)
+            XCTAssertEqual(dash.lineWidth, 1.6, accuracy: 1e-9)
         }
     }
 
@@ -46,32 +46,32 @@ final class CrayonGrainTests: XCTestCase {
     }
 
     func testDashGeometryAtRowColumnMatchesPrototype() {
-        // row 1, column 1（行优先索引 34 + 1 = 35）：seed 54。
-        // jitter (0.92, 0.38)；center (-0.68, -1.22)；
+        // row 1, column 1（行优先索引 38 + 1 = 39）：seed 54。
+        // jitter (0.92, 0.38)；center (-1.08, -1.62)；
         // dashLength = 10 * (0.18 + 4*0.035) = 3.2；y offset +0.95。
         let dashes = KCCrayonGrain.dashes(pathBounds: CrayonGrainTests.referenceBounds,
                                           lineWidth: CrayonGrainTests.referenceLineWidth)
-        let dash = dashes[35]
-        XCTAssertEqual(dash.start.x, -2.28, accuracy: 1e-9)
-        XCTAssertEqual(dash.start.y, -1.22, accuracy: 1e-9)
-        XCTAssertEqual(dash.end.x, 0.92, accuracy: 1e-9)
-        XCTAssertEqual(dash.end.y, -0.27, accuracy: 1e-9)
+        let dash = dashes[39]
+        XCTAssertEqual(dash.start.x, -2.68, accuracy: 1e-9)
+        XCTAssertEqual(dash.start.y, -1.62, accuracy: 1e-9)
+        XCTAssertEqual(dash.end.x, 0.52, accuracy: 1e-9)
+        XCTAssertEqual(dash.end.y, -0.67, accuracy: 1e-9)
     }
 
     func testGridRespectsColumnAndRowCaps() {
         // 巨大的 bounds 配合较小的 spacing 会同时触发两个上限：220 列 × 180 行。
-        // lineWidth 4 → spacing = max(3.4, 1.2) = 3.4；grainBounds 每侧扩展 2。
+        // lineWidth 4 → spacing = max(3.0, 0.96) = 3.0；grainBounds 每侧扩展 2。
         let dashes = KCCrayonGrain.dashes(pathBounds: CGRect(x: 0, y: 0, width: 10000, height: 10000),
                                           lineWidth: 4)
         XCTAssertEqual(dashes.count, (180 + 1) * (220 + 1))
     }
 
-    func testDashWidthFloorsToPointNineForThinLines() {
+    func testDashWidthFloorsToOnePointOneForThinLines() {
         let dashes = KCCrayonGrain.dashes(pathBounds: CGRect(x: 0, y: 0, width: 20, height: 20),
                                           lineWidth: 0.01)
         XCTAssertFalse(dashes.isEmpty)
         for dash in dashes {
-            XCTAssertEqual(dash.lineWidth, 1.0, accuracy: 1e-9)
+            XCTAssertEqual(dash.lineWidth, 1.1, accuracy: 1e-9)
         }
     }
 
@@ -82,7 +82,7 @@ final class CrayonGrainTests: XCTestCase {
         // 宽蜡笔需要更明显的颗粒短线，否则实际观感会退化成平滑粗笔。
         XCTAssertFalse(dashes.isEmpty)
         for dash in dashes {
-            XCTAssertEqual(dash.lineWidth, 2.88, accuracy: 1e-9)
+            XCTAssertEqual(dash.lineWidth, 3.84, accuracy: 1e-9)
         }
     }
 
@@ -91,8 +91,18 @@ final class CrayonGrainTests: XCTestCase {
                                           lineWidth: 16.0)
 
         // 中等蜡笔线宽下，颗粒要有明显厚度，同时不能密到把纸纹空隙糊平。
-        XCTAssertGreaterThanOrEqual(dashes.count, 560)
-        XCTAssertLessThanOrEqual(dashes.count, 760)
-        XCTAssertGreaterThanOrEqual(dashes[0].lineWidth, 1.9)
+        XCTAssertGreaterThanOrEqual(dashes.count, 900)
+        XCTAssertLessThanOrEqual(dashes.count, 980)
+        XCTAssertGreaterThanOrEqual(dashes[0].lineWidth, 2.5)
+    }
+
+    func testMediumCrayonUsesChunkierAndDenserWaxGrain() {
+        let dashes = KCCrayonGrain.dashes(pathBounds: CGRect(x: 0, y: 0, width: 120, height: 80),
+                                          lineWidth: 16.0)
+
+        // 用户侧反馈蜡笔观感不明显后，中等线宽必须能看出蜡笔碎粒和纸纹断续感。
+        XCTAssertGreaterThanOrEqual(dashes.count, 820)
+        XCTAssertLessThanOrEqual(dashes.count, 980)
+        XCTAssertGreaterThanOrEqual(dashes[0].lineWidth, 2.5)
     }
 }

@@ -30,12 +30,13 @@
 - `KCContentCatalogDefaults.palette24` / `.palette36`：`[KCHexColor]`，从 JSON 加载并按显示顺序返回。
 - `KCContentCatalogDefaults.stickerGroups`：`[KCStickerGroup]`，从 JSON 加载。
 - `KCContentCatalogDefaults.lineArtTemplates`：`[KCLineArtTemplate]`，从 JSON 加载。
+- `KCContentCatalogDefaults.fallbackPalette24` / `.fallbackPalette36` / `.fallbackStickerGroups` / `.fallbackLineArtTemplates`：无 IO 启动目录，内容必须与 `content.json` 逐字一致。
 - `KCContentCatalogDefaults.decodedContent(from:)`：JSON 解码 + 回退，供加载与测试复用。
-- `KCBundledContentCatalog`：Sendable 打包视图，一次性暴露 `standardPalette` / `extendedPalette` / `stickerGroups` / `lineArtTemplates`，并提供 `palette(for: KCPaletteSize)`。
+- `KCBundledContentCatalog`：Sendable 打包视图，默认构造使用 fallback 内容，不在首帧前读取 package resource；需要显式验证资源内容时使用 `KCBundledContentCatalog.resourceBacked()`。
 
 ## 3. App 接入路径
 
-1. **装配**：`KidCanvas/App/KCAppCompositionRoot.swift` 在 `init()` 中构造 `KCBundledContentCatalog()`，与 `KCSessionService`、`KCDrawingEngineProviding` 一并作为 App 级依赖。
+1. **装配**：`KidCanvas/App/KCAppCompositionRoot.swift` 在 `init()` 中构造 `KCBundledContentCatalog()`，与 `KCSessionService`、`KCDrawingEngineProviding` 一并作为 App 级依赖。默认构造走 fallback，避免启动阶段同步读取 `content.json`；资源读取只通过 `resourceBacked()` 显式触发。
 2. **注入**：`makeMainViewController()` 以 `KCMainViewController(sessionService:contentCatalog:drawingEngine:)` 构造注入；控制器持有 `let contentCatalog: KCBundledContentCatalog`。
 3. **消费**（`KidCanvas/Features/Editor/KCMainViewController.swift`）：
    - 色盘：`KCContentPickerFeature` 在构造时调用 `contentCatalog.palette(for: .standard/.extended).colors.map { UIColor(kcHex: $0) }`。`UIColor(kcHex:)` 是 App 层胶水扩展（KCCommon 无 UIKit），用归一化分量无损还原 `KCHexColor → UIColor`。T049 后，色盘 UIKit 按钮、最近色横向行和当前色高亮由 `KCColorPalettePanelRenderer` 渲染，内容来源仍保持 `KCContentCatalog → KCContentPickerFeature → Renderer` 的单向链路。
@@ -45,5 +46,5 @@
 ## 4. 边界与遗留
 
 - **线稿元数据与几何分离**：`KCLineArtTemplate` 只描述元数据；实际程序化几何在 `KCDrawingEngine.KCLineArtDrawing` 内生成 `CGPath` 指令，App adapter 只做 `UIBezierPath` 包装与描边转发。
-- **硬编码 fallback 只作兜底**：色盘、贴纸、线稿的主路径均来自 `Resources/content.json`；`Fallback` 只在资源缺失、为空或解码失败时使用。
+- **硬编码 fallback 是首屏启动口径**：App 默认目录使用 fallback 以降低冷启动 IO，资源目录仍由 `resourceBacked()` 和测试守护；两份内容必须保持一致。
 - 控制器不得再硬编码贴纸分组 / 线稿元数据 / 色盘取值，`scripts/validate_project.py` 有正向（消费 catalog）与禁止（硬编码回退）校验守护。

@@ -13,6 +13,18 @@ import KCCommon
 /// 取值逐字迁移自 Objective-C 原型
 /// （`makePalette24`/`makePalette36`、`stickerSymbolsByCategory`、`makeLineArtItems`）。
 public enum KCContentCatalogDefaults {
+    /// 无 IO 启动目录使用的 24 色 fallback。内容必须与 `Resources/content.json` 保持一致。
+    public static let fallbackPalette24: [KCHexColor] = Fallback.palette24
+
+    /// 无 IO 启动目录使用的 36 色 fallback。内容必须与 `Resources/content.json` 保持一致。
+    public static let fallbackPalette36: [KCHexColor] = Fallback.palette36
+
+    /// 无 IO 启动目录使用的贴纸分组 fallback。内容必须与 `Resources/content.json` 保持一致。
+    public static let fallbackStickerGroups: [KCStickerGroup] = Fallback.stickerGroups
+
+    /// 无 IO 启动目录使用的线稿模板 fallback。内容必须与 `Resources/content.json` 保持一致。
+    public static let fallbackLineArtTemplates: [KCLineArtTemplate] = Fallback.lineArtTemplates
+
     /// 默认 24 色色盘，按显示顺序排列，从 package resource 加载。
     public static let palette24: [KCHexColor] = loaded.palette(id: "palette.24")?.colors ?? Fallback.palette24
 
@@ -153,15 +165,30 @@ public struct KCBundledContentCatalog: Sendable {
     public let stickerGroups: [KCStickerGroup]
     public let lineArtTemplates: [KCLineArtTemplate]
 
+    /// 显式构造资源目录版本。该入口会读取 package resource，适合测试或后续内容热更新，
+    /// 不应放在首帧前的 App 启动路径上。
+    public static func resourceBacked() -> KCBundledContentCatalog {
+        KCBundledContentCatalog(
+            standardPalette: KCContentPalette(
+                id: "palette.24", title: "24 Colors", colors: KCContentCatalogDefaults.palette24
+            ),
+            extendedPalette: KCContentPalette(
+                id: "palette.36", title: "36 Colors", colors: KCContentCatalogDefaults.palette36
+            ),
+            stickerGroups: KCContentCatalogDefaults.stickerGroups,
+            lineArtTemplates: KCContentCatalogDefaults.lineArtTemplates
+        )
+    }
+
     public init(
         standardPalette: KCContentPalette = KCContentPalette(
-            id: "palette.24", title: "24 Colors", colors: KCContentCatalogDefaults.palette24
+            id: "palette.24", title: "24 Colors", colors: KCContentCatalogDefaults.fallbackPalette24
         ),
         extendedPalette: KCContentPalette = KCContentPalette(
-            id: "palette.36", title: "36 Colors", colors: KCContentCatalogDefaults.palette36
+            id: "palette.36", title: "36 Colors", colors: KCContentCatalogDefaults.fallbackPalette36
         ),
-        stickerGroups: [KCStickerGroup] = KCContentCatalogDefaults.stickerGroups,
-        lineArtTemplates: [KCLineArtTemplate] = KCContentCatalogDefaults.lineArtTemplates
+        stickerGroups: [KCStickerGroup] = KCContentCatalogDefaults.fallbackStickerGroups,
+        lineArtTemplates: [KCLineArtTemplate] = KCContentCatalogDefaults.fallbackLineArtTemplates
     ) {
         self.standardPalette = standardPalette
         self.extendedPalette = extendedPalette

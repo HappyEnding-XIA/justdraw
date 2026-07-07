@@ -2,7 +2,7 @@
 
 > 静态验收（`swift test` + `validate_project.py` + `xcodebuild build`）通过后，用 `scripts/runtime_smoke_test.sh` 验证 app 能真正在模拟器里启动并稳定运行。静态验收只能证明"能编译"，运行时烟测证明"能启动、不崩溃、UI 能渲染"。
 >
-> 交互和布局类回归可使用 `scripts/runtime_acceptance_test.sh`。该脚本通过 Debug-only launch argument 触发 App 内部验收探针，并从模拟器沙盒读取 JSON 结果；当前覆盖空画布保存反馈、首屏 safe area 布局、印章删除/撤销/重做链路、绘制内容保存与历史恢复链路、绘画工具链路，以及系统 UI 呈现探针。
+> 交互和布局类回归可使用 `scripts/runtime_acceptance_test.sh`。该脚本通过 Debug-only launch argument 触发 App 内部验收探针，并从模拟器沙盒读取 JSON 结果；当前覆盖空画布保存反馈、首屏 safe area 布局、印章删除/撤销/重做链路、绘制内容保存与历史恢复链路、相册导出失败语义、绘画工具链路，以及系统 UI 呈现探针。
 
 ## 何时必须跑
 
@@ -34,6 +34,10 @@ scripts/runtime_acceptance_test.sh "iPad Pro 11 M4" sticker-undo-redo
 # 绘制内容保存与历史恢复验收
 scripts/runtime_acceptance_test.sh "iPhone 17 Pro" save-history-restore
 scripts/runtime_acceptance_test.sh "iPad Pro 11 M4" save-history-restore
+
+# 相册导出失败语义验收
+scripts/runtime_acceptance_test.sh "iPhone 17 Pro" photo-export-failure
+scripts/runtime_acceptance_test.sh "iPad Pro 11 M4" photo-export-failure
 
 # 绘画工具链路验收
 scripts/runtime_acceptance_test.sh "iPhone 17 Pro" drawing-tools
@@ -83,6 +87,7 @@ scripts/runtime_acceptance_test.sh "iPad Pro 11 M4" system-ui
 - `layout-safe-area`：首屏浮动控件是否落在 safe area 约束内，并检查 iPhone 横屏紧凑布局下左侧工具栏、右侧面板的最低可视高度。
 - `sticker-undo-redo`：空白画布插入印章后检查选中态、可保存状态，再删除印章并验证撤销可恢复、重做可再次删除。
 - `save-history-restore`：空白画布插入一条 Debug-only 画笔笔触，通过真实保存入口写入历史并触发成功 Toast，再清空画布并从历史恢复可见内容。脚本会在启动前对模拟器授予 `photos-add` 权限，避免系统相册权限弹窗干扰自动验收。
+- `photo-export-failure`：空白画布插入一条 Debug-only 画笔笔触，通过真实保存入口写入历史，并在 Debug launch arg 下强制相册导出失败；探针验证历史数增加、当前会话建立、已观察到“已保存”，且失败反馈为“已保存，相册未保存”，不得出现“无法保存”来否定本地保存。
 - `drawing-tools`：空白画布切换 24/36 色盘并选色，生成画笔内容，执行橡皮擦除，加载线稿后填色，再用取色器采样并写入最近色。该探针覆盖画笔、橡皮、颜色面板、填色、取色和线稿加载的 App 内运行时链路。
 - `system-ui`：验证 Custom 能呈现 `UIColorPickerViewController`，并通过系统取色器 delegate 回填颜色和最近色；验证相册导入能呈现 `UIImagePickerController(.photoLibrary)`，并通过图片选择 delegate 导入一张合成图片且保持干净会话。该系统 UI 呈现探针不能替代人工选择真实颜色、真实照片和权限弹窗检查。
 

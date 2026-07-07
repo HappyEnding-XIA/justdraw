@@ -14,6 +14,7 @@
 /* Save feedback */
 "toast.save.success" = "Saved";
 "toast.save.failed" = "Unable to Save";
+"toast.photo-export.failed" = "Saved, Photo Export Failed";
 
 /* Left tool rail */
 "tool.brush.title" = "Brush";

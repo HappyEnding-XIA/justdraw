@@ -74,6 +74,16 @@ final class ContentCatalogTests: XCTestCase {
         XCTAssertEqual(catalog.palette(for: .standard).id, "palette.24")
     }
 
+    func testDefaultCatalogUsesStartupFallbackContent() {
+        let catalog = KCBundledContentCatalog()
+
+        // App 启动路径默认使用无 IO fallback 内容，避免 Composition Root 冷启动读包内 JSON。
+        XCTAssertEqual(catalog.standardPalette.colors, KCContentCatalogDefaults.fallbackPalette24)
+        XCTAssertEqual(catalog.extendedPalette.colors, KCContentCatalogDefaults.fallbackPalette36)
+        XCTAssertEqual(catalog.stickerGroups, KCContentCatalogDefaults.fallbackStickerGroups)
+        XCTAssertEqual(catalog.lineArtTemplates, KCContentCatalogDefaults.fallbackLineArtTemplates)
+    }
+
     func testCatalogIsSendableAndCodableShapesRoundTrip() throws {
         // 通过打包的目录类型验证 Codable 的编解码形状。
         let palette = KCContentPalette(id: "p", title: "P", colors: KCContentCatalogDefaults.palette24)
@@ -141,7 +151,7 @@ final class ContentCatalogTests: XCTestCase {
 
     func testBundledPalettesAreLoadedFromContentDocumentShape() {
         // T037：公开色盘 API 的 id、数量和扩展色盘前缀关系由 JSON 文档形状守护。
-        let catalog = KCBundledContentCatalog()
+        let catalog = KCBundledContentCatalog.resourceBacked()
         XCTAssertEqual(catalog.standardPalette.id, "palette.24")
         XCTAssertEqual(catalog.extendedPalette.id, "palette.36")
         XCTAssertEqual(catalog.standardPalette.colors.count, 24)

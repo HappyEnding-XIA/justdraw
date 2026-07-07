@@ -123,7 +123,7 @@ public enum KCStrokeRenderMath {
             alpha = 1.0
             renderedLineWidth = lineWidth * 0.92 * min(1.08, max(0.94, pressure))
         case .crayon:
-            alpha = min(0.14, 0.045 + pressure * 0.10)
+            alpha = min(0.10, 0.028 + pressure * 0.07)
             renderedLineWidth = lineWidth * 1.34 * pressure
         }
 
@@ -178,8 +178,8 @@ public enum KCStrokeRenderMath {
                     TextureLayer(kind: .waxSmear, widthMultiplier: 0.34, alpha: 0.38, offsetX: -4.1, offsetY: -0.9, dashPatternMultipliers: [0.20, 0.10, 0.15, 0.17], dashPhaseMultiplier: 0.84),
                     TextureLayer(kind: .waxSmear, widthMultiplier: 0.24, alpha: 0.35, offsetX: 3.7, offsetY: -3.6, dashPatternMultipliers: [0.16, 0.09, 0.12, 0.14], dashPhaseMultiplier: 0.96)
                 ],
-                grainAlpha: 0.96,
-                grainClipWidthMultiplier: 1.90
+                grainAlpha: 1.0,
+                grainClipWidthMultiplier: 2.08
             )
         }
     }

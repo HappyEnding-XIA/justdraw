@@ -519,10 +519,10 @@ SwiftUI 页面拆分标准：
 
 资源主路径：
 
-- `KCContentCatalog` 的色盘、贴纸、线稿元数据必须优先来自 JSON / package resources
-- 硬编码内容只允许作为资源缺失、为空或解码失败时的集中 fallback
-- fallback 必须集中在 Catalog 模块内，不得散落到 ViewController、Feature 或 App 层
-- 新增内容字段时必须同步 JSON schema、解析测试和模块文档
+- App 启动默认使用 `KCBundledContentCatalog()` 的无 IO fallback，避免首帧前同步读取 package resource
+- JSON / package resources 作为内容源与验收源，通过 `KCBundledContentCatalog.resourceBacked()` 显式加载
+- fallback 必须与资源内容逐字一致，并集中在 `KCContentCatalog` 模块内，不得散落到 ViewController、Feature 或 App 层
+- 新增内容字段时必须同步 JSON schema、解析测试、fallback 数据和模块文档
 
 ### 10.3 资源命名
 

@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/bin/bash
 #
 #  runtime_acceptance_test.sh
 #  KidCanvas
@@ -56,6 +56,10 @@ case "$PROBE" in
     LAUNCH_ARG="--kc-runtime-save-history-check"
     RESULT_FILE="kc_runtime_acceptance_save_history.json"
     ;;
+  photo-export-failure)
+    LAUNCH_ARG="--kc-runtime-photo-export-failure-check"
+    RESULT_FILE="kc_runtime_acceptance_photo_export_failure.json"
+    ;;
   drawing-tools)
     LAUNCH_ARG="--kc-runtime-drawing-tools-check"
     RESULT_FILE="kc_runtime_acceptance_drawing_tools.json"
@@ -65,7 +69,7 @@ case "$PROBE" in
     RESULT_FILE="kc_runtime_acceptance_system_ui.json"
     ;;
   *)
-    red "错误：未知验收探针 '$PROBE'，可选：empty-save / layout-safe-area / sticker-undo-redo / save-history-restore / drawing-tools / system-ui"
+    red "错误：未知验收探针 '$PROBE'，可选：empty-save / layout-safe-area / sticker-undo-redo / save-history-restore / photo-export-failure / drawing-tools / system-ui"
     exit 8
     ;;
 esac

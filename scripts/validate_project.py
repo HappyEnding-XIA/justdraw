@@ -37,6 +37,7 @@ APP_FILE_PATHS = {
     "KCHistoryFeature.swift": APP_ROOT / "Features" / "History" / "KCHistoryFeature.swift",
     "KCDrawingEngineAdapter.swift": APP_ROOT / "Infrastructure" / "KCDrawingEngineAdapter.swift",
     "KCSessionService.swift": APP_ROOT / "Infrastructure" / "KCSessionService.swift",
+    "KCPhotoLibraryService.swift": APP_ROOT / "Infrastructure" / "KCPhotoLibraryService.swift",
     "LegacyArchiveMigrator.swift": APP_ROOT / "Infrastructure" / "LegacyArchiveMigrator.swift",
     "KCEditorUIFactory.swift": APP_ROOT / "DesignSystem" / "KCEditorUIFactory.swift",
     "KCPressFeedbackController.swift": APP_ROOT / "DesignSystem" / "KCPressFeedbackController.swift",
@@ -108,6 +109,7 @@ def localization_checks(zh_localizable, en_localizable, zh_info_plist, en_info_p
             "static var redoTitle: String",
             "static var saveSuccessToastTitle: String",
             "static var saveFailedToastTitle: String",
+            "static var photoExportFailedToastTitle: String",
             "static var draftThumbAvailableAccessibility: String",
             "static var draftThumbEmptyAccessibility: String",
         ]:
@@ -171,10 +173,12 @@ def localization_checks(zh_localizable, en_localizable, zh_info_plist, en_info_p
         (zh_localizable, "zh-Hans", [
             '"toast.save.success" = "已保存";',
             '"toast.save.failed" = "无法保存";',
+            '"toast.photo-export.failed" = "已保存，相册未保存";',
         ]),
         (en_localizable, "en", [
             '"toast.save.success" = "Saved";',
             '"toast.save.failed" = "Unable to Save";',
+            '"toast.photo-export.failed" = "Saved, Photo Export Failed";',
         ]),
     ]
     for path, locale_label, expected_lines in expected_save_toast_strings:
@@ -291,17 +295,20 @@ def delivery_acceptance_checks():
     checks.append(require_text(runtime_acceptance_text, "--kc-runtime-layout-check", "Runtime acceptance script launches the layout Debug probe"))
     checks.append(require_text(runtime_acceptance_text, "--kc-runtime-sticker-check", "Runtime acceptance script launches the sticker Debug probe"))
     checks.append(require_text(runtime_acceptance_text, "--kc-runtime-save-history-check", "Runtime acceptance script launches the save-history Debug probe"))
+    checks.append(require_text(runtime_acceptance_text, "--kc-runtime-photo-export-failure-check", "Runtime acceptance script launches the photo-export-failure Debug probe"))
     checks.append(require_text(runtime_acceptance_text, "--kc-runtime-drawing-tools-check", "Runtime acceptance script launches the drawing-tools Debug probe"))
     checks.append(require_text(runtime_acceptance_text, "--kc-runtime-system-ui-check", "Runtime acceptance script launches the system-ui Debug probe"))
     checks.append(require_text(runtime_acceptance_text, "kc_runtime_acceptance_empty_save.json", "Runtime acceptance script reads the empty-save JSON result"))
     checks.append(require_text(runtime_acceptance_text, "kc_runtime_acceptance_layout.json", "Runtime acceptance script reads the layout JSON result"))
     checks.append(require_text(runtime_acceptance_text, "kc_runtime_acceptance_sticker.json", "Runtime acceptance script reads the sticker JSON result"))
     checks.append(require_text(runtime_acceptance_text, "kc_runtime_acceptance_save_history.json", "Runtime acceptance script reads the save-history JSON result"))
+    checks.append(require_text(runtime_acceptance_text, "kc_runtime_acceptance_photo_export_failure.json", "Runtime acceptance script reads the photo-export-failure JSON result"))
     checks.append(require_text(runtime_acceptance_text, "kc_runtime_acceptance_drawing_tools.json", "Runtime acceptance script reads the drawing-tools JSON result"))
     checks.append(require_text(runtime_acceptance_text, "kc_runtime_acceptance_system_ui.json", "Runtime acceptance script reads the system-ui JSON result"))
     checks.append(require_text(runtime_acceptance_text, "layout-safe-area", "Runtime acceptance script exposes the layout-safe-area probe"))
     checks.append(require_text(runtime_acceptance_text, "sticker-undo-redo", "Runtime acceptance script exposes the sticker-undo-redo probe"))
     checks.append(require_text(runtime_acceptance_text, "save-history-restore", "Runtime acceptance script exposes the save-history-restore probe"))
+    checks.append(require_text(runtime_acceptance_text, "photo-export-failure", "Runtime acceptance script exposes the photo-export-failure probe"))
     checks.append(require_text(runtime_acceptance_text, "drawing-tools", "Runtime acceptance script exposes the drawing-tools probe"))
     checks.append(require_text(runtime_acceptance_text, "system-ui", "Runtime acceptance script exposes the system-ui probe"))
     checks.append(require_text(runtime_acceptance_text, "safe_path_component", "Runtime acceptance script sanitizes device/probe names for DerivedData paths"))
@@ -357,6 +364,8 @@ def delivery_acceptance_checks():
         'scripts/runtime_acceptance_test.sh "iPad Pro 11 M4" sticker-undo-redo',
         'scripts/runtime_acceptance_test.sh "iPhone 17 Pro" save-history-restore',
         'scripts/runtime_acceptance_test.sh "iPad Pro 11 M4" save-history-restore',
+        'scripts/runtime_acceptance_test.sh "iPhone 17 Pro" photo-export-failure',
+        'scripts/runtime_acceptance_test.sh "iPad Pro 11 M4" photo-export-failure',
         'scripts/runtime_acceptance_test.sh "iPhone 17 Pro" drawing-tools',
         'scripts/runtime_acceptance_test.sh "iPad Pro 11 M4" drawing-tools',
         'scripts/runtime_acceptance_test.sh "iPhone 17 Pro" system-ui',
@@ -798,6 +807,7 @@ def app_feature_checks(
     line_art_drawing_text,
     composition_root_text,
     catalog_text,
+    content_catalog_defaults_text,
     content_picker_feature_text,
     canvas_feature_text,
     line_art_feature_text,
@@ -953,20 +963,24 @@ def app_feature_checks(
     checks.append(require_text(toast_presenter_text, "UIVisualEffectView(effect: UIBlurEffect(style: .systemThinMaterialLight))", "Toast keeps the existing blur style"))
     checks.append(require_text(toast_presenter_text, "KCL10n.saveSuccessToastTitle", "Save success toast uses localized text"))
     checks.append(require_text(toast_presenter_text, "KCL10n.saveFailedToastTitle", "Save failure toast uses localized text"))
+    checks.append(require_text(toast_presenter_text, "KCL10n.photoExportFailedToastTitle", "Photo export failure toast uses localized text"))
     checks.append(require_text(toast_presenter_text, "toast.accessibilityLabel = titleLabel.text", "Save toast exposes localized accessibility text"))
     checks.append(require_text(main_text, "self.toastPresenter.showSaveToast(success: success, in: self.view, anchorView: self.saveButton)", "Main view controller delegates save toast presentation"))
+    checks.append(require_text(main_text, "self.toastPresenter.showPhotoExportFailedToast(in: self.view, anchorView: self.saveButton)", "Main view controller delegates photo-export failure toast presentation"))
     checks.append(require_text(main_text, "self.toastPresenter.dismiss(self.saveToastView)", "Main view controller delegates save toast dismissal"))
     checks.append(require_text(main_text, "#if DEBUG", "Runtime acceptance probe is Debug-only"))
     checks.append(require_text(main_text, "--kc-runtime-empty-save-check", "Runtime acceptance probe is gated by an explicit launch argument"))
     checks.append(require_text(main_text, "--kc-runtime-layout-check", "Runtime layout probe is gated by an explicit launch argument"))
     checks.append(require_text(main_text, "--kc-runtime-sticker-check", "Runtime sticker probe is gated by an explicit launch argument"))
     checks.append(require_text(main_text, "--kc-runtime-save-history-check", "Runtime save-history probe is gated by an explicit launch argument"))
+    checks.append(require_text(main_text, "--kc-runtime-photo-export-failure-check", "Runtime photo-export failure probe is gated by an explicit launch argument"))
     checks.append(require_text(main_text, "--kc-runtime-drawing-tools-check", "Runtime drawing-tools probe is gated by an explicit launch argument"))
     checks.append(require_text(main_text, "--kc-runtime-system-ui-check", "Runtime system-ui probe is gated by an explicit launch argument"))
     checks.append(require_text(main_text, "kc_runtime_acceptance_empty_save.json", "Runtime acceptance probe writes the empty-save JSON result"))
     checks.append(require_text(main_text, "kc_runtime_acceptance_layout.json", "Runtime acceptance probe writes the layout JSON result"))
     checks.append(require_text(main_text, "kc_runtime_acceptance_sticker.json", "Runtime acceptance probe writes the sticker JSON result"))
     checks.append(require_text(main_text, "kc_runtime_acceptance_save_history.json", "Runtime save-history probe writes the save-history JSON result"))
+    checks.append(require_text(main_text, "kc_runtime_acceptance_photo_export_failure.json", "Runtime photo-export failure probe writes the JSON result"))
     checks.append(require_text(main_text, "kc_runtime_acceptance_drawing_tools.json", "Runtime drawing-tools probe writes the drawing-tools JSON result"))
     checks.append(require_text(main_text, "kc_runtime_acceptance_system_ui.json", "Runtime system-ui probe writes the system-ui JSON result"))
     checks.append(require_text(main_text, "saveButtonEnabledBeforeTap", "Runtime acceptance probe verifies empty-canvas save remains tappable"))
@@ -1278,23 +1292,24 @@ def app_feature_checks(
     checks.append(require_text(stroke_render_math_text, "lineWidth * 0.92", "Pen render metrics keep a stable solid stroke"))
     checks.append(require_text(stroke_render_math_text, "lineWidth * 1.34 * pressure", "Crayon render metrics stay broad without relying only on width"))
     checks.append(require_text(stroke_render_math_text, "min(0.30, 0.14 + pressure * 0.12)", "Pencil base alpha stays below solid ink"))
-    checks.append(require_text(stroke_render_math_text, "min(0.14, 0.045 + pressure * 0.10)", "Crayon base alpha stays below solid ink"))
+    checks.append(require_text(stroke_render_math_text, "min(0.10, 0.028 + pressure * 0.07)", "Crayon base alpha stays below solid ink"))
     checks.append(require_text(stroke_render_math_text, "TextureLayer(kind: .softHalo", "Pencil profile includes a soft halo layer"))
     checks.append(require_text(stroke_render_math_text, "TextureLayer(kind: .sketchLine", "Pencil profile includes sketch texture lines"))
     checks.append(require_text(stroke_render_math_text, "dashPatternMultipliers: [0.92, 0.38, 0.36, 0.30]", "Pencil sketch texture uses broken graphite dash patterns"))
     checks.append(require_text(stroke_render_math_text, "TextureLayer(kind: .waxSmear", "Crayon profile includes wax smear layers"))
     checks.append(require_text(stroke_render_math_text, "widthMultiplier: 1.92", "Crayon profile includes a wide wax smear layer"))
-    checks.append(require_text(stroke_render_math_text, "grainAlpha: 0.96", "Crayon grain alpha stays visibly textured"))
+    checks.append(require_text(stroke_render_math_text, "grainAlpha: 1.0", "Crayon grain alpha stays visibly textured"))
     checks.append(require_text(stroke_render_math_tests_text, "testPencilAndCrayonTextureDominatesBaseStroke", "Brush tests prevent pencil/crayon texture from being hidden by the base stroke"))
     checks.append(require_text(stroke_render_math_tests_text, "testUserVisibleBrushSignaturesAreNotWidthOnly", "Brush tests guard user-visible signatures beyond width"))
+    checks.append(require_text(stroke_render_math_tests_text, "testCrayonBaseStrokeStaysBehindChunkyWaxTexture", "Brush tests guard crayon base stroke behind wax texture"))
     checks.append(require_text(canvas_text, "renderPath.lineCapStyle = brushProfile?.usesButtLineCap == true ? .butt : .round", "Pen strokes use a distinct endpoint style through profile"))
     checks.append(require_regex(canvas_text, r"if stroke\.toolMode == \.eraser \{[\s\S]*renderedLineWidth = max\(1\.0, stroke\.lineWidth\)[\s\S]*alpha = 1\.0", "Eraser rendering ignores brush texture metrics"))
     checks.append(require_regex(crayon_grain_text, r"public enum KCCrayonGrain", "Crayon grain engine is implemented in Swift"))
     checks.append(require_text(crayon_grain_text, "let seed = row * 37 + column * 17", "Crayon grain is deterministic (seed math in Swift)"))
     checks.append(require_text(crayon_grain_text, "let columnCount = min(220", "Crayon grain has a column safety cap"))
     checks.append(require_text(crayon_grain_text, "let rowCount = min(180", "Crayon grain has a row safety cap"))
-    checks.append(require_text(crayon_grain_text, "lineWidth * 0.12", "Crayon grain scales visibly on wide strokes"))
-    checks.append(require_text(drawing_bridge_text, "max(1.0, lineWidth * 0.12)", "Crayon grain dash width used by UIKit matches the engine grain model"))
+    checks.append(require_text(crayon_grain_text, "lineWidth * 0.16", "Crayon grain scales visibly on wide strokes"))
+    checks.append(require_text(drawing_bridge_text, "max(1.1, lineWidth * 0.16)", "Crayon grain dash width used by UIKit matches the engine grain model"))
     checks.append(require_text(main_text, "bottomDock.centerXAnchor.constraint(equalTo: self.view.centerXAnchor)", "Bottom brush dock is centered as a floating control"))
     checks.append(require_regex(main_text, r"func buildBottomDock[\s\S]*\.pencil[\s\S]*\.pen[\s\S]*\.crayon", "Bottom dock contains brush choices only", re.S))
     checks.append(require_text(canvas_models_text, "case circle", "Circle eraser shape exists"))
@@ -1443,9 +1458,16 @@ def app_feature_checks(
     # T021: the App Composition Root assembles the bundled content catalog and injects it into the main view controller.
     checks.append(require_text(composition_root_text, "KCBundledContentCatalog", "Composition Root assembles the bundled content catalog"))
     checks.append(require_text(composition_root_text, "self.contentCatalog = KCBundledContentCatalog()", "Composition Root constructs the content catalog"))
+    checks.append(require_text(content_catalog_defaults_text, "fallbackPalette24", "Content catalog exposes a no-IO fallback palette for startup"))
+    checks.append(require_text(content_catalog_defaults_text, "fallbackStickerGroups", "Content catalog exposes no-IO fallback sticker groups for startup"))
+    checks.append(require_text(content_catalog_defaults_text, "public static func resourceBacked()", "Content catalog resource loading is behind an explicit resourceBacked entry point"))
+    checks.append(require_regex(content_catalog_defaults_text, r"public init\([\s\S]*colors: KCContentCatalogDefaults\.fallbackPalette24[\s\S]*stickerGroups: \[KCStickerGroup\] = KCContentCatalogDefaults\.fallbackStickerGroups", "Default bundled catalog uses fallback content without reading package resources"))
+    checks.append(require_text(composition_root_text, "self.photoLibraryService = KCPhotoLibraryService()", "Composition Root constructs the photo library service"))
     checks.append(require_text(composition_root_text, "KCMainViewController(", "Composition Root creates the main view controller"))
     checks.append(require_text(composition_root_text, "drawingEngine: drawingEngine", "Composition Root injects the drawing engine into the main view controller"))
+    checks.append(require_text(composition_root_text, "photoLibraryService: photoLibraryService", "Composition Root injects the photo library service into the main view controller"))
     checks.append(require_text(main_text, "drawingEngine: KCDrawingEngineProviding", "Main view controller accepts the drawing engine via constructor injection"))
+    checks.append(require_text(main_text, "photoLibraryService: KCPhotoLibraryServicing", "Main view controller accepts the photo library service via constructor injection"))
     checks.append(require_count_at_least(main_text, r"\.photoLibrary", 2, "Album import exists and checks availability"))
     checks.append(require_text(main_text, ".originalImage", "Album import extracts the original selected image"))
     checks.append(require_text(main_text, "func imagePickerController", "Album import validates and normalizes images before replacing the canvas"))
@@ -1456,7 +1478,16 @@ def app_feature_checks(
     checks.append(require_regex(main_text, r"DispatchQueue\.main\.async[\s\S]*guard self\.imageImportGeneration == generation[\s\S]*finishImportingImage", "Album import returns through a stale-result guard before replacing the canvas"))
     checks.append(require_regex(main_text, r"func finishImportingImage[\s\S]*preserveUnsavedActiveSessionDraftIfNeeded\(\)[\s\S]*replaceCanvas\(with: normalizedImage\)", "Album import preserves dirty edits before replacing the canvas"))
     checks.append(require_regex(main_text, r"func drawingCanvasViewContentDidChange[\s\S]*self\.invalidateImageImportWork\(\)", "Canvas edits invalidate stale album-import normalization work"))
-    checks.append(require_text(main_text, "UIImageWriteToSavedPhotosAlbum", "Save to Photos exists"))
+    photo_service_path = APP_FILE_PATHS["KCPhotoLibraryService.swift"]
+    photo_service_text = photo_service_path.read_text(encoding="utf-8") if photo_service_path.exists() else ""
+    checks.append(require_text(pbx_text, "KCPhotoLibraryService.swift in Sources", "Photo library service is included in the app target sources"))
+    checks.append(require_text(photo_service_text, "final class KCPhotoLibraryService", "Photo export implementation is extracted to KCPhotoLibraryService"))
+    checks.append(require_text(photo_service_text, "KCPhotoLibraryServicing", "Photo library service implements the KCDomain protocol"))
+    checks.append(require_text(photo_service_text, "UIImageWriteToSavedPhotosAlbum", "Photos export is isolated behind the service"))
+    checks.append(require_text(photo_service_text, "contextInfo", "Photo export callbacks receive a per-request context token"))
+    checks.append(require_text(photo_service_text, "self.exportContinuations[token] = continuation", "Photo export continuations are keyed by request token"))
+    checks.append(require_text(photo_service_text, "removeValue(forKey: contextInfo)", "Photo export callbacks resolve the matching continuation by context token"))
+    checks.append(forbid_text(main_text, "UIImageWriteToSavedPhotosAlbum", "Main view controller no longer calls the Photos export API directly"))
     checks.append(require_regex(main_text, r"func didTapSaveSession[\s\S]*hasVisibleContent[\s\S]*showSaveToastWithSuccess\(false\)", "Save action refuses empty canvas before creating history or Photos output", re.S))
     checks.append(require_text(main_text, "private let sessionPersistenceQueue", "Formal save has a dedicated persistence queue"))
     checks.append(require_text(main_text, "private let sessionSaveGenerationLock", "Formal save generation is lock-protected for background writes"))
@@ -1467,6 +1498,10 @@ def app_feature_checks(
     checks.append(require_regex(main_text, r"func finishSavingSession[\s\S]*let saveStillMatchesVisibleCanvas = self\.isSessionSaveGenerationCurrent\(generation\)[\s\S]*self\.activeSessionHasUnsavedChanges = !saveStillMatchesVisibleCanvas[\s\S]*if saveStillMatchesVisibleCanvas", "Formal save preserves dirty state if the canvas changed while disk write was in flight"))
     checks.append(require_regex(main_text, r"private func replaceLoadedHistorySession\(_ session: KCSessionMetadata\)[\s\S]*historySessionRefreshGeneration \+= 1[\s\S]*sessions\.removeAll[\s\S]*sessions\.insert\(session, at: 0\)", "Formal save updates in-memory history and invalidates stale async metadata results"))
     checks.append(require_regex(main_text, r"func finishSavingSession[\s\S]*self\.replaceLoadedHistorySession\(savedSession\)[\s\S]*self\.refreshHistoryUI\(loadDraftThumbnail: false, loadSessions: false\)", "Formal save refreshes history from returned metadata without rereading sessions"))
+    checks.append(require_regex(main_text, r"func finishSavingSession[\s\S]*self\.showSaveToastWithSuccess\(true\)[\s\S]*self\.exportSavedArtworkToPhotoLibrary", "Formal save confirms local history before best-effort Photos export"))
+    checks.append(require_regex(main_text, r"func exportSavedArtworkToPhotoLibrary[\s\S]*self\.photoLibraryService\.export\(imageData:[\s\S]*showPhotoExportFailedToast", "Photos export failure uses a separate toast and does not override local save success"))
+    checks.append(require_regex(main_text, r"func showPhotoExportFailedToast[\s\S]*self\.runtimeAcceptanceLastPhotoExportToastTitle = self\.saveToastView\?\.accessibilityLabel", "Photo-export failure probe records the actual toast accessibility label"))
+    checks.append(require_regex(main_text, r"func runPhotoExportFailureAcceptanceProbe[\s\S]*photoExportFailureToastTitle == KCL10n\.photoExportFailedToastTitle[\s\S]*currentToastTitle != KCL10n\.saveFailedToastTitle", "Photo-export failure probe asserts the actual toast used the independent failure text"))
     checks.append(require_regex(main_text, r"func invalidateSessionSaveWork\(\)[\s\S]*sessionSaveGenerationLock\.lock\(\)[\s\S]*sessionSaveGeneration \+= 1", "Formal save invalidation is lock-protected"))
     checks.append(require_regex(main_text, r"func drawingCanvasViewContentDidChange[\s\S]*self\.invalidateSessionSaveWork\(\)", "Canvas edits invalidate stale formal-save encoding work"))
     checks.append(forbid_regex(main_text, r"func didTapSaveSession[\s\S]*self\.sessionStore\.saveImage\(snapshot", "Formal save no longer encodes and saves the snapshot synchronously on the main thread"))
@@ -1597,9 +1632,9 @@ def app_feature_checks(
     checks.append(require_text(main_text, ".highlighted.union(.selected)", "History thumbnails cover highlighted+selected control state"))
     checks.append(require_text(main_text, ".selected.union(.focused)", "History thumbnails cover selected+focused control state"))
     checks.append(require_regex(main_text, r"func setHistoryBackgroundImage\(_ image: UIImage\?, to button: UIButton\)[\s\S]*for state in Self\.historyThumbnailImageStates[\s\S]*button\.setBackgroundImage\(image, for: state\)", "History thumbnails keep the same artwork while highlighted/selected/disabled"))
-    checks.append(require_text(main_text, "private static let historySlotTransparentImage", "History saved-artwork slots use a transparent image instead of falling back to the default photo placeholder"))
+    checks.append(forbid_text(main_text, "historySlotTransparentImage", "History saved-artwork slots clear foreground images instead of keeping transparent placeholders"))
     checks.append(require_text(main_text, "private var historyThumbSessionIdentifiers", "History thumbnails track represented sessions to avoid clearing the same artwork on cache misses"))
-    checks.append(require_regex(main_text, r"func setHistoryButtonPlaceholderVisible\(_ visible: Bool, on button: UIButton\)[\s\S]*let image = visible \? Self\.historySlotPlaceholderImage\(\) : Self\.historySlotTransparentImage[\s\S]*for state in Self\.historyThumbnailImageStates[\s\S]*button\.setImage\(image, for: state\)[\s\S]*button\.imageView\?\.isHidden = !visible", "History thumbnail placeholder is explicitly hidden for saved-artwork slots"))
+    checks.append(require_regex(main_text, r"func setHistoryButtonPlaceholderVisible\(_ visible: Bool, on button: UIButton\)[\s\S]*for state in Self\.historyThumbnailImageStates[\s\S]*button\.setImage\(visible \? Self\.historySlotPlaceholderImage\(\) : nil, for: state\)[\s\S]*button\.imageView\?\.isHidden = !visible", "History thumbnail placeholder is cleared for saved-artwork slots across all states"))
     checks.append(require_regex(refresh_history_text, r"let representsSameSession = self\.historyThumbSessionIdentifiers\[index\] == session\.identifier[\s\S]*if image != nil \|\| !representsSameSession", "History thumbnail cache misses do not clear an already displayed thumbnail for the same session"))
     checks.append(require_regex(refresh_history_text, r"status == \.empty[\s\S]*Self\.setHistoryButtonPlaceholderVisible\(true, on: button\)[\s\S]*else \{[\s\S]*cachedThumbnailImage\(forSession: session\)[\s\S]*Self\.setHistoryButtonPlaceholderVisible\(false, on: button\)", "Saved history slots never reveal the default photo placeholder while a thumbnail is loading"))
     checks.append(require_regex(main_text, r"refreshHistoryUI[\s\S]*applyHistoryBackgroundImageIfNeeded\([\s\S]*historyImageIdentityForSession", "History refresh uses image identity checks before setting saved thumbnails"))
@@ -1833,6 +1868,7 @@ def main():
     line_art_drawing_text = (ROOT / "Packages" / "KidCanvasModules" / "Sources" / "KCDrawingEngine" / "KCLineArtDrawing.swift").read_text(encoding="utf-8")
     composition_root_text = APP_FILE_PATHS["KCAppCompositionRoot.swift"].read_text(encoding="utf-8")
     catalog_text = (ROOT / "Packages" / "KidCanvasModules" / "Sources" / "KCContentCatalog" / "Resources" / "content.json").read_text(encoding="utf-8")
+    content_catalog_defaults_text = (ROOT / "Packages" / "KidCanvasModules" / "Sources" / "KCContentCatalog" / "KCContentCatalogDefaults.swift").read_text(encoding="utf-8")
     content_picker_feature_text = APP_FILE_PATHS["KCContentPickerFeature.swift"].read_text(encoding="utf-8")
     canvas_feature_text = APP_FILE_PATHS["KCCanvasFeature.swift"].read_text(encoding="utf-8")
     line_art_feature_text = APP_FILE_PATHS["KCLineArtFeature.swift"].read_text(encoding="utf-8")
@@ -1891,6 +1927,7 @@ def main():
         line_art_drawing_text,
         composition_root_text,
         catalog_text,
+        content_catalog_defaults_text,
         content_picker_feature_text,
         canvas_feature_text,
         line_art_feature_text,

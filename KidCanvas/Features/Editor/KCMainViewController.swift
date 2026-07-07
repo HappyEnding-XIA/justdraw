@@ -41,6 +41,7 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
     var saveToastView: UIView?
 #if DEBUG
     var runtimeAcceptanceLastSaveToastTitle: String?
+    var runtimeAcceptanceLastPhotoExportToastTitle: String?
 #endif
     var sizePreviewView: UIView!
     var sizePreviewShapeLayer: CAShapeLayer!
@@ -54,6 +55,7 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
     let sessionStore: KCSessionService
     let contentCatalog: KCBundledContentCatalog
     let drawingEngine: KCDrawingEngineProviding
+    let photoLibraryService: KCPhotoLibraryServicing
     /// 内容选择 Feature（色盘 / 最近色 / 贴纸分类），从 contentCatalog 构造，T022 抽出。
     private(set) lazy var contentPicker: KCContentPickerFeature = {
         KCContentPickerFeature(contentCatalog: self.contentCatalog)
@@ -126,10 +128,6 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
         .disabled.union(.focused),
         .highlighted.union(.selected).union(.focused)
     ]
-    private static let historySlotTransparentImage: UIImage = {
-        let renderer = UIGraphicsImageRenderer(size: CGSize(width: 1.0, height: 1.0))
-        return renderer.image { _ in }
-    }()
     private let sessionSaveGenerationLock = NSLock()
     private var sessionSaveGeneration: Int = 0
     private var artworkLoadGeneration: Int = 0
@@ -161,17 +159,19 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
     init(
         sessionService: KCSessionService,
         contentCatalog: KCBundledContentCatalog,
-        drawingEngine: KCDrawingEngineProviding
+        drawingEngine: KCDrawingEngineProviding,
+        photoLibraryService: KCPhotoLibraryServicing
     ) {
         self.sessionStore = sessionService
         self.contentCatalog = contentCatalog
         self.drawingEngine = drawingEngine
+        self.photoLibraryService = photoLibraryService
         super.init(nibName: nil, bundle: nil)
     }
 
-    @available(*, unavailable, message: "Use init(sessionService:contentCatalog:drawingEngine:) via KCAppCompositionRoot")
+    @available(*, unavailable, message: "Use init(sessionService:contentCatalog:drawingEngine:photoLibraryService:) via KCAppCompositionRoot")
     required init?(coder: NSCoder) {
-        fatalError("Use init(sessionService:contentCatalog:drawingEngine:)")
+        fatalError("Use init(sessionService:contentCatalog:drawingEngine:photoLibraryService:)")
     }
 
     override func viewDidLoad() {
@@ -1273,9 +1273,8 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
     }
 
     private static func setHistoryButtonPlaceholderVisible(_ visible: Bool, on button: UIButton) {
-        let image = visible ? Self.historySlotPlaceholderImage() : Self.historySlotTransparentImage
         for state in Self.historyThumbnailImageStates {
-            button.setImage(image, for: state)
+            button.setImage(visible ? Self.historySlotPlaceholderImage() : nil, for: state)
         }
         button.imageView?.contentMode = .center
         button.imageView?.isHidden = !visible
@@ -1419,18 +1418,18 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
             DispatchQueue.main.async { [weak self] in
                 guard let self else { return }
                 self.finishSavingSession(
-                    snapshot: snapshot,
                     savedSession: savedSession,
-                    generation: generation
+                    generation: generation,
+                    photoExportImageData: encodedData.pngData
                 )
             }
         }
     }
 
     private func finishSavingSession(
-        snapshot: UIImage,
         savedSession: KCSessionMetadata,
-        generation: Int
+        generation: Int,
+        photoExportImageData: Data
     ) {
         let saveStillMatchesVisibleCanvas = self.isSessionSaveGenerationCurrent(generation)
 
@@ -1445,7 +1444,8 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
         self.historyPageIndex = 0
         self.refreshHistoryUI(loadDraftThumbnail: false, loadSessions: false)
         self.refreshActionButtons()
-        UIImageWriteToSavedPhotosAlbum(snapshot, self, #selector(image(_:didFinishSavingWithError:contextInfo:)), nil)
+        self.showSaveToastWithSuccess(true)
+        self.exportSavedArtworkToPhotoLibrary(imageData: photoExportImageData)
     }
 
     private func finishFailedSessionSaveIfCurrent(_ generation: Int) {
@@ -1456,8 +1456,24 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
         }
     }
 
-    @objc func image(_ image: UIImage, didFinishSavingWithError error: Error?, contextInfo: UnsafeMutableRawPointer?) {
-        self.showSaveToastWithSuccess(error == nil)
+    private func exportSavedArtworkToPhotoLibrary(imageData: Data) {
+        Task { [weak self, imageData] in
+#if DEBUG
+            if ProcessInfo.processInfo.arguments.contains("--kc-runtime-photo-export-failure-check") {
+                try? await Task.sleep(nanoseconds: 120_000_000)
+                await MainActor.run {
+                    self?.showPhotoExportFailedToast()
+                }
+                return
+            }
+#endif
+            guard let self else { return }
+            let exported = await self.photoLibraryService.export(imageData: imageData)
+            guard !exported else { return }
+            await MainActor.run {
+                self.showPhotoExportFailedToast()
+            }
+        }
     }
 
     @objc func didTapOpenLatestSession() {
@@ -1967,6 +1983,14 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
         self.saveToastView = self.toastPresenter.showSaveToast(success: success, in: self.view, anchorView: self.saveButton)
     }
 
+    func showPhotoExportFailedToast() {
+        self.toastPresenter.dismiss(self.saveToastView)
+        self.saveToastView = self.toastPresenter.showPhotoExportFailedToast(in: self.view, anchorView: self.saveButton)
+#if DEBUG
+        self.runtimeAcceptanceLastPhotoExportToastTitle = self.saveToastView?.accessibilityLabel
+#endif
+    }
+
 #if DEBUG
     // MARK: - 运行时验收探针
 
@@ -1980,12 +2004,14 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
         let shouldRunLayoutProbe = arguments.contains("--kc-runtime-layout-check")
         let shouldRunStickerProbe = arguments.contains("--kc-runtime-sticker-check")
         let shouldRunSaveHistoryProbe = arguments.contains("--kc-runtime-save-history-check")
+        let shouldRunPhotoExportFailureProbe = arguments.contains("--kc-runtime-photo-export-failure-check")
         let shouldRunDrawingToolsProbe = arguments.contains("--kc-runtime-drawing-tools-check")
         let shouldRunSystemUIProbe = arguments.contains("--kc-runtime-system-ui-check")
         guard shouldRunEmptySaveProbe
                 || shouldRunLayoutProbe
                 || shouldRunStickerProbe
                 || shouldRunSaveHistoryProbe
+                || shouldRunPhotoExportFailureProbe
                 || shouldRunDrawingToolsProbe
                 || shouldRunSystemUIProbe else {
             return
@@ -1999,6 +2025,8 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
                 self?.runStickerUndoRedoAcceptanceProbe()
             } else if shouldRunSaveHistoryProbe {
                 self?.runSaveHistoryAcceptanceProbe()
+            } else if shouldRunPhotoExportFailureProbe {
+                self?.runPhotoExportFailureAcceptanceProbe()
             } else if shouldRunDrawingToolsProbe {
                 self?.runDrawingToolsAcceptanceProbe()
             } else if shouldRunSystemUIProbe {
@@ -2344,6 +2372,67 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
             "expectedToast": KCL10n.saveSuccessToastTitle
         ]
         self.writeRuntimeAcceptanceResult(result, fileName: "kc_runtime_acceptance_save_history.json")
+    }
+
+    private func runPhotoExportFailureAcceptanceProbe() {
+        self.activeSession = nil
+        self.selectedHistorySession = nil
+        self.activeSessionHasUnsavedChanges = false
+        self.invalidateDraftSaveTimer()
+        self.suppressNextDraftSave = true
+        self.canvasView.startBlankCanvas()
+        self.clearDraftAndInvalidateCurrentDraftMarker()
+        self.runtimeAcceptanceLastSaveToastTitle = nil
+        self.runtimeAcceptanceLastPhotoExportToastTitle = nil
+        self.refreshHistoryUI()
+        self.refreshActionButtons()
+
+        let initialHistoryCount = self.sessions.count
+        let initialVisible = self.canvasFeature.hasVisibleContent(self.canvasView)
+        self.canvasView.currentColor = UIColor(red: 0.24, green: 0.58, blue: 0.40, alpha: 1.0)
+        self.canvasView.currentToolMode = .brush
+        self.canvasView.currentBrushStyle = .pen
+        self.canvasView.currentLineWidth = 18.0
+        self.canvasView.insertRuntimeAcceptanceStroke()
+        self.refreshActionButtons()
+
+        let afterDrawVisible = self.canvasFeature.hasVisibleContent(self.canvasView)
+        self.didTapSaveSession()
+
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { [weak self] in
+            guard let self else { return }
+            let afterSaveHistoryCount = self.sessions.count
+            let afterSaveActiveSessionId = self.activeSession?.identifier ?? ""
+            let afterSaveSelectedSessionId = self.selectedHistorySession?.identifier ?? ""
+            let localSaveToastObserved = self.runtimeAcceptanceLastSaveToastTitle == KCL10n.saveSuccessToastTitle
+            let photoExportFailureObserved = self.runtimeAcceptanceLastPhotoExportToastTitle == KCL10n.photoExportFailedToastTitle
+            let currentToastTitle = self.saveToastView?.accessibilityLabel ?? ""
+            let photoExportFailureToastTitle = self.runtimeAcceptanceLastPhotoExportToastTitle ?? ""
+
+            let result: [String: Any] = [
+                "probe": "photo-export-failure",
+                "passed": !initialVisible
+                    && afterDrawVisible
+                    && afterSaveHistoryCount == initialHistoryCount + 1
+                    && !afterSaveActiveSessionId.isEmpty
+                    && afterSaveActiveSessionId == afterSaveSelectedSessionId
+                    && localSaveToastObserved
+                    && photoExportFailureObserved
+                    && photoExportFailureToastTitle == KCL10n.photoExportFailedToastTitle
+                    && currentToastTitle != KCL10n.saveFailedToastTitle,
+                "initialHistoryCount": initialHistoryCount,
+                "afterSaveHistoryCount": afterSaveHistoryCount,
+                "afterSaveActiveSessionId": afterSaveActiveSessionId,
+                "afterSaveSelectedSessionId": afterSaveSelectedSessionId,
+                "localSaveToastObserved": localSaveToastObserved,
+                "photoExportFailureObserved": photoExportFailureObserved,
+                "photoExportFailureToastTitle": photoExportFailureToastTitle,
+                "currentToastTitle": currentToastTitle,
+                "forbiddenToast": KCL10n.saveFailedToastTitle,
+                "expectedPhotoExportToast": KCL10n.photoExportFailedToastTitle
+            ]
+            self.writeRuntimeAcceptanceResult(result, fileName: "kc_runtime_acceptance_photo_export_failure.json")
+        }
     }
 
     private func runDrawingToolsAcceptanceProbe() {
