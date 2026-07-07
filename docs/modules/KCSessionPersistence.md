@@ -46,9 +46,13 @@
 - App 层自动草稿保存先由 `KCMainViewController` 在主线程生成画布快照，再把 PNG 编码和 `saveDraftData(pngData:cachedImage:)` 写盘合并到 `draftPersistenceQueue` 后台队列；正式写入前必须通过加锁 generation guard 确认任务仍有效，避免旧后台任务在清空/替换画布后复活旧草稿，同时用当前快照刷新草稿缩略图缓存，不长期持有全尺寸自动保存图。
 - 历史栏当前页缩略图 miss 时，`KCMainViewController` 只能记录缺失 session id 并调用 `preloadVisibleHistoryThumbnailsIfNeeded(_:)`；后台预热完成后只能以 `refreshHistoryUI(loadDraftThumbnail: false, preloadThumbnails: false, loadSessions: false)` 刷新当前缓存结果，禁止借预热回调重新同步读取 sessions、解码草稿缩略图或递归触发下一轮预热。
 - 启动首帧前不得同步读取会话 metadata；`viewDidLoad` 只能用当前内存 `sessions` 渲染空历史槽位，首帧后由 `refreshHistorySessionsAsync(loadDraftThumbnail:preloadThumbnails:)` 后台加载 metadata，再回主线程调用 `refreshHistoryUI(..., loadSessions: false)`。
+- 启动草稿恢复完成后只能用 `refreshHistoryUI(loadDraftThumbnail: false, loadSessions: false)` 刷新 UI；草稿已经由后台读取并写入缓存，主线程不得再通过历史刷新同步解码草稿缩略图或重读 metadata。
+- 历史翻页只消费当前内存 `sessions` 和缩略图缓存；上一页/下一页按钮回调必须关闭 `loadDraftThumbnail` 和 `loadSessions`，缩略图缓存缺失由后台预热补齐。
 - 用户真正打开已保存作品或草稿时，也不得在主线程读取完整 PNG 或执行 `UIImage(data:)`；历史作品走 `artworkLoadingQueue + artworkData(forSession:)`，草稿走 `draftPersistenceQueue + loadDraftData()`，并统一通过 `artworkLoadGeneration` 丢弃过期后台结果。
 - 线稿、历史和相册导入替换当前画布前，App 层必须调用草稿保护逻辑；新画布草稿和已保存作品的脏改动都应保留下来。若 `activeDraftMatchesCanvas` 表明当前画布已被最近一次草稿保存覆盖，则直接复用现有草稿；否则主线程只允许截图，PNG 编码和 `saveDraftData(pngData:cachedImage:)` 必须通过 `draftPersistenceQueue` 后台执行。
 - 替换前草稿保护使用独立 `draftProtectionGeneration`，清草稿时必须让待完成的保护任务失效；保护任务完成后只刷新历史草稿缩略图，不得把已经被新画布替换的当前画布重新标记为 `activeDraftMatchesCanvas = true`。
+- 自动草稿保存和替换前草稿保护的主线程回调只负责更新 `activeDraftMatchesCanvas`、按钮状态和历史槽位；这些回调不得通过默认 `refreshHistoryUI()` 重新同步读取正式会话 metadata 或草稿缩略图。
+- 正式保存成功后，`KCSessionService.saveArtwork` 会返回最新 `KCSessionMetadata` 并刷新服务层 metadata / thumbnail cache；`KCMainViewController` 必须复用该 metadata 更新内存 `sessions`，同时作废启动期旧的异步 metadata 回调，避免旧列表覆盖刚保存的作品。
 - App 层所有清草稿入口必须通过 `KCMainViewController.clearDraftAndInvalidateCurrentDraftMarker()`，由该 helper 同时让待完成的草稿保护失效、调用 `KCSessionService.clearDraft()` 并把 `activeDraftMatchesCanvas` 置回 `false`；禁止业务路径直接调用 `sessionStore.clearDraft()` 后遗漏状态失效。
 
 ## 4. 禁止回流规则
@@ -60,6 +64,7 @@
 - 禁止在 `saveArtwork` 中为了失败回滚使用 `Data(contentsOf:)` 读取旧 artwork / thumbnail；旧文件必须走文件级备份与 replace/move 恢复，降低大图更新时的内存峰值，并避免恢复失败时先删除当前文件造成二次数据丢失。
 - 禁止删除会话时先删 PNG/JPEG 再写 metadata；必须先写入不含该 session 的 `sessions.json`，成功后再尽力清理文件。
 - 禁止历史栏刷新当前页时调用会触发磁盘读取/解码的 `thumbnailImage(forSessionId:)`；该入口只留给明确需要同步取得图片的低频路径。
+- 禁止启动草稿恢复、草稿保存/保护回调和历史翻页通过默认 `refreshHistoryUI()` 回流到同步 `loadAllSessions()` 或草稿缩略图解码。
 - 禁止让 `KCSessionPersistence` 感知编辑器 generation、自动保存 timer 或画布替换时机；这些属于 App 层协调职责。
 - 禁止把正式保存的 PNG/JPEG 编码或 `saveArtwork(pngData:thumbnailJPEGData:existingSessionId:)` 写盘重新塞回 `didTapSaveSession()` / `finishSavingSession()` 主线程同步路径；编码和写盘必须复用 `sessionPersistenceQueue`，并通过加锁 generation guard 控制过期任务。
 - 禁止在 `KCMainViewController` 业务路径直接调用 `sessionStore.clearDraft()`；统一走 `clearDraftAndInvalidateCurrentDraftMarker()`，保证磁盘草稿和 `activeDraftMatchesCanvas` 状态不会分叉。

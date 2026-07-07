@@ -1131,6 +1131,12 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
         }
     }
 
+    private func replaceLoadedHistorySession(_ session: KCSessionMetadata) {
+        self.historySessionRefreshGeneration += 1
+        self.sessions.removeAll { $0.identifier == session.identifier }
+        self.sessions.insert(session, at: 0)
+    }
+
     private func preloadVisibleHistoryThumbnailsIfNeeded(_ sessionIds: [String]) {
         let uniqueSessionIds = Array(Set(sessionIds))
         guard !uniqueSessionIds.isEmpty else { return }
@@ -1263,7 +1269,7 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
             self.suppressNextDraftSave = true
             self.canvasView.startBlankCanvas()
             self.clearDraftAndInvalidateCurrentDraftMarker()
-            self.refreshHistoryUI()
+            self.refreshHistoryUI(loadDraftThumbnail: false, loadSessions: false)
             self.refreshActionButtons()
         }))
         self.present(alert, animated: true, completion: nil)
@@ -1365,13 +1371,14 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
 
         self.activeSession = savedSession
         self.selectedHistorySession = savedSession
+        self.replaceLoadedHistorySession(savedSession)
         self.activeSessionHasUnsavedChanges = !saveStillMatchesVisibleCanvas
         if saveStillMatchesVisibleCanvas {
             self.invalidateDraftSaveTimer()
             self.clearDraftAndInvalidateCurrentDraftMarker()
         }
         self.historyPageIndex = 0
-        self.refreshHistoryUI()
+        self.refreshHistoryUI(loadDraftThumbnail: false, loadSessions: false)
         self.refreshActionButtons()
         UIImageWriteToSavedPhotosAlbum(snapshot, self, #selector(image(_:didFinishSavingWithError:contextInfo:)), nil)
     }
@@ -1517,7 +1524,7 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
         }
         self.canvasView.loadLineArtImage(lineArt)
         self.selectToolMode(.fill)
-        self.refreshHistoryUI()
+        self.refreshHistoryUI(loadDraftThumbnail: false, loadSessions: false)
         self.refreshActionButtons()
         completion?(true)
     }
@@ -1575,7 +1582,7 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
             return
         }
         self.historyPageIndex -= 1
-        self.refreshHistoryUI()
+        self.refreshHistoryUI(loadDraftThumbnail: false, loadSessions: false)
     }
 
     @objc func didTapNextHistoryPage() {
@@ -1583,7 +1590,7 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
             return
         }
         self.historyPageIndex += 1
-        self.refreshHistoryUI()
+        self.refreshHistoryUI(loadDraftThumbnail: false, loadSessions: false)
     }
 
     @objc func didTapDraftThumb() {
@@ -1604,7 +1611,7 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
                 self.suppressNextDraftSave = true
                 self.canvasView.restoreCanvas(with: draftImage)
                 self.activeDraftMatchesCanvas = true
-                self.refreshHistoryUI()
+                self.refreshHistoryUI(loadDraftThumbnail: false, loadSessions: false)
                 self.refreshActionButtons()
             }
         }
@@ -1659,7 +1666,7 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
                     self.clearDraftAndInvalidateCurrentDraftMarker()
                 }
                 self.updateHistoryPageForActiveSession()
-                self.refreshHistoryUI()
+                self.refreshHistoryUI(loadDraftThumbnail: false, loadSessions: false)
                 self.refreshActionButtons()
                 completion?(true)
             }
@@ -1689,7 +1696,7 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
                 DispatchQueue.main.async { [weak self] in
                     guard let self else { return }
                     guard self.isDraftProtectionGenerationCurrent(generation) else { return }
-                    self.refreshHistoryUI(loadSessions: false)
+                    self.refreshHistoryUI(loadDraftThumbnail: false, loadSessions: false)
                 }
                 return
             }
@@ -1703,7 +1710,7 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
                 if !saved {
                     self.activeDraftMatchesCanvas = false
                 }
-                self.refreshHistoryUI(loadSessions: false)
+                self.refreshHistoryUI(loadDraftThumbnail: false, loadSessions: false)
             }
         }
         return true
@@ -1807,7 +1814,7 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
             self.clearDraftAndInvalidateCurrentDraftMarker()
         }
         self.canvasView.replaceCanvas(with: normalizedImage)
-        self.refreshHistoryUI()
+        self.refreshHistoryUI(loadDraftThumbnail: false, loadSessions: false)
         self.refreshActionButtons()
 #if DEBUG
         let runtimeCompletion = self.runtimeAcceptanceImageImportCompletion
@@ -2733,7 +2740,7 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
                 self.suppressNextDraftSave = true
                 self.canvasView.restoreCanvas(with: draftImage)
                 self.activeDraftMatchesCanvas = true
-                self.refreshHistoryUI()
+                self.refreshHistoryUI(loadDraftThumbnail: false, loadSessions: false)
                 self.refreshActionButtons()
             }
         }
@@ -2826,13 +2833,13 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
         self.invalidateDraftSaveTimer()
 
         if self.activeSession != nil && !self.activeSessionHasUnsavedChanges {
-            self.refreshHistoryUI()
+            self.refreshHistoryUI(loadDraftThumbnail: false, loadSessions: false)
             return
         }
 
         if !self.canvasFeature.hasVisibleContent(self.canvasView) {
             self.clearDraftAndInvalidateCurrentDraftMarker()
-            self.refreshHistoryUI()
+            self.refreshHistoryUI(loadDraftThumbnail: false, loadSessions: false)
             return
         }
 
@@ -2847,7 +2854,7 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
                 DispatchQueue.main.async { [weak self] in
                     guard let self else { return }
                     guard self.isDraftSaveGenerationCurrent(generation) else { return }
-                    self.refreshHistoryUI()
+                    self.refreshHistoryUI(loadDraftThumbnail: false, loadSessions: false)
                 }
                 return
             }
@@ -2860,7 +2867,7 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
                 if !saved {
                     self.clearDraftAndInvalidateCurrentDraftMarker()
                 }
-                self.refreshHistoryUI()
+                self.refreshHistoryUI(loadDraftThumbnail: false, loadSessions: false)
             }
         }
     }
