@@ -117,6 +117,7 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
     private var draftSaveGeneration: Int = 0
     private var draftProtectionGeneration: Int = 0
     private var lineArtLoadGeneration: Int = 0
+    private var appliedCanvasActionState: KCCanvasFeature.ActionState?
     private var didScheduleStartupDeferredWork = false
     private var activeDraftMatchesCanvas: Bool = false
     private var brushWidthPreferenceSaveTimer: Timer?
@@ -1862,6 +1863,10 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
 
     func refreshActionButtons() {
         let actionState = self.canvasFeature.actionState(for: self.canvasView)
+        if self.appliedCanvasActionState == actionState {
+            return
+        }
+        self.appliedCanvasActionState = actionState
         self.canvasFeature.applyActionButtonAppearance(
             state: actionState,
             undoButton: self.undoButton,

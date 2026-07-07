@@ -20,7 +20,8 @@ App 层主画布 Feature：集中画布视图创建、画布动作状态和 undo
 
 - `KCMainViewController.canvasFeature` 由注入的 `drawingEngine` 构造。
 - `buildInterface()` 通过 `canvasFeature.makeCanvasView(delegate:)` 创建画布。
-- `refreshActionButtons()` 通过 `canvasFeature.actionState(for:)` 获取状态，再委托 `applyActionButtonAppearance(...)` 应用按钮外观。
+- `refreshActionButtons()` 通过 `canvasFeature.actionState(for:)` 获取状态；控制器会缓存最近一次已应用的 `ActionState`，状态未变化时直接返回，避免画布内容变化期间反复重写 undo / redo / save 的 enabled、alpha、背景色、边框和阴影。
+- 当 `ActionState` 变化时，`refreshActionButtons()` 再委托 `applyActionButtonAppearance(...)` 应用按钮外观。
 - `scripts/validate_project.py` 校验创建、动作状态和动作按钮外观均委托给 `KCCanvasFeature`，并要求动作按钮复用 `KCEditorVisualStyle` 的共享状态样式；同时守护空画布保存反馈可触发。
 
 ## 4. 验收规则
