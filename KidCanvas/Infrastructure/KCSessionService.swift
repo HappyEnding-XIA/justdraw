@@ -143,6 +143,19 @@ final class KCSessionService: NSObject {
         return store.artworkData(for: session)
     }
 
+    /// 按已加载的 metadata 读取全分辨率画作 PNG 数据，避免后台打开作品时再次触碰
+    /// 服务层 metadata cache。
+    func artworkData(forSession session: KCSessionMetadata) -> Data? {
+        let artworkSession = KCArtworkSession(
+            id: session.identifier,
+            title: session.title,
+            artworkFileName: session.artworkFileName,
+            thumbnailFileName: session.thumbnailFileName,
+            modifiedAt: session.modifiedAt
+        )
+        return store.artworkData(for: artworkSession)
+    }
+
     /// 返回缩略图 UIImage。
     @objc func thumbnailImage(forSessionId sessionId: String) -> UIImage? {
         if let cachedThumbnail = cachedThumbnailImage(forSessionId: sessionId) {

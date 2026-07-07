@@ -34,13 +34,15 @@
 - `KCSessionService.cachedThumbnailImage(forSessionId:)`：只读取内存缓存，不触发磁盘读取或图片解码；`KCMainViewController.refreshHistoryUI()` 必须使用该入口刷新当前页已保存缩略图，缓存 miss 时先显示占位。
 - `KCSessionService.preloadThumbnailImages(forSessionIds:completion:)`：在 utility 后台队列预热历史缩略图缓存；已缓存或正在预热的 id 不得重复排队，避免历史面板频繁刷新时造成重复读盘/解码；completion 回主线程执行，用于当前页 miss 解码完成后刷新 UI。
 - `KCSessionService.loadAllSessions()` / `sessionCount()` / `hasSavedSessions()` / `findSession(id:)`：共享服务层会话元数据缓存，避免历史栏刷新和缩略图读取反复解码 `sessions.json`；保存成功后替换缓存中的最新会话，删除成功后移除对应会话。
+- `KCSessionService.artworkData(forSession:)`：用于用户点开已保存作品时按已加载的 `KCSessionMetadata` 读取原图 Data；UI 层必须在 `KCMainViewController.artworkLoadingQueue` 后台调用并在后台完成 `UIImage(data:)` 解码，主线程只应用已解码图片。
 - `KCSessionService.saveArtwork(pngData:thumbnailJPEGData:existingSessionId:)`：更新已有会话时必须通过 `findSession(id:)` 复用服务层 metadata cache，不再为了解析 existing session 额外读取 `sessions.json`。
-- `KCSessionService.loadDraftImage()`：只用于真正打开/恢复草稿；优先返回服务层 `draftImageCache`，首次加载后同步补齐草稿缩略图缓存。
+- `KCSessionService.loadDraftImage()`：仅保留为低频同步兼容入口，不作为编辑器打开草稿的主路径；`KCMainViewController.didTapDraftThumb()` 和启动期 `restoreDraftIfNeeded()` 必须在 `draftPersistenceQueue` 后台读取 `loadDraftData()` 并后台执行 `UIImage(data:)`。
 - `KCSessionService.draftThumbnailImage()`：面向历史面板的轻量入口，优先返回 `draftThumbnailCache`；自动保存成功时用当前快照刷新缩略图缓存，历史面板不得为了显示 240×180 草稿槽位直接调用 `loadDraftImage()`。
 - `KCSessionService.hasDraft()`：用于删除按钮可用性和删除流程的轻量草稿存在性判断；当只需要知道草稿是否存在时，不得调用 `loadDraftImage()` 触发同步读盘和图片解码。
 - 正式保存流程先由 `KCMainViewController` 在主线程生成画布快照，再把 PNG/JPEG 编码放入 `sessionEncodingQueue`；回主线程确认 `sessionSaveGeneration` 仍有效后，才调用 `saveArtwork(pngData:thumbnailJPEGData:existingSessionId:)` 更新磁盘、缓存、历史和相册输出。
 - App 层自动草稿保存先由 `KCMainViewController` 在主线程生成画布快照，再把 PNG 编码合并到后台队列；写入 `saveDraftData(pngData:cachedImage:)` 前必须回到编辑器协调层确认 generation 仍有效，避免旧后台任务在清空/替换画布后复活旧草稿，同时用当前快照刷新草稿缩略图缓存，不长期持有全尺寸自动保存图。
 - 历史栏当前页缩略图 miss 时，`KCMainViewController` 只能记录缺失 session id 并调用 `preloadVisibleHistoryThumbnailsIfNeeded(_:)`；后台预热完成后再统一刷新 UI，禁止在刷新循环中同步读盘/解码。
+- 用户真正打开已保存作品或草稿时，也不得在主线程读取完整 PNG 或执行 `UIImage(data:)`；历史作品走 `artworkLoadingQueue + artworkData(forSession:)`，草稿走 `draftPersistenceQueue + loadDraftData()`，并统一通过 `artworkLoadGeneration` 丢弃过期后台结果。
 - 线稿、历史和相册导入替换当前画布前，App 层必须同步调用草稿保护逻辑；新画布草稿和已保存作品的脏改动都应保留下来。若 `activeDraftMatchesCanvas` 表明当前画布已被最近一次草稿保存覆盖，则同步保护必须直接复用现有草稿，避免再次截图和 PNG 编码。
 - App 层所有清草稿入口必须通过 `KCMainViewController.clearDraftAndInvalidateCurrentDraftMarker()`，由该 helper 同时调用 `KCSessionService.clearDraft()` 并把 `activeDraftMatchesCanvas` 置回 `false`；禁止业务路径直接调用 `sessionStore.clearDraft()` 后遗漏状态失效。
 
