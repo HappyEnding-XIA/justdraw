@@ -17,6 +17,28 @@ class KDToolButton: UIButton {
     var toolMode: KDToolMode = .brush
 }
 
+extension KDToolMode {
+    init(domainToolMode: KCToolMode) {
+        switch domainToolMode {
+        case .brush: self = .brush
+        case .eraser: self = .eraser
+        case .fill: self = .fill
+        case .sticker: self = .sticker
+        case .picker: self = .picker
+        }
+    }
+
+    var domainToolMode: KCToolMode {
+        switch self {
+        case .brush: return .brush
+        case .eraser: return .eraser
+        case .fill: return .fill
+        case .sticker: return .sticker
+        case .picker: return .picker
+        }
+    }
+}
+
 // MARK: - KDBrushButton
 
 class KDBrushButton: UIButton {
@@ -129,6 +151,7 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
     var activeSessionHasUnsavedChanges: Bool = false
     var brushWidthsByStyle: [Int: CGFloat] = [:]
     var eraserSliderValue: CGFloat = 0.0
+    private var transientToolModeMemory = KCTransientToolModeMemory()
 #if DEBUG
     private var runtimeAcceptanceProbeDidRun = false
 #endif
@@ -1341,6 +1364,7 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
     // MARK: - 工具 / 画笔 / 颜色选择
 
     func selectToolMode(_ mode: KDToolMode) {
+        self.transientToolModeMemory.recordSelection(mode.domainToolMode)
         self.canvasView.currentToolMode = mode
         self.applyStoredWidthForCurrentTool()
         for button in self.toolButtons {
@@ -1931,6 +1955,13 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
         self.canvasView.currentColor = color
         self.selectColor(color, sender: nil)
         self.addRecentColor(color)
+        let restoreMode = KDToolMode(domainToolMode: self.transientToolModeMemory.toolModeAfterCompletingTransientTool())
+        self.selectToolMode(restoreMode)
+    }
+
+    func drawingCanvasViewDidInsertSticker(_ canvasView: KCDrawingCanvasView) {
+        let restoreMode = KDToolMode(domainToolMode: self.transientToolModeMemory.toolModeAfterCompletingTransientTool())
+        self.selectToolMode(restoreMode)
     }
 
     func drawingCanvasViewSelectionDidChange(_ canvasView: KCDrawingCanvasView) {

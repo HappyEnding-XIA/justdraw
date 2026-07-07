@@ -6,7 +6,7 @@
 
 - 定义作品、笔触、工具、贴纸、内容目录、编辑器状态等业务模型。
 - 定义 `KCSessionRepository`、`KCPhotoLibraryServicing` 等协议边界，让 Feature 依赖抽象而不是具体存储或系统框架。
-- 承载可单测的纯决策逻辑，例如历史分页、历史缩略图状态、颜色面板布局、最近色队列、贴纸分类映射、贴纸约束、工具状态标题。
+- 承载可单测的纯决策逻辑，例如历史分页、历史缩略图状态、颜色面板布局、最近色队列、贴纸分类映射、贴纸约束、印章显示指标、工具状态标题、一次性工具完成后的工具恢复规则。
 - 为 `KCDrawingEngine`、`KCContentCatalog`、`KCSessionPersistence` 和 App Feature 提供稳定业务语义。
 
 ## 2. 边界
@@ -21,7 +21,7 @@
 - 业务枚举：`KCToolMode`、`KCBrushStyle`、`KCEraserShape`。
 - 作品与画布模型：`KCArtworkSession`、`KCCanvasSnapshot`、`KCStroke`、`KCStickerItem`、`KCStickerTransform`。
 - 内容模型：`KCContentPalette`、`KCStickerGroup`、`KCLineArtTemplate`、`KCPaletteSize`。
-- 纯逻辑：`KCContentPickerLayout`、`KCRecentColorQueue`、`KCStickerCategoryMapping`、`KCHistoryPaging`、`KCHistoryThumbStatus`、`KCEditorPanelsCollapseState`、`KCStickerConstraints`、`KCToolStateChipTitle`。
+- 纯逻辑：`KCContentPickerLayout`、`KCRecentColorQueue`、`KCStickerCategoryMapping`、`KCHistoryPaging`、`KCHistoryThumbStatus`、`KCEditorPanelsCollapseState`、`KCStickerConstraints`、`KCStickerSymbolDisplayMetrics`、`KCToolStateChipTitle`、`KCTransientToolModeMemory`。
 - 协议：`KCSessionRepository` 由 `KCSessionPersistence.KCSessionStore` 实现；`KCPhotoLibraryServicing` 留给 App / Infra 适配系统相册。
 
 ## 4. 禁止回流规则
@@ -30,3 +30,4 @@
 - 禁止让 Domain 模型直接调用 App 服务、Composition Root 或 Feature。
 - 禁止把 UI 样式常量、按钮布局、弹窗尺寸写入领域层；这类内容属于 App Feature / DesignSystem。
 - 禁止在 App 层复制领域纯逻辑；新增规则应优先进入 `KCDomain` 并补单元测试。
+- 印章 SF Symbol 的可测试显示规则统一放在 `KCStickerSymbolDisplayMetrics`；App 层只根据其返回的容器、点大小和安全边距生成 `UIImage`，不得在画布中散落单个符号的尺寸特判。

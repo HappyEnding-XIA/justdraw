@@ -24,6 +24,33 @@ final class KCDomainTests: XCTestCase {
     func testToolModeContainsExpectedCases() {
         XCTAssertEqual(KCToolMode.allCases, [.brush, .eraser, .fill, .sticker, .picker])
     }
+
+    func testTransientToolModeMemoryRestoresPreviousToolAfterPickingColor() {
+        var memory = KCTransientToolModeMemory()
+
+        memory.recordSelection(.fill)
+        memory.recordSelection(.picker)
+
+        XCTAssertEqual(memory.toolModeAfterCompletingTransientTool(), .fill)
+    }
+
+    func testTransientToolModeMemoryRestoresPreviousToolAfterStamping() {
+        var memory = KCTransientToolModeMemory()
+
+        memory.recordSelection(.eraser)
+        memory.recordSelection(.sticker)
+
+        XCTAssertEqual(memory.toolModeAfterCompletingTransientTool(), .eraser)
+    }
+
+    func testTransientToolModeMemoryFallsBackToBrushWhenNoPreviousToolExists() {
+        var memory = KCTransientToolModeMemory()
+
+        memory.recordSelection(.picker)
+        memory.recordSelection(.sticker)
+
+        XCTAssertEqual(memory.toolModeAfterCompletingTransientTool(), .brush)
+    }
 }
 
 // MARK: - KCStroke

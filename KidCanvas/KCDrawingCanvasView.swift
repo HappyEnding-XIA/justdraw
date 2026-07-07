@@ -6,6 +6,7 @@
 //
 
 import UIKit
+import KCDomain
 
 // MARK: - 工具枚举
 
@@ -37,6 +38,7 @@ enum KDEraserShape: Int {
 @objc(KDDrawingCanvasViewDelegate)
 protocol KDDrawingCanvasViewDelegate: AnyObject {
     func drawingCanvasView(_ canvasView: KCDrawingCanvasView, didPickColor color: UIColor)
+    @objc optional func drawingCanvasViewDidInsertSticker(_ canvasView: KCDrawingCanvasView)
     @objc optional func drawingCanvasViewSelectionDidChange(_ canvasView: KCDrawingCanvasView)
     @objc optional func drawingCanvasViewContentDidChange(_ canvasView: KCDrawingCanvasView)
 }
@@ -259,6 +261,7 @@ final class KCDrawingCanvasView: UIView, UIGestureRecognizerDelegate {
             let normalized = CGPoint(x: point.x / max(bounds.width, 1.0),
                                      y: point.y / max(bounds.height, 1.0))
             insertStickerSymbol(currentStickerSymbol, atNormalizedPoint: normalized)
+            delegate?.drawingCanvasViewDidInsertSticker?(self)
             return
         }
 
@@ -763,11 +766,12 @@ final class KCDrawingCanvasView: UIView, UIGestureRecognizerDelegate {
     // MARK: - 贴纸视图
 
     private func makeStickerView(withSymbol symbol: String, color: UIColor) -> KDStickerView {
-        let sticker = KDStickerView(image: stickerImage(forSymbol: symbol, pointSize: 56.0, color: color))
+        let metrics = KCStickerSymbolDisplayMetrics.metrics(forSymbol: symbol)
+        let sticker = KDStickerView(image: stickerImage(forSymbol: symbol, color: color, metrics: metrics))
         sticker.symbolName = symbol
         sticker.symbolColor = color
         sticker.isUserInteractionEnabled = true
-        sticker.bounds = CGRect(x: 0, y: 0, width: 72, height: 72)
+        sticker.bounds = CGRect(x: 0, y: 0, width: metrics.canvasSide, height: metrics.canvasSide)
         sticker.contentMode = .scaleAspectFit
         applyStickerIdleAppearance(to: sticker)
 
@@ -988,31 +992,48 @@ final class KCDrawingCanvasView: UIView, UIGestureRecognizerDelegate {
         delegate?.drawingCanvasViewContentDidChange?(self)
     }
 
-    private func stickerImage(forSymbol symbol: String, pointSize: CGFloat, color: UIColor) -> UIImage {
-        let imageSize = CGSize(width: 72.0, height: 72.0)
+    private func stickerImage(
+        forSymbol symbol: String,
+        color: UIColor,
+        metrics: KCStickerSymbolDisplayMetrics
+    ) -> UIImage {
+        let imageSize = CGSize(width: metrics.canvasSide, height: metrics.canvasSide)
+        let contentRect = CGRect(origin: .zero, size: imageSize).insetBy(
+            dx: metrics.contentInset,
+            dy: metrics.contentInset
+        )
         let renderer = UIGraphicsImageRenderer(size: imageSize)
         return renderer.image { _ in
             let resolvedSymbol = UIImage(systemName: symbol) != nil ? symbol : "star.fill"
-            let outlineConfiguration = UIImage.SymbolConfiguration(pointSize: pointSize + 8.0, weight: .bold)
+            let outlineConfiguration = UIImage.SymbolConfiguration(pointSize: metrics.outlinePointSize, weight: .bold)
             if let outlineImage = UIImage(systemName: resolvedSymbol, withConfiguration: outlineConfiguration)?
                 .withTintColor(.white, renderingMode: .alwaysOriginal) {
-                let outlineRect = CGRect(x: (imageSize.width - outlineImage.size.width) / 2.0,
-                                         y: (imageSize.height - outlineImage.size.height) / 2.0,
-                                         width: outlineImage.size.width,
-                                         height: outlineImage.size.height)
+                let outlineRect = aspectFitRect(for: outlineImage.size, in: contentRect)
                 outlineImage.draw(in: outlineRect)
             }
 
-            let configuration = UIImage.SymbolConfiguration(pointSize: pointSize, weight: .semibold)
+            let configuration = UIImage.SymbolConfiguration(pointSize: metrics.symbolPointSize, weight: .semibold)
             if let symbolImage = UIImage(systemName: resolvedSymbol, withConfiguration: configuration)?
                 .withTintColor(color, renderingMode: .alwaysOriginal) {
-                let symbolRect = CGRect(x: (imageSize.width - symbolImage.size.width) / 2.0,
-                                        y: (imageSize.height - symbolImage.size.height) / 2.0,
-                                        width: symbolImage.size.width,
-                                        height: symbolImage.size.height)
+                let symbolRect = aspectFitRect(for: symbolImage.size, in: contentRect)
                 symbolImage.draw(in: symbolRect)
             }
         }
+    }
+
+    private func aspectFitRect(for imageSize: CGSize, in bounds: CGRect) -> CGRect {
+        guard imageSize.width > 0.0, imageSize.height > 0.0, bounds.width > 0.0, bounds.height > 0.0 else {
+            return bounds
+        }
+
+        let scale = min(bounds.width / imageSize.width, bounds.height / imageSize.height)
+        let fittedSize = CGSize(width: imageSize.width * scale, height: imageSize.height * scale)
+        return CGRect(
+            x: bounds.midX - fittedSize.width / 2.0,
+            y: bounds.midY - fittedSize.height / 2.0,
+            width: fittedSize.width,
+            height: fittedSize.height
+        )
     }
 
     @objc(eraserShapePathForShape:center:size:)
