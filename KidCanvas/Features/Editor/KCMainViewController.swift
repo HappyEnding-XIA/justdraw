@@ -347,7 +347,14 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
     }
 
     func railToolButtonWithSymbolName(_ symbolName: String, slim: Bool) -> KDToolButton {
-        let button = self.editorUIFactory.railToolButton(symbolName: symbolName, slim: slim)
+        let buttonSize = self.leftRailButtonSize()
+        let iconSize = self.leftRailIconPointSize()
+        let button = self.editorUIFactory.railToolButton(
+            symbolName: symbolName,
+            slim: slim,
+            size: buttonSize,
+            iconPointSize: iconSize
+        )
         self.registerPressFeedbackForControl(button)
         return button
     }
@@ -422,15 +429,16 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
     func buildLeftRail(_ panel: UIView) {
         let toolScrollView = UIScrollView()
         toolScrollView.translatesAutoresizingMaskIntoConstraints = false
-        toolScrollView.showsVerticalScrollIndicator = false
+        toolScrollView.showsVerticalScrollIndicator = self.isCompactPhoneLayout
         toolScrollView.alwaysBounceVertical = true
         toolScrollView.clipsToBounds = true
+        toolScrollView.indicatorStyle = .black
         panel.addSubview(toolScrollView)
 
         let stack = UIStackView()
         stack.translatesAutoresizingMaskIntoConstraints = false
         stack.axis = .vertical
-        stack.spacing = 10.0
+        stack.spacing = self.leftRailStackSpacing()
         toolScrollView.addSubview(stack)
 
         NSLayoutConstraint.activate([

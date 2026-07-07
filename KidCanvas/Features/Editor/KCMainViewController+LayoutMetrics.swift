@@ -90,6 +90,18 @@ extension KCMainViewController {
         return self.layoutMetrics.leftRailHeightMultiplier
     }
 
+    func leftRailButtonSize() -> CGFloat {
+        return self.layoutMetrics.leftRailButtonSize
+    }
+
+    func leftRailIconPointSize() -> CGFloat {
+        return max(17.0, self.layoutMetrics.leftRailButtonSize * 0.36)
+    }
+
+    func leftRailStackSpacing() -> CGFloat {
+        return self.layoutMetrics.leftRailStackSpacing
+    }
+
     func brushCardWidth() -> CGFloat {
         return self.layoutMetrics.brushCardWidth
     }

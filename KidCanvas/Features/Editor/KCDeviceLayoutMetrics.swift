@@ -44,6 +44,14 @@ struct KCDeviceLayoutMetrics {
         isCompactPhoneLayout ? 0.58 : 0.46
     }
 
+    var leftRailButtonSize: CGFloat {
+        isCompactPhoneLayout ? 48.0 : 56.0
+    }
+
+    var leftRailStackSpacing: CGFloat {
+        isCompactPhoneLayout ? 8.0 : 10.0
+    }
+
     var rightPanelInnerInset: CGFloat {
         isCompactPhoneLayout ? 12.0 : 18.0
     }

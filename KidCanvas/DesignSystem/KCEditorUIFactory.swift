@@ -224,6 +224,10 @@ struct KCEditorUIFactory {
     }
 
     func railToolButton(symbolName: String, slim: Bool) -> KDToolButton {
+        self.railToolButton(symbolName: symbolName, slim: slim, size: 56.0, iconPointSize: 20.0)
+    }
+
+    func railToolButton(symbolName: String, slim: Bool, size: CGFloat, iconPointSize: CGFloat) -> KDToolButton {
         let button = KDToolButton(type: .system)
         button.translatesAutoresizingMaskIntoConstraints = false
         KCEditorVisualStyle.applyRaisedButtonAppearance(
@@ -235,12 +239,12 @@ struct KCEditorUIFactory {
             shadowOffset: CGSize(width: 0.0, height: 4.0)
         )
         button.tintColor = slim ? KCEditorVisualStyle.accentInkColor : KCEditorVisualStyle.inkColor
-        let image = Self.cachedConfiguredSystemImage(symbolName: symbolName, pointSize: 20.0, weight: .bold, weightKey: "bold")
+        let image = Self.cachedConfiguredSystemImage(symbolName: symbolName, pointSize: iconPointSize, weight: .bold, weightKey: "bold")
         button.setImage(image, for: .normal)
 
         NSLayoutConstraint.activate([
-            button.widthAnchor.constraint(equalToConstant: 56.0),
-            button.heightAnchor.constraint(equalToConstant: 56.0)
+            button.widthAnchor.constraint(equalToConstant: size),
+            button.heightAnchor.constraint(equalToConstant: size)
         ])
         return button
     }
