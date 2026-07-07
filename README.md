@@ -43,7 +43,7 @@ xcodebuild -project KidCanvas.xcodeproj -scheme KidCanvas -destination 'platform
 如需运行当前仓库附带的轻量校验脚本，请使用：
 
 ```bash
-python3 scripts/validate_project.py
+/usr/bin/python3 scripts/validate_project.py
 ```
 
 该脚本主要校验：

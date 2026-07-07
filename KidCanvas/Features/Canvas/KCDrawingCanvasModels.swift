@@ -42,6 +42,9 @@ final class KDStroke: NSObject {
     var pressureSampleCount: Int = 0
     var startPoint: CGPoint = .zero
     var dotStroke: Bool = false
+    var cachedRenderBounds: CGRect?
+    var cachedCrayonGrainDashPoints: [NSValue]?
+    var cachedCrayonGrainDashLineWidth: CGFloat = 0
     var toolMode: KDToolMode = .brush
     var brushStyle: KDBrushStyle = .pencil
     var eraserShape: KDEraserShape = .circle

@@ -14,6 +14,11 @@ final class KCStickerViewPresenter {
     private static let cornerRadius: CGFloat = 18.0
     private static let idleShadowOpacity: Float = 0.16
     private static let selectedShadowOpacity: Float = 0.26
+    private static let stickerImageCache: NSCache<NSString, UIImage> = {
+        let cache = NSCache<NSString, UIImage>()
+        cache.countLimit = 160
+        return cache
+    }()
 
     func makeStickerView(withSymbol symbol: String, color: UIColor) -> KDStickerView {
         let resolvedSymbol = symbol.isEmpty ? Self.fallbackSymbol : symbol
@@ -55,14 +60,19 @@ final class KCStickerViewPresenter {
         color: UIColor,
         metrics: KCStickerSymbolDisplayMetrics
     ) -> UIImage {
+        let cacheKey = stickerImageCacheKey(forSymbol: symbol, color: color, metrics: metrics)
+        if let cachedImage = Self.stickerImageCache.object(forKey: cacheKey) {
+            return cachedImage
+        }
+
         let imageSize = CGSize(width: metrics.canvasSide, height: metrics.canvasSide)
         let contentRect = CGRect(origin: .zero, size: imageSize).insetBy(
             dx: metrics.contentInset,
             dy: metrics.contentInset
         )
         let renderer = UIGraphicsImageRenderer(size: imageSize)
-        return renderer.image { _ in
-            let resolvedSymbol = UIImage(systemName: symbol) != nil ? symbol : Self.fallbackSymbol
+        let image = renderer.image { _ in
+            let resolvedSymbol = renderableSymbol(symbol)
             let outlineConfiguration = UIImage.SymbolConfiguration(pointSize: metrics.outlinePointSize, weight: .bold)
             if let outlineImage = UIImage(systemName: resolvedSymbol, withConfiguration: outlineConfiguration)?
                 .withTintColor(.white, renderingMode: .alwaysOriginal) {
@@ -77,6 +87,62 @@ final class KCStickerViewPresenter {
                 symbolImage.draw(in: symbolRect)
             }
         }
+        Self.stickerImageCache.setObject(image, forKey: cacheKey)
+        return image
+    }
+
+    private func renderableSymbol(_ symbol: String) -> String {
+        if KCEditorUIFactory.cachedSystemImage(symbolName: symbol) != nil {
+            return symbol
+        }
+        return Self.fallbackSymbol
+    }
+
+    private func stickerImageCacheKey(
+        forSymbol symbol: String,
+        color: UIColor,
+        metrics: KCStickerSymbolDisplayMetrics
+    ) -> NSString {
+        let resolvedSymbol = renderableSymbol(symbol)
+        let components = rgbaCacheComponents(for: color)
+        let parts = [
+            resolvedSymbol,
+            String(components.red),
+            String(components.green),
+            String(components.blue),
+            String(components.alpha),
+            metricCacheComponent(metrics.canvasSide),
+            metricCacheComponent(metrics.contentInset),
+            metricCacheComponent(metrics.symbolPointSize),
+            metricCacheComponent(metrics.outlinePointSize)
+        ]
+        return parts.joined(separator: "|") as NSString
+    }
+
+    private func rgbaCacheComponents(for color: UIColor) -> (red: Int, green: Int, blue: Int, alpha: Int) {
+        let resolvedColor = color.resolvedColor(with: UITraitCollection.current)
+        var red: CGFloat = 0.0
+        var green: CGFloat = 0.0
+        var blue: CGFloat = 0.0
+        var alpha: CGFloat = 0.0
+        guard resolvedColor.getRed(&red, green: &green, blue: &blue, alpha: &alpha) else {
+            return (0, 0, 0, 255)
+        }
+
+        return (
+            rgbaCacheComponent(red),
+            rgbaCacheComponent(green),
+            rgbaCacheComponent(blue),
+            rgbaCacheComponent(alpha)
+        )
+    }
+
+    private func rgbaCacheComponent(_ value: CGFloat) -> Int {
+        Int(round(max(0.0, min(1.0, value)) * 255.0))
+    }
+
+    private func metricCacheComponent(_ value: CGFloat) -> String {
+        String(Int(round(value * 100.0)))
     }
 
     private func aspectFitRect(for imageSize: CGSize, in bounds: CGRect) -> CGRect {

@@ -14,7 +14,9 @@ final class SessionStoreTests: XCTestCase {
         directory: URL? = nil,
         legacyMigrator: KCLegacySessionMigrator? = nil,
         now: @escaping () -> Date = { Date(timeIntervalSince1970: 1_700_000_000) },
-        makeID: @escaping () -> String = { "fixed-id" }
+        makeID: @escaping () -> String = { "fixed-id" },
+        fileManager: FileManager = .default,
+        replaceFileItem: (@Sendable (FileManager, URL, URL) throws -> Void)? = nil
     ) -> (KCSessionStore, URL) {
         let dir = directory ?? URL(fileURLWithPath: NSTemporaryDirectory())
             .appendingPathComponent(UUID().uuidString, isDirectory: true)
@@ -22,7 +24,9 @@ final class SessionStoreTests: XCTestCase {
             directoryURL: dir,
             legacyMigrator: legacyMigrator,
             now: now,
-            makeID: makeID
+            makeID: makeID,
+            fileManager: fileManager,
+            replaceFileItem: replaceFileItem
         )
         return (store, dir)
     }
@@ -66,6 +70,86 @@ final class SessionStoreTests: XCTestCase {
         XCTAssertEqual(try store.loadSessions().count, 1)
     }
 
+    func testSuccessfulUpdateCleansRollbackBackupFiles() throws {
+        let (store, dir) = makeStore()
+        let first = try store.saveArtwork(
+            pngData: Data(repeating: 0x01, count: 4),
+            thumbnailJPEGData: Data(repeating: 0x02, count: 4),
+            existing: nil
+        )
+
+        let second = try store.saveArtwork(
+            pngData: Data(repeating: 0x03, count: 4),
+            thumbnailJPEGData: Data(repeating: 0x04, count: 4),
+            existing: first
+        )
+
+        XCTAssertNotNil(second)
+        XCTAssertTrue(rollbackFiles(in: dir).isEmpty)
+    }
+
+    func testUpdateRestoresArtworkFilesWhenMetadataWriteFails() throws {
+        let (store, dir) = makeStore()
+        let oldPNG = Data(repeating: 0xA1, count: 16)
+        let oldJPG = Data(repeating: 0xB2, count: 16)
+        let newPNG = Data(repeating: 0xC3, count: 16)
+        let newJPG = Data(repeating: 0xD4, count: 16)
+        let session = try store.saveArtwork(pngData: oldPNG, thumbnailJPEGData: oldJPG, existing: nil)!
+
+        let metadataURL = dir.appendingPathComponent(KCSessionStore.metadataFileName)
+        try FileManager.default.removeItem(at: metadataURL)
+        try FileManager.default.createDirectory(at: metadataURL, withIntermediateDirectories: false)
+
+        let failedUpdate = try store.saveArtwork(pngData: newPNG, thumbnailJPEGData: newJPG, existing: session)
+
+        XCTAssertNil(failedUpdate)
+        XCTAssertEqual(try Data(contentsOf: dir.appendingPathComponent(session.artworkFileName)), oldPNG)
+        XCTAssertEqual(try Data(contentsOf: dir.appendingPathComponent(session.thumbnailFileName)), oldJPG)
+        XCTAssertTrue(rollbackFiles(in: dir).isEmpty)
+    }
+
+    func testBackupSetupFailureCleansAlreadyCreatedRollbackFile() throws {
+        let fileManager = FailingSecondCopyFileManager()
+        let (store, dir) = makeStore(fileManager: fileManager)
+        let session = try store.saveArtwork(
+            pngData: Data(repeating: 0x01, count: 4),
+            thumbnailJPEGData: Data(repeating: 0x02, count: 4),
+            existing: nil
+        )
+
+        let failedUpdate = try store.saveArtwork(
+            pngData: Data(repeating: 0x03, count: 4),
+            thumbnailJPEGData: Data(repeating: 0x04, count: 4),
+            existing: session
+        )
+
+        XCTAssertNil(failedUpdate)
+        XCTAssertEqual(fileManager.copyAttempts, 2)
+        XCTAssertTrue(rollbackFiles(in: dir).isEmpty)
+    }
+
+    func testFailedRestoreKeepsCurrentFileAndRollbackBackup() throws {
+        let (store, dir) = makeStore(replaceFileItem: { _, _, _ in
+            throw CocoaError(.fileWriteUnknown)
+        })
+        let oldPNG = Data(repeating: 0xA1, count: 16)
+        let oldJPG = Data(repeating: 0xB2, count: 16)
+        let newPNG = Data(repeating: 0xC3, count: 16)
+        let newJPG = Data(repeating: 0xD4, count: 16)
+        let session = try store.saveArtwork(pngData: oldPNG, thumbnailJPEGData: oldJPG, existing: nil)!
+
+        let metadataURL = dir.appendingPathComponent(KCSessionStore.metadataFileName)
+        try FileManager.default.removeItem(at: metadataURL)
+        try FileManager.default.createDirectory(at: metadataURL, withIntermediateDirectories: false)
+
+        let failedUpdate = try store.saveArtwork(pngData: newPNG, thumbnailJPEGData: newJPG, existing: session)
+
+        XCTAssertNil(failedUpdate)
+        XCTAssertEqual(try Data(contentsOf: dir.appendingPathComponent(session.artworkFileName)), newPNG)
+        XCTAssertEqual(try Data(contentsOf: dir.appendingPathComponent(session.thumbnailFileName)), newJPG)
+        XCTAssertEqual(rollbackFiles(in: dir).count, 2)
+    }
+
     func testLoadSessionsSortsNewestFirst() throws {
         var tick = 1_000.0
         let (store, _) = makeStore(now: {
@@ -93,6 +177,21 @@ final class SessionStoreTests: XCTestCase {
         XCTAssertFalse(FileManager.default.fileExists(atPath: dir.appendingPathComponent("fixed-id-thumb.jpg").path))
     }
 
+    func testDeleteKeepsArtworkFilesWhenMetadataCannotBeRead() throws {
+        let (store, dir) = makeStore()
+        let png = Data(repeating: 0x11, count: 8)
+        let jpg = Data(repeating: 0x22, count: 8)
+        let session = try store.saveArtwork(pngData: png, thumbnailJPEGData: jpg, existing: nil)!
+
+        let metadataURL = dir.appendingPathComponent(KCSessionStore.metadataFileName)
+        try FileManager.default.removeItem(at: metadataURL)
+        try FileManager.default.createDirectory(at: metadataURL, withIntermediateDirectories: false)
+
+        XCTAssertNoThrow(try store.delete(session))
+        XCTAssertEqual(try Data(contentsOf: dir.appendingPathComponent(session.artworkFileName)), png)
+        XCTAssertEqual(try Data(contentsOf: dir.appendingPathComponent(session.thumbnailFileName)), jpg)
+    }
+
     func testEmptyDataReturnsNilWithoutMutating() throws {
         let (store, dir) = makeStore()
         let result = try store.saveArtwork(pngData: Data(), thumbnailJPEGData: Data([1]), existing: nil)
@@ -117,6 +216,18 @@ final class SessionStoreTests: XCTestCase {
         XCTAssertEqual(store.loadDraft(), png)
         store.clearDraft()
         XCTAssertNil(store.loadDraft())
+    }
+
+    func testHasDraftTracksDraftFileLifecycleWithoutLoadingImageData() throws {
+        let (store, _) = makeStore()
+        let png = Data(repeating: 0x77, count: 32)
+
+        XCTAssertFalse(store.hasDraft())
+        XCTAssertTrue(try store.saveDraft(pngData: png))
+        XCTAssertTrue(store.hasDraft())
+
+        store.clearDraft()
+        XCTAssertFalse(store.hasDraft())
     }
 
     func testMetadataFileRoundTripsAcrossInstances() throws {
@@ -173,6 +284,26 @@ final class LegacyMigrationTests: XCTestCase {
 private final class IDCounter {
     private var value = 0
     func next() -> String { value += 1; return "id-\(value)" }
+}
+
+private func rollbackFiles(in directory: URL) -> [URL] {
+    let files = (try? FileManager.default.contentsOfDirectory(
+        at: directory,
+        includingPropertiesForKeys: nil
+    )) ?? []
+    return files.filter { $0.lastPathComponent.hasSuffix(".rollback") }
+}
+
+private final class FailingSecondCopyFileManager: FileManager, @unchecked Sendable {
+    private(set) var copyAttempts = 0
+
+    override func copyItem(at srcURL: URL, to dstURL: URL) throws {
+        copyAttempts += 1
+        if copyAttempts == 2 {
+            throw CocoaError(.fileWriteUnknown)
+        }
+        try super.copyItem(at: srcURL, to: dstURL)
+    }
 }
 
 private final class MigratorSpy: KCLegacySessionMigrator, @unchecked Sendable {

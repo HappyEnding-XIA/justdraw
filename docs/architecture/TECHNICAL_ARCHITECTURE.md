@@ -49,6 +49,7 @@ KidCanvas 不是常规表单或内容流 App，而是低延迟绘画工具。核
 - `KCSessionStore`：作品、缩略图、草稿和 metadata 本地存储。
 - `KCAppCompositionRoot`：App 层统一装配会话服务、内容目录和绘制能力。
 - `scripts/validate_project.py`：工程结构和功能覆盖校验。
+- 正式保存和相册导入仍由 `KCMainViewController` 协调，但重 CPU 的 PNG/JPEG 编码与导入图片归一化已放入专用后台队列，并通过 generation guard 回主线程提交。
 
 这说明我们不是从零开始设计，而是在演进一个已有产品原型。风险不在于“能不能写出来”，而在于后续拆分过程中如何保住现有行为：
 
@@ -157,7 +158,7 @@ flowchart TD
 - 同步颜色、尺寸、贴纸、历史状态。
 - 调用画布执行操作。
 - 调用存储服务保存和恢复。
-- 处理相册导入导出。
+- 处理相册导入导出；导入大图的方向归一化与尺寸压缩必须走 `imageImportProcessingQueue`，不能在 picker 回调主线程同步处理。
 
 当前问题：
 
@@ -340,7 +341,7 @@ Documents/
 - 保留当前文件目录语义，但改写为 Swift 实现。
 - metadata 从 `NSKeyedArchiver` 迁到 JSON/Codable。
 - 增加 schema version。
-- 保留保存失败回滚策略。
+- 保留保存失败回滚策略；更新已有作品时使用同目录临时文件做文件级备份与恢复，禁止为了回滚把旧 PNG/JPEG 全量读入内存。
 - 为旧版本 archive 预留一次性迁移逻辑。
 
 ```json
@@ -407,10 +408,13 @@ sequenceDiagram
     User->>Main: tap Save
     Main->>Canvas: hasVisibleContent
     Main->>Canvas: snapshotImage
-    Main->>Store: saveImage(existingSession)
+    Main->>Main: encode PNG/JPEG on sessionEncodingQueue
+    Main->>Store: saveArtwork(existingSession, encoded data)
+    Store->>Store: backup old PNG/JPG as rollback files
     Store->>Store: write PNG
     Store->>Store: write thumbnail JPG
     Store->>Store: update metadata
+    Store->>Store: cleanup rollback files
     Main->>Store: clearDraftImage
     Main->>Photos: UIImageWriteToSavedPhotosAlbum
     Main->>User: toast result
@@ -629,7 +633,7 @@ MVP 阶段继续使用快照栈即可。
 
 - 笔触数量增长后，`drawRect` 每次重绘所有 stroke 会变慢。
 - 大图填色在主线程执行可能卡顿。
-- 每个 undo state 包含图片和贴纸状态，内存压力会升高。
+- undo state 数量增长后仍会带来内存压力；当前已避免快照阶段反复深拷贝已提交笔画路径。
 - 贴纸用 view 子节点实现，数量过多时布局和合成成本会上升。
 
 ### 9.3 优化路线
@@ -683,15 +687,15 @@ UI smoke tests：
 - Apple Pencil 压力。
 - 不同 iPad 尺寸布局。
 - 多次撤销重做稳定性。
-- 大图导入和填色性能。
+- 大图导入、正式保存和填色性能。
 
 ## 11. 风险清单
 
 | 风险 | 当前等级 | 处理建议 |
 | --- | --- | --- |
-| `KCMainViewController` 仍承担高风险流程协调 | 中 | 继续拆低风险表现层，高风险保存/草稿/相册流程先补协议和验收 |
-| flood fill 主线程卡顿 | 中 | 异步化 |
-| undo 快照内存增长 | 中 | 栅格化与 command/checkpoint |
+| `KCMainViewController` 仍承担高风险流程协调 | 中 | 继续拆低风险表现层，高风险保存/草稿/相册流程先补协议和验收；当前保存编码和相册导入归一化已后台化 |
+| flood fill 主线程卡顿 | 低 | 已异步化，继续用运行时验收守住 |
+| undo 快照内存增长 | 中 | 已提交笔画快照已改为 append-only 引用共享，降低每次落笔前的 path 深拷贝成本；后续继续演进栅格化与 command/checkpoint |
 | 内容硬编码 | 中 | JSON + assets 配置化 |
 | 全量 SwiftUI 重写风险 | 高 | 避免一次性重写 |
 | 真机签名未配置 | 低 | Xcode 设置 Development Team |

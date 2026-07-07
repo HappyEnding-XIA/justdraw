@@ -7,6 +7,7 @@
 
 import UIKit
 import KCDomain
+import KCDrawingEngine
 
 // MARK: - 代理
 
@@ -71,62 +72,124 @@ final class KCDrawingCanvasView: UIView, UIGestureRecognizerDelegate {
         drawImage(backgroundImage, aspectFitIn: bounds)
 
         for stroke in strokes {
-            drawStroke(stroke)
+            if strokeRenderBounds(stroke).intersects(rect) {
+                drawStroke(stroke)
+            }
         }
 
         if let activeStroke {
-            drawStroke(activeStroke)
+            if strokeRenderBounds(activeStroke).intersects(rect) {
+                drawStroke(activeStroke)
+            }
         }
     }
 
     private func drawStroke(_ stroke: KDStroke) {
         let strokeColor: UIColor = stroke.toolMode == .eraser ? .white : stroke.color
         let pressure: CGFloat = stroke.toolMode == .eraser ? 1.0 : stroke.averagePressure
-        let renderedLineWidth = self.drawingEngine.renderedStrokeLineWidth(
-            brushStyle: stroke.brushStyle.rawValue,
-            lineWidth: stroke.lineWidth,
-            averagePressure: pressure
-        )
-        let alpha = self.drawingEngine.renderedStrokeAlpha(
-            brushStyle: stroke.brushStyle.rawValue,
-            lineWidth: stroke.lineWidth,
-            averagePressure: pressure
-        )
+        let renderedLineWidth: CGFloat
+        let alpha: CGFloat
+        let brushProfile: KCStrokeRenderMath.RenderProfile?
+        if stroke.toolMode == .eraser {
+            renderedLineWidth = max(1.0, stroke.lineWidth)
+            alpha = 1.0
+            brushProfile = nil
+        } else {
+            brushProfile = self.drawingEngine.brushRenderProfile(
+                brushStyle: stroke.brushStyle.rawValue,
+                lineWidth: stroke.lineWidth,
+                averagePressure: pressure
+            )
+            renderedLineWidth = brushProfile.map { CGFloat($0.metrics.renderedLineWidth) } ?? self.drawingEngine.renderedStrokeLineWidth(
+                    brushStyle: stroke.brushStyle.rawValue,
+                    lineWidth: stroke.lineWidth,
+                    averagePressure: pressure
+                )
+            alpha = brushProfile.map { CGFloat($0.metrics.alpha) } ?? self.drawingEngine.renderedStrokeAlpha(
+                    brushStyle: stroke.brushStyle.rawValue,
+                    lineWidth: stroke.lineWidth,
+                    averagePressure: pressure
+                )
+        }
 
         if stroke.toolMode == .eraser && stroke.eraserShape != .circle {
             drawStampedEraserStroke(stroke, color: strokeColor)
             return
         }
 
-        strokeColor.withAlphaComponent(alpha).setStroke()
         let renderPath = stroke.path.copy() as! UIBezierPath
-        renderPath.lineCapStyle = .round
+        renderPath.lineCapStyle = brushProfile?.usesButtLineCap == true ? .butt : .round
         renderPath.lineJoinStyle = .round
         renderPath.lineWidth = renderedLineWidth
-        renderPath.stroke()
-
-        if stroke.brushStyle == .pencil && stroke.toolMode != .eraser {
-            strokeColor.withAlphaComponent(0.16).setStroke()
-            let softPath = renderPath.copy() as! UIBezierPath
-            softPath.lineWidth = max(1.0, renderedLineWidth * 1.45)
-            softPath.stroke()
+        if let brushProfile {
+            drawTextureLayers(
+                brushProfile.textureLayers,
+                kind: .softHalo,
+                includeMatchingKind: true,
+                forPath: renderPath,
+                color: strokeColor,
+                lineWidth: renderedLineWidth
+            )
         }
 
-        if stroke.brushStyle == .crayon && stroke.toolMode != .eraser {
-            for index in 0..<3 {
-                strokeColor.withAlphaComponent(0.16).setStroke()
-                let texturePath = renderPath.copy() as! UIBezierPath
-                texturePath.lineWidth = max(1.0, renderedLineWidth * 0.28)
-                let transform = CGAffineTransform(translationX: CGFloat(index - 1) * 1.8,
-                                                  y: index % 2 == 0 ? 1.2 : -1.2)
-                texturePath.apply(transform)
-                texturePath.stroke()
+        strokeColor.withAlphaComponent(alpha).setStroke()
+        renderPath.stroke()
+
+        if let brushProfile {
+            drawTextureLayers(
+                brushProfile.textureLayers,
+                kind: .softHalo,
+                includeMatchingKind: false,
+                forPath: renderPath,
+                color: strokeColor,
+                lineWidth: renderedLineWidth
+            )
+            if brushProfile.grainAlpha > 0.0 {
+                drawCrayonGrain(
+                    forStroke: stroke,
+                    forPath: renderPath,
+                    color: strokeColor,
+                    lineWidth: renderedLineWidth,
+                    alpha: CGFloat(brushProfile.grainAlpha),
+                    clipWidthMultiplier: CGFloat(brushProfile.grainClipWidthMultiplier)
+                )
             }
-            drawCrayonGrain(forPath: renderPath, color: strokeColor, lineWidth: renderedLineWidth)
         }
     }
 
-    private func drawCrayonGrain(forPath path: UIBezierPath, color: UIColor, lineWidth: CGFloat) {
+    private func drawTextureLayers(
+        _ layers: [KCStrokeRenderMath.TextureLayer],
+        kind: KCStrokeRenderMath.TextureLayer.Kind,
+        includeMatchingKind: Bool,
+        forPath path: UIBezierPath,
+        color: UIColor,
+        lineWidth: CGFloat
+    ) {
+        for layer in layers {
+            guard (layer.kind == kind) == includeMatchingKind else { continue }
+            color.withAlphaComponent(CGFloat(layer.alpha)).setStroke()
+            let texturePath = path.copy() as! UIBezierPath
+            texturePath.lineWidth = max(0.7, lineWidth * CGFloat(layer.widthMultiplier))
+            texturePath.apply(CGAffineTransform(translationX: CGFloat(layer.offsetX), y: CGFloat(layer.offsetY)))
+            if !layer.dashPatternMultipliers.isEmpty {
+                var dashPattern = layer.dashPatternMultipliers.map { max(1.0, lineWidth * CGFloat($0)) }
+                let dashPhase = lineWidth * CGFloat(layer.dashPhaseMultiplier)
+                dashPattern.withUnsafeMutableBufferPointer { buffer in
+                    texturePath.setLineDash(buffer.baseAddress, count: buffer.count, phase: dashPhase)
+                }
+            }
+            texturePath.stroke()
+        }
+    }
+
+    private func drawCrayonGrain(
+        forStroke stroke: KDStroke,
+        forPath path: UIBezierPath,
+        color: UIColor,
+        lineWidth: CGFloat,
+        alpha: CGFloat,
+        clipWidthMultiplier: CGFloat
+    ) {
         let bounds = path.cgPath.boundingBoxOfPath
         if bounds.isEmpty {
             return
@@ -135,29 +198,88 @@ final class KCDrawingCanvasView: UIView, UIGestureRecognizerDelegate {
         let context = UIGraphicsGetCurrentContext()
         context?.saveGState()
         let clipPath = path.copy() as! UIBezierPath
-        clipPath.lineWidth = max(2.0, lineWidth * 1.06)
+        clipPath.lineWidth = max(2.0, lineWidth * clipWidthMultiplier)
         clipPath.lineCapStyle = .round
         clipPath.lineJoinStyle = .round
         clipPath.addClip()
 
-        color.withAlphaComponent(0.18).setStroke()
+        color.withAlphaComponent(alpha).setStroke()
         let dashWidth = self.drawingEngine.crayonGrainDashWidth(lineWidth: lineWidth)
-        let dashPoints = self.drawingEngine.crayonGrainDashPoints(pathBounds: bounds, lineWidth: lineWidth)
+        let dashPoints = cachedCrayonGrainDashPoints(forStroke: stroke, pathBounds: bounds, lineWidth: lineWidth)
         let pointCount = dashPoints.count
+        let grainPath = UIBezierPath()
+        grainPath.lineWidth = dashWidth
+        grainPath.lineCapStyle = .round
+        grainPath.lineJoinStyle = .round
         var index = 0
         while index + 1 < pointCount {
             let start = dashPoints[index].cgPointValue
             let end = dashPoints[index + 1].cgPointValue
-            let dash = UIBezierPath()
-            dash.lineWidth = dashWidth
-            dash.lineCapStyle = .round
-            dash.move(to: start)
-            dash.addLine(to: end)
-            dash.stroke()
+            grainPath.move(to: start)
+            grainPath.addLine(to: end)
             index += 2
         }
+        grainPath.stroke()
 
         context?.restoreGState()
+    }
+
+    private func cachedCrayonGrainDashPoints(forStroke stroke: KDStroke,
+        pathBounds: CGRect,
+        lineWidth: CGFloat
+    ) -> [NSValue] {
+        if let cachedCrayonGrainDashPoints = stroke.cachedCrayonGrainDashPoints,
+           abs(stroke.cachedCrayonGrainDashLineWidth - lineWidth) < 0.001 {
+            return cachedCrayonGrainDashPoints
+        }
+
+        let dashPoints = self.drawingEngine.crayonGrainDashPoints(pathBounds: pathBounds, lineWidth: lineWidth)
+        stroke.cachedCrayonGrainDashPoints = dashPoints
+        stroke.cachedCrayonGrainDashLineWidth = lineWidth
+        return dashPoints
+    }
+
+    private func strokeRenderBounds(_ stroke: KDStroke) -> CGRect {
+        if let cachedRenderBounds = stroke.cachedRenderBounds {
+            return cachedRenderBounds
+        }
+
+        let rawBounds = stroke.path.cgPath.boundingBoxOfPath
+        let baseBounds: CGRect
+        if rawBounds.isNull || rawBounds.isEmpty {
+            baseBounds = CGRect(x: stroke.startPoint.x, y: stroke.startPoint.y, width: 1.0, height: 1.0)
+        } else {
+            baseBounds = rawBounds
+        }
+
+        let inset = max(24.0, stroke.lineWidth * 3.0)
+        let renderBounds = baseBounds.insetBy(dx: -inset, dy: -inset)
+        stroke.cachedRenderBounds = renderBounds
+        return renderBounds
+    }
+
+    private func invalidateStrokeRenderBounds(_ stroke: KDStroke) {
+        stroke.cachedRenderBounds = nil
+        stroke.cachedCrayonGrainDashPoints = nil
+        stroke.cachedCrayonGrainDashLineWidth = 0
+    }
+
+    private func setNeedsDisplayForStroke(_ stroke: KDStroke) {
+        setNeedsDisplayForStrokeBounds(strokeRenderBounds(stroke))
+    }
+
+    private func setNeedsDisplayForStrokeBounds(_ redrawBounds: CGRect) {
+        if redrawBounds.isNull || redrawBounds.isEmpty {
+            setNeedsDisplay()
+            return
+        }
+
+        let clippedBounds = redrawBounds.intersection(bounds)
+        if clippedBounds.isNull || clippedBounds.isEmpty {
+            return
+        }
+
+        setNeedsDisplay(clippedBounds.integral)
     }
 
     // MARK: - 触摸处理
@@ -210,22 +332,29 @@ final class KCDrawingCanvasView: UIView, UIGestureRecognizerDelegate {
         activeStroke = stroke
 
         deselectSticker()
-        setNeedsDisplay()
+        setNeedsDisplayForStroke(stroke)
     }
 
     override func touchesMoved(_ touches: Set<UITouch>, with event: UIEvent?) {
         if event?.allTouches?.count ?? 0 > 1 {
+            let activeBounds = activeStroke.map { strokeRenderBounds($0) }
             activeStroke = nil
             pendingStrokeState = nil
             activeStrokeDidMutate = false
-            setNeedsDisplay()
+            if let activeBounds {
+                setNeedsDisplayForStrokeBounds(activeBounds)
+            } else {
+                setNeedsDisplay()
+            }
             return
         }
 
         guard let activeStroke else { return }
 
         guard let touch = touches.first else { return }
+        let previousStrokeBounds = strokeRenderBounds(activeStroke)
         let coalescedTouches = event?.coalescedTouches(for: touch) ?? [touch]
+        var didAppendPoint = false
         for coalescedTouch in coalescedTouches {
             let point = coalescedTouch.location(in: self)
             let dx = point.x - activeStroke.startPoint.x
@@ -237,18 +366,25 @@ final class KCDrawingCanvasView: UIView, UIGestureRecognizerDelegate {
             activeStroke.path.addLine(to: point)
             addPressureSample(from: coalescedTouch, to: activeStroke)
             activeStrokeDidMutate = true
+            didAppendPoint = true
         }
-        setNeedsDisplay()
+        if didAppendPoint {
+            invalidateStrokeRenderBounds(activeStroke)
+            let redrawBounds = previousStrokeBounds.union(strokeRenderBounds(activeStroke))
+            setNeedsDisplayForStrokeBounds(redrawBounds)
+        }
     }
 
     override func touchesEnded(_ touches: Set<UITouch>, with event: UIEvent?) {
         guard let activeStroke else { return }
 
         guard let touch = touches.first else { return }
+        let previousStrokeBounds = strokeRenderBounds(activeStroke)
         let point = touch.location(in: self)
         if activeStrokeDidMutate {
             activeStroke.path.addLine(to: point)
             addPressureSample(from: touch, to: activeStroke)
+            invalidateStrokeRenderBounds(activeStroke)
         } else {
             let dotRadius = max(1.0, activeStroke.lineWidth * 0.5)
             activeStroke.path = UIBezierPath(ovalIn: CGRect(x: activeStroke.startPoint.x - dotRadius,
@@ -259,21 +395,27 @@ final class KCDrawingCanvasView: UIView, UIGestureRecognizerDelegate {
             activeStroke.dotStroke = true
             activeStrokeDidMutate = true
             addPressureSample(from: touch, to: activeStroke)
+            invalidateStrokeRenderBounds(activeStroke)
         }
         commitUndoStateSnapshot(pendingStrokeState)
         strokes.append(activeStroke)
         self.activeStroke = nil
         pendingStrokeState = nil
         activeStrokeDidMutate = false
-        setNeedsDisplay()
+        setNeedsDisplayForStrokeBounds(previousStrokeBounds.union(strokeRenderBounds(activeStroke)))
         notifyContentChanged()
     }
 
     override func touchesCancelled(_ touches: Set<UITouch>, with event: UIEvent?) {
+        let activeBounds = activeStroke.map { strokeRenderBounds($0) }
         activeStroke = nil
         pendingStrokeState = nil
         activeStrokeDidMutate = false
-        setNeedsDisplay()
+        if let activeBounds {
+            setNeedsDisplayForStrokeBounds(activeBounds)
+        } else {
+            setNeedsDisplay()
+        }
     }
 
     private func addPressureSample(from touch: UITouch, to stroke: KDStroke) {
@@ -357,7 +499,7 @@ final class KCDrawingCanvasView: UIView, UIGestureRecognizerDelegate {
         stroke.eraserShape = currentEraserShape
         strokes.append(stroke)
 
-        setNeedsDisplay()
+        setNeedsDisplayForStroke(stroke)
         notifyContentChanged()
     }
 
@@ -389,7 +531,7 @@ final class KCDrawingCanvasView: UIView, UIGestureRecognizerDelegate {
         stroke.eraserShape = currentEraserShape
         strokes.append(stroke)
 
-        setNeedsDisplay()
+        setNeedsDisplayForStroke(stroke)
         notifyContentChanged()
     }
 
@@ -527,7 +669,9 @@ final class KCDrawingCanvasView: UIView, UIGestureRecognizerDelegate {
     private func canvasStateSnapshot() -> KDCanvasState {
         let state = KDCanvasState()
         state.backgroundImage = backgroundImage
-        state.strokes = strokes.map { copyOfStroke($0) }
+        // 已提交笔画在进入 `strokes` 后不再被修改；状态恢复时会再深拷贝。
+        // 这里共享引用，避免每次落笔前把全部历史 UIBezierPath 都复制一遍。
+        state.strokes = strokes
         state.stickers = stickers.map { stickerStateFromView($0) }
         return state
     }
@@ -593,6 +737,9 @@ final class KCDrawingCanvasView: UIView, UIGestureRecognizerDelegate {
         copy.pressureSampleCount = stroke.pressureSampleCount
         copy.startPoint = stroke.startPoint
         copy.dotStroke = stroke.dotStroke
+        copy.cachedRenderBounds = stroke.cachedRenderBounds
+        copy.cachedCrayonGrainDashPoints = stroke.cachedCrayonGrainDashPoints
+        copy.cachedCrayonGrainDashLineWidth = stroke.cachedCrayonGrainDashLineWidth
         copy.toolMode = stroke.toolMode
         copy.brushStyle = stroke.brushStyle
         copy.eraserShape = stroke.eraserShape
@@ -659,6 +806,10 @@ final class KCDrawingCanvasView: UIView, UIGestureRecognizerDelegate {
     private func beginFloodFill(at point: CGPoint, color fillColor: UIColor) {
         guard !floodFillInProgress else { return }
 
+        if fillColorAlreadyMatchesCanvas(at: point, fillColor: fillColor) {
+            return
+        }
+
         let previousState = canvasStateSnapshot()
         let baseImage = rasterImageExcludingStickers()
         guard let sourceImageRef = baseImage.cgImage else { return }
@@ -714,24 +865,97 @@ final class KCDrawingCanvasView: UIView, UIGestureRecognizerDelegate {
         notifyContentChanged()
     }
 
+    private func fillColorAlreadyMatchesCanvas(at point: CGPoint, fillColor: UIColor) -> Bool {
+        let image = pixelImageExcludingStickers(at: point)
+        guard let imageRef = image.cgImage,
+              let sampledColor = self.drawingEngine.sampleColorFromImage(imageRef, x: 0, y: 0) else {
+            return false
+        }
+
+        return colorsAreVisuallyEqual(sampledColor, fillColor, tolerance: 2.0 / 255.0)
+    }
+
+    private func colorsAreVisuallyEqual(_ leftColor: UIColor, _ rightColor: UIColor, tolerance: CGFloat) -> Bool {
+        let left = leftColor.resolvedColor(with: traitCollection)
+        let right = rightColor.resolvedColor(with: traitCollection)
+        var leftRed: CGFloat = 0.0
+        var leftGreen: CGFloat = 0.0
+        var leftBlue: CGFloat = 0.0
+        var leftAlpha: CGFloat = 0.0
+        var rightRed: CGFloat = 0.0
+        var rightGreen: CGFloat = 0.0
+        var rightBlue: CGFloat = 0.0
+        var rightAlpha: CGFloat = 0.0
+
+        guard left.getRed(&leftRed, green: &leftGreen, blue: &leftBlue, alpha: &leftAlpha),
+              right.getRed(&rightRed, green: &rightGreen, blue: &rightBlue, alpha: &rightAlpha) else {
+            return false
+        }
+
+        return abs(leftRed - rightRed) <= tolerance
+            && abs(leftGreen - rightGreen) <= tolerance
+            && abs(leftBlue - rightBlue) <= tolerance
+            && abs(leftAlpha - rightAlpha) <= tolerance
+    }
+
     private func colorAtPoint(_ point: CGPoint) -> UIColor? {
-        let image = snapshotImage()
+        let image = pixelImage(at: point)
         guard let imageRef = image.cgImage else { return nil }
-
-        let imageSize = image.size
-        if imageSize.width <= 0.0 || imageSize.height <= 0.0 {
-            return nil
-        }
-
-        if point.x < 0.0 || point.y < 0.0 || point.x >= imageSize.width || point.y >= imageSize.height {
-            return nil
-        }
 
         return self.drawingEngine.sampleColorFromImage(
             imageRef,
-            x: Int(point.x * image.scale),
-            y: Int(point.y * image.scale)
+            x: 0,
+            y: 0
         )
+    }
+
+    private func pixelImageExcludingStickers(at point: CGPoint) -> UIImage {
+        if point.x < 0.0 || point.y < 0.0 || point.x >= bounds.width || point.y >= bounds.height {
+            return UIImage()
+        }
+
+        let scale = self.window?.screen.scale ?? UIScreen.main.scale
+        let format = UIGraphicsImageRendererFormat()
+        format.scale = scale
+        format.opaque = true
+        let pixelSize = CGSize(width: 1.0 / scale, height: 1.0 / scale)
+        let renderer = UIGraphicsImageRenderer(size: pixelSize, format: format)
+        return renderer.image { context in
+            context.cgContext.translateBy(x: -point.x, y: -point.y)
+            UIColor.white.setFill()
+            UIRectFill(bounds)
+            drawImage(backgroundImage, aspectFitIn: bounds)
+
+            for stroke in strokes {
+                drawStroke(stroke)
+            }
+        }
+    }
+
+    private func pixelImage(at point: CGPoint) -> UIImage {
+        if point.x < 0.0 || point.y < 0.0 || point.x >= bounds.width || point.y >= bounds.height {
+            return UIImage()
+        }
+
+        let selectedSticker = self.selectedStickerView
+        let selectedBorderWidth = selectedSticker?.layer.borderWidth ?? 0
+        let selectedBorderColor = selectedSticker?.layer.borderColor
+        selectedSticker?.layer.borderWidth = 0.0
+
+        let scale = self.window?.screen.scale ?? UIScreen.main.scale
+        let format = UIGraphicsImageRendererFormat()
+        format.scale = scale
+        format.opaque = true
+        let pixelSize = CGSize(width: 1.0 / scale, height: 1.0 / scale)
+        let renderer = UIGraphicsImageRenderer(size: pixelSize, format: format)
+        let image = renderer.image { context in
+            context.cgContext.translateBy(x: -point.x, y: -point.y)
+            self.layer.render(in: context.cgContext)
+        }
+
+        selectedSticker?.layer.borderWidth = selectedBorderWidth
+        selectedSticker?.layer.borderColor = selectedBorderColor
+        return image
     }
 
     // MARK: - 贴纸视图

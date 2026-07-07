@@ -38,6 +38,9 @@ public protocol KCSessionRepository: Sendable {
     /// 当至少保存了一个会话时为 `true`。
     func hasSavedSessions() throws -> Bool
 
+    /// 当自动保存草稿文件存在时为 `true`；不得为了判断存在性读取或解码草稿图片。
+    func hasDraft() -> Bool
+
     /// 用给定的 PNG 数据覆盖自动保存的草稿。
     func saveDraft(pngData: Data) throws -> Bool
 

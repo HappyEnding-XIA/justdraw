@@ -6,7 +6,7 @@
 
 - 定义作品、笔触、工具、贴纸、内容目录、编辑器状态等业务模型。
 - 定义 `KCSessionRepository`、`KCPhotoLibraryServicing` 等协议边界，让 Feature 依赖抽象而不是具体存储或系统框架。
-- 承载可单测的纯决策逻辑，例如历史分页、历史缩略图状态、颜色面板布局、最近色队列、贴纸分类映射、贴纸约束、印章显示指标、工具状态标题、一次性工具完成后的工具恢复规则。
+- 承载可单测的纯决策逻辑，例如历史分页、历史缩略图相邻页预热索引、历史缩略图状态、颜色面板布局、最近色队列、贴纸分类映射、贴纸约束、印章显示指标、工具状态标题、一次性工具完成后的工具恢复规则。
 - 为 `KCDrawingEngine`、`KCContentCatalog`、`KCSessionPersistence` 和 App Feature 提供稳定业务语义。
 
 ## 2. 边界
@@ -22,6 +22,7 @@
 - 作品与画布模型：`KCArtworkSession`、`KCCanvasSnapshot`、`KCStroke`、`KCStickerItem`、`KCStickerTransform`。
 - 内容模型：`KCContentPalette`、`KCStickerGroup`、`KCLineArtTemplate`、`KCPaletteSize`。
 - 纯逻辑：`KCContentPickerLayout`、`KCRecentColorQueue`、`KCStickerCategoryMapping`、`KCHistoryPaging`、`KCHistoryThumbStatus`、`KCEditorPanelsCollapseState`、`KCStickerConstraints`、`KCStickerSymbolDisplayMetrics`、`KCToolStateChipTitle`、`KCTransientToolModeMemory`。
+- `KCHistoryPaging.adjacentPageSessionIndexes()`：按“下一页优先、上一页补充”的顺序返回相邻页会话索引，用于 App 层后台预热历史缩略图缓存；该规则必须在 Domain 层单测，不得散落在控制器中。
 - 协议：`KCSessionRepository` 由 `KCSessionPersistence.KCSessionStore` 实现；`KCPhotoLibraryServicing` 留给 App / Infra 适配系统相册。
 
 ## 4. 禁止回流规则

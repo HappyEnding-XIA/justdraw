@@ -11,6 +11,12 @@ import QuartzCore
 /// 画笔、贴纸、橡皮与贴纸编辑面板的 UIKit 组装器。
 /// 只负责视图创建、约束和按钮外观，不持有画布状态。
 final class KCBrushStickerPanelView {
+    private static let categorySymbolImageCache: NSCache<NSString, UIImage> = {
+        let cache = NSCache<NSString, UIImage>()
+        cache.countLimit = 32
+        return cache
+    }()
+
     struct Texts {
         let brushStickerTitle: String
         let sizeSliderAccessibility: String
@@ -127,9 +133,10 @@ final class KCBrushStickerPanelView {
         for category in stickerCategories {
             let button = UIButton(type: .system)
             button.translatesAutoresizingMaskIntoConstraints = false
-            let configuration = UIImage.SymbolConfiguration(pointSize: 15.0, weight: .bold)
             let symbolName = categorySymbolProvider(category)
-            let categoryImage = UIImage(systemName: symbolName, withConfiguration: configuration) ?? imageProvider("star.fill")
+            let categoryImage = cachedCategorySymbolImage(symbolName: symbolName) {
+                imageProvider("star.fill")
+            }
             button.setImage(categoryImage, for: .normal)
             button.accessibilityLabel = stickerCategoryAccessibilityProvider(category)
             button.accessibilityIdentifier = "sticker.category.\(category.lowercased())"
@@ -335,6 +342,18 @@ final class KCBrushStickerPanelView {
         deleteButton.alpha = enabled ? 1.0 : 0.55
         applyStampButtonAppearance(to: frontButton, active: false, enabled: enabled)
         applyStampButtonAppearance(to: deleteButton, active: false, enabled: enabled)
+    }
+
+    private func cachedCategorySymbolImage(symbolName: String, fallbackImageProvider: () -> UIImage) -> UIImage {
+        let key = "\(symbolName)|15|bold" as NSString
+        if let cachedImage = Self.categorySymbolImageCache.object(forKey: key) {
+            return cachedImage
+        }
+
+        let configuration = UIImage.SymbolConfiguration(pointSize: 15.0, weight: .bold)
+        let image = UIImage(systemName: symbolName, withConfiguration: configuration) ?? fallbackImageProvider()
+        Self.categorySymbolImageCache.setObject(image, forKey: key)
+        return image
     }
 
     private func applyPillSelectionAppearance(to button: UIButton, active: Bool) {

@@ -66,4 +66,18 @@ final class HistoryPagingTests: XCTestCase {
         let paging = KCHistoryPaging(sessionCount: 50, pageSize: 0, pageIndex: 3)
         XCTAssertEqual(paging.sessionIndex(forThumb: 0), 3)
     }
+
+    func testAdjacentPageSessionIndexesPreferNextThenPreviousPage() {
+        // 第 1 页可见索引 4...7；预热顺序应先下一页 8...10，再上一页 0...3。
+        let paging = KCHistoryPaging(sessionCount: 11, pageSize: 4, pageIndex: 1)
+        XCTAssertEqual(paging.adjacentPageSessionIndexes(), [8, 9, 10, 0, 1, 2, 3])
+    }
+
+    func testAdjacentPageSessionIndexesOmitMissingPages() {
+        let firstPage = KCHistoryPaging(sessionCount: 6, pageSize: 4, pageIndex: 0)
+        XCTAssertEqual(firstPage.adjacentPageSessionIndexes(), [4, 5])
+
+        let lastPage = KCHistoryPaging(sessionCount: 6, pageSize: 4, pageIndex: 1)
+        XCTAssertEqual(lastPage.adjacentPageSessionIndexes(), [0, 1, 2, 3])
+    }
 }

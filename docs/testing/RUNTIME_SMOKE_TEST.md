@@ -163,10 +163,10 @@ find /Volumes/xiaoda_SSD/KidCanvas/justdraw \
   -name '._*' -type f -print
 ```
 
-应无输出；如有输出，确认不是 `.git` / `.build` / `ai-docs` 后删除再跑 `python3 scripts/validate_project.py`。
+应无输出；如有输出，确认不是 `.git` / `.build` / `ai-docs` 后删除再跑 `/usr/bin/python3 scripts/validate_project.py`。
 
 ## 环境依赖
 
 - Xcode 命令行工具（`xcode-select -p`）
-- `python3`（macOS 自带，用于解析 `simctl list -j` 的 JSON；`validate_project.py` 同样依赖）
+- `/usr/bin/python3`（macOS 系统 Python；运行脚本默认优先使用它解析 `simctl list -j` 的 JSON，也可通过 `PYTHON_BIN=/path/to/python3` 覆盖）
 - 无其他重依赖。

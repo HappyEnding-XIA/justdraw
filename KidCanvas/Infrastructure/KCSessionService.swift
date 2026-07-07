@@ -59,7 +59,12 @@ final class KCSessionService: NSObject {
         cache.countLimit = 100
         return cache
     }()
+    private let thumbnailPreloadQueue = DispatchQueue(label: "com.kidcanvas.session.thumbnail-preload", qos: .utility)
+    private let thumbnailPreloadLock = NSLock()
+    private var thumbnailPreloadInFlight: Set<String> = []
     private var artworkSessionCache: [KCArtworkSession]?
+    private var draftImageCache: UIImage?
+    private var draftThumbnailCache: UIImage?
     private static let thumbnailSize = CGSize(width: 240, height: 180)
 
     // MARK: - 会话查询
@@ -83,10 +88,23 @@ final class KCSessionService: NSObject {
     /// 若 `existingSessionId` 非空则更新该会话，否则新建会话。
     /// 返回会话元数据 DTO，失败返回 nil。
     @objc func saveImage(_ image: UIImage, existingSessionId: String?) -> KCSessionMetadata? {
+        guard let encodedData = encodedArtworkData(from: image) else { return nil }
+        return saveArtwork(
+            pngData: encodedData.pngData,
+            thumbnailJPEGData: encodedData.thumbnailJPEGData,
+            existingSessionId: existingSessionId
+        )
+    }
+
+    /// 将完整画作编码为持久化所需的 PNG + 缩略图 JPEG。
+    ///
+    /// 该方法不访问磁盘、不读写缓存，可由编辑器放到后台队列执行，避免正式保存时
+    /// PNG/JPEG 编码阻塞主线程。
+    func encodedArtworkData(from image: UIImage) -> (pngData: Data, thumbnailJPEGData: Data)? {
         guard let pngData = image.pngData() else { return nil }
         let thumbnail = Self.generateThumbnail(from: image)
         guard let thumbData = thumbnail.jpegData(compressionQuality: 0.85) else { return nil }
-        return saveArtwork(pngData: pngData, thumbnailJPEGData: thumbData, existingSessionId: existingSessionId)
+        return (pngData: pngData, thumbnailJPEGData: thumbData)
     }
 
     // MARK: - 保存/读取画作（Data）
@@ -98,9 +116,7 @@ final class KCSessionService: NSObject {
         thumbnailJPEGData: Data,
         existingSessionId: String?
     ) -> KCSessionMetadata? {
-        let existing: KCArtworkSession? = existingSessionId.flatMap { id in
-            (try? store.loadSessions())?.first { $0.id == id }
-        }
+        let existing: KCArtworkSession? = existingSessionId.flatMap { findSession(id: $0) }
         guard let session = try? store.saveArtwork(
             pngData: pngData,
             thumbnailJPEGData: thumbnailJPEGData,
@@ -129,17 +145,74 @@ final class KCSessionService: NSObject {
 
     /// 返回缩略图 UIImage。
     @objc func thumbnailImage(forSessionId sessionId: String) -> UIImage? {
-        guard findSession(id: sessionId) != nil else {
-            thumbnailImageCache.removeObject(forKey: sessionId as NSString)
-            return nil
-        }
-        if let cachedThumbnail = thumbnailImageCache.object(forKey: sessionId as NSString) {
+        if let cachedThumbnail = cachedThumbnailImage(forSessionId: sessionId) {
             return cachedThumbnail
         }
         guard let data = thumbnailData(forSessionId: sessionId) else { return nil }
         guard let image = UIImage(data: data) else { return nil }
         thumbnailImageCache.setObject(image, forKey: sessionId as NSString)
         return image
+    }
+
+    /// 只读取内存缓存，不触发磁盘读取或图片解码，供历史栏主线程刷新使用。
+    @objc func cachedThumbnailImage(forSessionId sessionId: String) -> UIImage? {
+        guard findSession(id: sessionId) != nil else {
+            thumbnailImageCache.removeObject(forKey: sessionId as NSString)
+            return nil
+        }
+        return thumbnailImageCache.object(forKey: sessionId as NSString)
+    }
+
+    /// 后台预热指定会话的缩略图缓存，减少历史翻页时的主线程读盘/解码。
+    func preloadThumbnailImages(forSessionIds sessionIds: [String], completion: (() -> Void)? = nil) {
+        let requestedIds = Set(sessionIds)
+        guard !requestedIds.isEmpty else {
+            if let completion {
+                DispatchQueue.main.async(execute: completion)
+            }
+            return
+        }
+
+        let sessionsToPreload = cachedArtworkSessions().filter { session in
+            guard requestedIds.contains(session.id) else { return false }
+            let cacheKey = session.id as NSString
+            if thumbnailImageCache.object(forKey: cacheKey) != nil {
+                return false
+            }
+
+            thumbnailPreloadLock.lock()
+            defer { thumbnailPreloadLock.unlock() }
+            guard !thumbnailPreloadInFlight.contains(session.id) else {
+                return false
+            }
+            thumbnailPreloadInFlight.insert(session.id)
+            return true
+        }
+        guard !sessionsToPreload.isEmpty else {
+            if let completion {
+                DispatchQueue.main.async(execute: completion)
+            }
+            return
+        }
+
+        thumbnailPreloadQueue.async { [weak self, sessionsToPreload] in
+            guard let self else { return }
+            for session in sessionsToPreload {
+                let cacheKey = session.id as NSString
+                if self.thumbnailImageCache.object(forKey: cacheKey) == nil,
+                   let data = self.store.thumbnailData(for: session),
+                   let image = UIImage(data: data) {
+                    self.thumbnailImageCache.setObject(image, forKey: cacheKey)
+                }
+
+                self.thumbnailPreloadLock.lock()
+                self.thumbnailPreloadInFlight.remove(session.id)
+                self.thumbnailPreloadLock.unlock()
+            }
+            if let completion {
+                DispatchQueue.main.async(execute: completion)
+            }
+        }
     }
 
     /// 返回指定会话的缩略图 JPEG 数据。
@@ -163,17 +236,60 @@ final class KCSessionService: NSObject {
     /// 保存来自 UIImage 的草稿（便捷方法）。
     @objc func saveDraftImage(_ image: UIImage) -> Bool {
         guard let data = image.pngData() else { return false }
-        return saveDraftData(pngData: data)
+        return saveDraftData(pngData: data, cachedImage: image)
     }
 
     /// 以 UIImage 形式加载草稿。
     @objc func loadDraftImage() -> UIImage? {
+        if let draftImageCache {
+            return draftImageCache
+        }
         guard let data = store.loadDraft() else { return nil }
-        return UIImage(data: data)
+        guard let image = UIImage(data: data) else { return nil }
+        draftImageCache = image
+        if draftThumbnailCache == nil {
+            draftThumbnailCache = Self.generateThumbnail(from: image)
+        }
+        return image
+    }
+
+    /// 返回草稿缩略图，供历史面板使用。该路径不长期持有全尺寸草稿图，避免
+    /// 高频历史刷新为了一个 240×180 缩略图保留整张画布。
+    @objc func draftThumbnailImage() -> UIImage? {
+        if let draftThumbnailCache {
+            return draftThumbnailCache
+        }
+
+        let sourceImage: UIImage
+        if let draftImageCache {
+            sourceImage = draftImageCache
+        } else {
+            guard let data = store.loadDraft(), let image = UIImage(data: data) else { return nil }
+            sourceImage = image
+        }
+
+        let thumbnail = Self.generateThumbnail(from: sourceImage)
+        draftThumbnailCache = thumbnail
+        return thumbnail
+    }
+
+    /// 轻量判断是否存在草稿文件，不读取或解码 `draft.png`，用于按钮状态和删除流程。
+    @objc func hasDraft() -> Bool {
+        if draftImageCache != nil || draftThumbnailCache != nil {
+            return true
+        }
+        return store.hasDraft()
     }
 
     @objc func saveDraftData(pngData: Data) -> Bool {
-        (try? store.saveDraft(pngData: pngData)) ?? false
+        saveDraftData(pngData: pngData, cachedImage: nil)
+    }
+
+    func saveDraftData(pngData: Data, cachedImage: UIImage?) -> Bool {
+        let saved = (try? store.saveDraft(pngData: pngData)) ?? false
+        draftImageCache = nil
+        draftThumbnailCache = saved ? cachedImage.map { Self.generateThumbnail(from: $0) } : nil
+        return saved
     }
 
     @objc func loadDraftData() -> Data? {
@@ -181,6 +297,8 @@ final class KCSessionService: NSObject {
     }
 
     @objc func clearDraft() {
+        draftImageCache = nil
+        draftThumbnailCache = nil
         store.clearDraft()
     }
 
@@ -210,6 +328,9 @@ final class KCSessionService: NSObject {
         guard var sessions = artworkSessionCache else { return }
         sessions.removeAll { $0.id == sessionId }
         artworkSessionCache = sessions
+        thumbnailPreloadLock.lock()
+        thumbnailPreloadInFlight.remove(sessionId)
+        thumbnailPreloadLock.unlock()
     }
 
     /// 生成 240×180 缩略图，白底、aspect-fit，与原型 `thumbnailImageFromImage:`

@@ -24,7 +24,7 @@ find /Volumes/xiaoda_SSD/KidCanvas/justdraw \
   -path '*/ai-docs' -prune -o \
   -name '._*' -type f -delete
 
-python3 scripts/validate_project.py
+/usr/bin/python3 scripts/validate_project.py
 
 cd Packages/KidCanvasModules
 swift test

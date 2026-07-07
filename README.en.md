@@ -43,7 +43,7 @@ xcodebuild -project KidCanvas.xcodeproj -scheme KidCanvas -destination 'platform
 To run the lightweight validation script bundled with this repository:
 
 ```bash
-python3 scripts/validate_project.py
+/usr/bin/python3 scripts/validate_project.py
 ```
 
 The script mainly verifies:

@@ -66,4 +66,22 @@ public struct KCHistoryPaging: Equatable, Sendable {
     public func sessionIndex(forThumb thumbIndex: Int) -> Int {
         pageIndex * effectivePageSize + thumbIndex
     }
+
+    /// 返回相邻页需要预热的会话索引。顺序优先下一页，再上一页；
+    /// 当前页已经由 UI 刷新同步消费，不放入预热列表。
+    public func adjacentPageSessionIndexes() -> [Int] {
+        guard sessionCount > 0 else { return [] }
+        let currentPage = clampedPageIndex
+        var indexes: [Int] = []
+
+        for page in [currentPage + 1, currentPage - 1] {
+            guard page >= 0 && page <= maxPageIndex else { continue }
+            let startIndex = page * effectivePageSize
+            let endIndex = min(startIndex + effectivePageSize, sessionCount)
+            guard startIndex < endIndex else { continue }
+            indexes.append(contentsOf: startIndex..<endIndex)
+        }
+
+        return indexes
+    }
 }

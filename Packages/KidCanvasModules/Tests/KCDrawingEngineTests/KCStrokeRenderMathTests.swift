@@ -18,32 +18,30 @@ final class StrokeRenderMathTests: XCTestCase {
         return s
     }
 
-    func testPenAtFullPressureMatchesPrototypeFormula() {
-        // width * 0.72 * min(1.18, max(0.88, 1.0)) = 20 * 0.72 * 1.0 = 14.4
+    func testPenAtFullPressureUsesSolidProductFormula() {
+        // 钢笔应保持实色、利落，宽度接近配置值但不过分膨胀。
         let metrics = KCStrokeRenderMath.metrics(for: stroke(tool: .brush, brush: .pen, width: 20, pressure: 1.0))
-        XCTAssertEqual(metrics.renderedLineWidth, 14.4, accuracy: 1e-9)
+        XCTAssertEqual(metrics.renderedLineWidth, 18.4, accuracy: 1e-9)
         XCTAssertEqual(metrics.alpha, 1.0)
     }
 
-    func testPencilAlphaClampsBelowPointNineTwo() {
+    func testPencilAlphaIsLightAtFullPressure() {
         let metrics = KCStrokeRenderMath.metrics(for: stroke(tool: .brush, brush: .pencil, width: 12, pressure: 1.0))
-        // alpha = min(0.92, 0.62 + 1.0*0.18) = min(0.92, 0.80) = 0.80
-        XCTAssertEqual(metrics.alpha, 0.80, accuracy: 1e-9)
-        // width = 12 * 0.9 * 1.0 = 10.8
-        XCTAssertEqual(metrics.renderedLineWidth, 10.8, accuracy: 1e-9)
+        // 铅笔应比钢笔更轻、更淡，而不是只比钢笔细一点。
+        XCTAssertEqual(metrics.alpha, 0.26, accuracy: 1e-9)
+        XCTAssertEqual(metrics.renderedLineWidth, 3.84, accuracy: 1e-9)
     }
 
-    func testPencilAlphaCapsAtPointNineTwoAtHighPressure() {
+    func testPencilAlphaCapsBelowSolidInkAtHighPressure() {
         let metrics = KCStrokeRenderMath.metrics(for: stroke(tool: .brush, brush: .pencil, width: 12, pressure: 2.0))
-        // alpha = min(0.92, 0.62 + 0.36) = 0.92
-        XCTAssertEqual(metrics.alpha, 0.92, accuracy: 1e-9)
+        XCTAssertEqual(metrics.alpha, 0.30, accuracy: 1e-9)
     }
 
     func testCrayonFormula() {
         let metrics = KCStrokeRenderMath.metrics(for: stroke(tool: .brush, brush: .crayon, width: 10, pressure: 1.0))
-        // alpha = min(0.92, 0.58 + 0.20) = 0.78; width = 10 * 1.12 = 11.2
-        XCTAssertEqual(metrics.alpha, 0.78, accuracy: 1e-9)
-        XCTAssertEqual(metrics.renderedLineWidth, 11.2, accuracy: 1e-9)
+        // 蜡笔基础笔画保持半透明，蜡感由断续纹理和颗粒层共同形成。
+        XCTAssertEqual(metrics.alpha, 0.28, accuracy: 1e-9)
+        XCTAssertEqual(metrics.renderedLineWidth, 18.4, accuracy: 1e-9)
     }
 
     func testRenderedWidthFloorsToOne() {
@@ -54,9 +52,18 @@ final class StrokeRenderMathTests: XCTestCase {
 
     func testEraserIgnoresPressureAndUsesFullAlpha() {
         let metrics = KCStrokeRenderMath.metrics(for: stroke(tool: .eraser, brush: .pen, width: 30, pressure: 0.3))
-        // 橡皮擦强制压力为 1.0；pen width = 30 * 0.72 * 1.0 = 21.6；alpha 1.0。
+        // 橡皮擦使用自己的配置宽度，不再叠加画笔质感公式。
         XCTAssertEqual(metrics.alpha, 1.0)
-        XCTAssertEqual(metrics.renderedLineWidth, 21.6, accuracy: 1e-9)
+        XCTAssertEqual(metrics.renderedLineWidth, 30.0, accuracy: 1e-9)
+    }
+
+    func testEraserWidthDoesNotDependOnCurrentBrushStyle() {
+        let pencil = KCStrokeRenderMath.metrics(for: stroke(tool: .eraser, brush: .pencil, width: 30, pressure: 0.3))
+        let pen = KCStrokeRenderMath.metrics(for: stroke(tool: .eraser, brush: .pen, width: 30, pressure: 0.3))
+        let crayon = KCStrokeRenderMath.metrics(for: stroke(tool: .eraser, brush: .crayon, width: 30, pressure: 0.3))
+
+        XCTAssertEqual(pencil, pen)
+        XCTAssertEqual(crayon, pen)
     }
 
     func testEraserConfiguredWidthAppliesOnePointThreeFiveMultiplier() {
@@ -82,9 +89,108 @@ final class StrokeRenderMathTests: XCTestCase {
     }
 
     func testRenderedMetricsCrayonPressureScales() {
-        // crayon alpha = min(0.92, 0.58 + 0.5*0.20) = 0.68; width = 8 * 1.12 * 0.5 = 4.48
         let m = KCStrokeRenderMath.renderedMetrics(brushStyle: .crayon, lineWidth: 8, pressure: 0.5)
-        XCTAssertEqual(m.alpha, 0.68, accuracy: 1e-9)
-        XCTAssertEqual(m.renderedLineWidth, 4.48, accuracy: 1e-9)
+        XCTAssertEqual(m.alpha, 0.23, accuracy: 1e-9)
+        XCTAssertEqual(m.renderedLineWidth, 7.36, accuracy: 1e-9)
+    }
+
+    func testBrushStylesAreVisuallySeparatedAtSameWidthAndPressure() {
+        let pencil = KCStrokeRenderMath.renderedMetrics(brushStyle: .pencil, lineWidth: 16, pressure: 1.0)
+        let pen = KCStrokeRenderMath.renderedMetrics(brushStyle: .pen, lineWidth: 16, pressure: 1.0)
+        let crayon = KCStrokeRenderMath.renderedMetrics(brushStyle: .crayon, lineWidth: 16, pressure: 1.0)
+
+        XCTAssertLessThan(pencil.alpha, pen.alpha)
+        XCTAssertLessThan(pencil.renderedLineWidth, pen.renderedLineWidth)
+        XCTAssertGreaterThan(crayon.renderedLineWidth, pen.renderedLineWidth)
+        XCTAssertGreaterThan(crayon.alpha, pencil.alpha)
+    }
+
+    func testBrushRenderProfilesEncodeDifferentTextures() {
+        let pencil = KCStrokeRenderMath.renderProfile(brushStyle: .pencil, lineWidth: 16, pressure: 1.0)
+        let pen = KCStrokeRenderMath.renderProfile(brushStyle: .pen, lineWidth: 16, pressure: 1.0)
+        let crayon = KCStrokeRenderMath.renderProfile(brushStyle: .crayon, lineWidth: 16, pressure: 1.0)
+
+        XCTAssertFalse(pencil.usesButtLineCap)
+        XCTAssertTrue(pencil.textureLayers.contains { $0.kind == .softHalo })
+        XCTAssertGreaterThanOrEqual(pencil.textureLayers.filter { $0.kind == .sketchLine }.count, 2)
+
+        XCTAssertTrue(pen.usesButtLineCap)
+        XCTAssertTrue(pen.textureLayers.isEmpty)
+        XCTAssertEqual(pen.grainAlpha, 0.0, accuracy: 1e-9)
+
+        XCTAssertFalse(crayon.usesButtLineCap)
+        let waxLayers = crayon.textureLayers.filter { $0.kind == .waxSmear }
+        XCTAssertGreaterThanOrEqual(waxLayers.count, 4)
+        XCTAssertTrue(waxLayers.allSatisfy { !$0.dashPatternMultipliers.isEmpty })
+        XCTAssertTrue(waxLayers.contains { $0.dashPhaseMultiplier > 0.0 })
+        XCTAssertGreaterThan(crayon.grainAlpha, 0.35)
+        XCTAssertGreaterThan(crayon.grainClipWidthMultiplier, 1.1)
+    }
+
+    func testPencilSketchLinesUseBrokenGraphiteTexture() {
+        let pencil = KCStrokeRenderMath.renderProfile(brushStyle: .pencil, lineWidth: 16, pressure: 1.0)
+        let sketchLayers = pencil.textureLayers.filter { $0.kind == .sketchLine }
+
+        // 铅笔不能只是一条淡色实线；草稿线必须带断续纹理，形成石墨颗粒感。
+        XCTAssertGreaterThanOrEqual(sketchLayers.count, 3)
+        XCTAssertTrue(sketchLayers.allSatisfy { !$0.dashPatternMultipliers.isEmpty })
+        XCTAssertTrue(sketchLayers.contains { $0.widthMultiplier <= 0.20 })
+    }
+
+    func testCrayonProfileIsTextureDominantInsteadOfSolidMarker() {
+        let crayon = KCStrokeRenderMath.renderProfile(brushStyle: .crayon, lineWidth: 16, pressure: 1.0)
+        let waxLayers = crayon.textureLayers.filter { $0.kind == .waxSmear }
+
+        // 蜡笔的主体应更像堆叠蜡痕，而不是一条高透明度实心粗线。
+        XCTAssertLessThanOrEqual(crayon.metrics.alpha, 0.56)
+        XCTAssertTrue(waxLayers.contains { $0.widthMultiplier >= 1.25 && !$0.dashPatternMultipliers.isEmpty })
+        XCTAssertGreaterThanOrEqual(crayon.grainAlpha, 0.52)
+    }
+
+    func testPencilAndCrayonTextureDominatesBaseStroke() {
+        let pencil = KCStrokeRenderMath.renderProfile(brushStyle: .pencil, lineWidth: 16, pressure: 1.0)
+        let pen = KCStrokeRenderMath.renderProfile(brushStyle: .pen, lineWidth: 16, pressure: 1.0)
+        let crayon = KCStrokeRenderMath.renderProfile(brushStyle: .crayon, lineWidth: 16, pressure: 1.0)
+
+        let pencilSketchStrength = pencil.textureLayers
+            .filter { $0.kind == .sketchLine }
+            .reduce(0.0) { $0 + $1.alpha * $1.widthMultiplier }
+        let crayonWaxStrength = crayon.textureLayers
+            .filter { $0.kind == .waxSmear }
+            .reduce(0.0) { $0 + $1.alpha * $1.widthMultiplier }
+
+        // 非钢笔工具的基础实线不能主导观感，否则用户看到的只会是粗细差异。
+        XCTAssertLessThanOrEqual(pencil.metrics.alpha, 0.34)
+        XCTAssertGreaterThan(pencilSketchStrength, pencil.metrics.alpha * 0.55)
+        XCTAssertLessThan(pencil.metrics.renderedLineWidth, pen.metrics.renderedLineWidth * 0.45)
+
+        XCTAssertLessThanOrEqual(crayon.metrics.alpha, 0.38)
+        XCTAssertGreaterThan(crayonWaxStrength, crayon.metrics.alpha * 1.8)
+        XCTAssertGreaterThanOrEqual(crayon.grainAlpha, 0.68)
+    }
+
+    func testUserVisibleBrushSignaturesAreNotWidthOnly() {
+        let pencil = KCStrokeRenderMath.renderProfile(brushStyle: .pencil, lineWidth: 16, pressure: 1.0)
+        let pen = KCStrokeRenderMath.renderProfile(brushStyle: .pen, lineWidth: 16, pressure: 1.0)
+        let crayon = KCStrokeRenderMath.renderProfile(brushStyle: .crayon, lineWidth: 16, pressure: 1.0)
+
+        let graphiteLayers = pencil.textureLayers.filter { $0.kind == .sketchLine }
+        let graphiteStrength = graphiteLayers.reduce(0.0) { $0 + $1.alpha * $1.widthMultiplier }
+        let waxLayers = crayon.textureLayers.filter { $0.kind == .waxSmear }
+        let waxStrength = waxLayers.reduce(0.0) { $0 + $1.alpha * $1.widthMultiplier }
+
+        // 用户反馈三种画笔观感像“只差粗细”后，画笔 profile 必须把视觉重心推到工具特征：
+        // 铅笔是断续石墨线，钢笔是干净实线，蜡笔是宽蜡痕和颗粒，而不是一条半透明粗线。
+        XCTAssertLessThanOrEqual(pencil.metrics.alpha, 0.28)
+        XCTAssertGreaterThan(graphiteStrength, pencil.metrics.alpha * 1.15)
+        XCTAssertTrue(graphiteLayers.contains { $0.widthMultiplier >= 0.42 && $0.alpha >= 0.34 })
+
+        XCTAssertEqual(pen.metrics.alpha, 1.0, accuracy: 1e-9)
+        XCTAssertEqual(pen.textureLayers.count, 0)
+
+        XCTAssertLessThanOrEqual(crayon.metrics.alpha, 0.30)
+        XCTAssertTrue(waxLayers.contains { $0.widthMultiplier >= 1.25 && $0.alpha >= 0.24 })
+        XCTAssertGreaterThan(waxStrength, crayon.metrics.alpha * 3.0)
+        XCTAssertGreaterThanOrEqual(crayon.grainAlpha, 0.85)
     }
 }

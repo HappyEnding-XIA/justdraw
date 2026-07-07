@@ -26,6 +26,13 @@ SCREENSHOT_RETRY_INTERVAL="${SCREENSHOT_RETRY_INTERVAL:-1}"
 SCREENSHOT_MIN_BYTES="${SCREENSHOT_MIN_BYTES:-20000}"
 LAUNCH_TIMEOUT_SECONDS="${LAUNCH_TIMEOUT_SECONDS:-30}"
 NORMALIZE_LANDSCAPE_SCREENSHOT="${NORMALIZE_LANDSCAPE_SCREENSHOT:-1}"
+if [ -z "${PYTHON_BIN:-}" ]; then
+  if [ -x /usr/bin/python3 ]; then
+    PYTHON_BIN="/usr/bin/python3"
+  else
+    PYTHON_BIN="python3"
+  fi
+fi
 
 # 项目根目录（本脚本位于 <root>/scripts/）。
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -81,7 +88,7 @@ find "$PROJECT_ROOT" -type f \( -name '._*' -o -name '.!*' \) -delete 2>/dev/nul
 
 # 2. 按设备名解析 UDID（跨 runtime 取第一个匹配）。
 UDID="$(xcrun simctl list devices available -j \
-  | python3 -c "import sys,json;d=json.load(sys.stdin);print(next((t['udid'] for rt in d['devices'].values() for t in rt if t.get('name')=='$DEVICE_NAME'), ''))")"
+  | "$PYTHON_BIN" -c "import sys,json;d=json.load(sys.stdin);print(next((t['udid'] for rt in d['devices'].values() for t in rt if t.get('name')=='$DEVICE_NAME'), ''))")"
 
 if [ -z "$UDID" ]; then
   red "错误：找不到可用模拟器 '$DEVICE_NAME'。"
@@ -125,7 +132,7 @@ xcrun simctl install "$UDID" "$APP"
 step "启动 $BUNDLE_ID"
 LAUNCH_OUT_FILE="$(mktemp /tmp/kc_smoke_launch.XXXXXX)"
 set +e
-python3 - "$UDID" "$BUNDLE_ID" "$LAUNCH_TIMEOUT_SECONDS" "$LAUNCH_OUT_FILE" <<'PY'
+"$PYTHON_BIN" - "$UDID" "$BUNDLE_ID" "$LAUNCH_TIMEOUT_SECONDS" "$LAUNCH_OUT_FILE" <<'PY'
 import subprocess
 import sys
 

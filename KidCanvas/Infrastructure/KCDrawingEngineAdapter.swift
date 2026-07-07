@@ -25,6 +25,11 @@ protocol KCDrawingEngineProviding: AnyObject {
     func normalizedPressure(force: Double, maximumPossibleForce: Double, isPencil: Bool) -> Double
     func renderedStrokeLineWidth(brushStyle: Int, lineWidth: Double, averagePressure: Double) -> Double
     func renderedStrokeAlpha(brushStyle: Int, lineWidth: Double, averagePressure: Double) -> Double
+    func brushRenderProfile(
+        brushStyle: Int,
+        lineWidth: Double,
+        averagePressure: Double
+    ) -> KCStrokeRenderMath.RenderProfile?
     func eraserStampPath(shape: Int, center: CGPoint, size: CGFloat) -> UIBezierPath?
     func eraserStampPointsAlongPath(_ path: CGPath, lineWidth: CGFloat) -> [NSValue]
     func crayonGrainDashPoints(pathBounds: CGRect, lineWidth: CGFloat) -> [NSValue]
@@ -145,6 +150,20 @@ final class KCDrawingEngineAdapter: NSObject, KCDrawingEngineProviding {
         ).alpha
     }
 
+    /// 返回完整画笔视觉配置，供 UIKit 画布绘制基础笔画、端点和质感层。
+    func brushRenderProfile(
+        brushStyle: Int,
+        lineWidth: Double,
+        averagePressure: Double
+    ) -> KCStrokeRenderMath.RenderProfile? {
+        guard let style = Self.brushStyleFromOC(brushStyle) else { return nil }
+        return KCStrokeRenderMath.renderProfile(
+            brushStyle: style,
+            lineWidth: lineWidth,
+            pressure: averagePressure
+        )
+    }
+
     // MARK: - 橡皮擦印章路径
 
     /// 返回给定橡皮擦形状在 `center`、`size` 处的 `UIBezierPath`，封装自
@@ -196,11 +215,11 @@ final class KCDrawingEngineAdapter: NSObject, KCDrawingEngineProviding {
         return values
     }
 
-    /// 蜡笔纹理每条 dash 的常量描边宽度（`max(0.7, lineWidth * 0.045)`）。
+    /// 蜡笔纹理每条 dash 的常量描边宽度（`max(0.7, lineWidth * 0.065)`）。
     /// 等于 `KCCrayonGrain.dashes(...)` 生成的每条 dash 的 `lineWidth`；
     /// 单独暴露，避免纹理绘制方内联重复推导该常量。
     func crayonGrainDashWidth(lineWidth: CGFloat) -> CGFloat {
-        max(0.7, lineWidth * 0.045)
+        max(0.7, lineWidth * 0.065)
     }
 
     // MARK: - 贴纸变换约束

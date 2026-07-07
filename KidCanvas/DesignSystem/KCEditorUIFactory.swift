@@ -121,7 +121,46 @@ enum KCEditorVisualStyle {
 /// App 层编辑器 UI 工厂：集中通用 UIKit 控件的样式创建。
 /// 只负责外观和固定尺寸，不绑定业务事件，不访问画布/会话状态。
 struct KCEditorUIFactory {
+    private static let symbolImageCache: NSCache<NSString, UIImage> = {
+        let cache = NSCache<NSString, UIImage>()
+        cache.countLimit = 120
+        return cache
+    }()
+
     let metrics: KCDeviceLayoutMetrics
+
+    static func cachedSystemImage(symbolName: String) -> UIImage? {
+        cachedSystemImage(cacheKey: "\(symbolName)|default") {
+            UIImage(systemName: symbolName)
+        }
+    }
+
+    private static func cachedConfiguredSystemImage(
+        symbolName: String,
+        pointSize: CGFloat,
+        weight: UIImage.SymbolWeight,
+        weightKey: String
+    ) -> UIImage? {
+        let formattedPointSize = Int(round(pointSize * 10.0))
+        let cacheKey = "\(symbolName)|\(formattedPointSize)|\(weightKey)"
+        return cachedSystemImage(cacheKey: cacheKey) {
+            let configuration = UIImage.SymbolConfiguration(pointSize: pointSize, weight: weight)
+            return UIImage(systemName: symbolName, withConfiguration: configuration)
+        }
+    }
+
+    private static func cachedSystemImage(cacheKey: String, imageBuilder: () -> UIImage?) -> UIImage? {
+        let key = cacheKey as NSString
+        if let cachedImage = Self.symbolImageCache.object(forKey: key) {
+            return cachedImage
+        }
+
+        guard let image = imageBuilder() else {
+            return nil
+        }
+        Self.symbolImageCache.setObject(image, forKey: key)
+        return image
+    }
 
     func floatingPanel() -> UIView {
         let panel = UIView()
@@ -151,8 +190,7 @@ struct KCEditorUIFactory {
             backgroundColor: accentColor ?? KCEditorVisualStyle.raisedBackgroundColor
         )
         button.tintColor = KCEditorVisualStyle.inkColor
-        let configuration = UIImage.SymbolConfiguration(pointSize: 20.0, weight: .bold)
-        let image = UIImage(systemName: symbolName, withConfiguration: configuration)
+        let image = Self.cachedConfiguredSystemImage(symbolName: symbolName, pointSize: 20.0, weight: .bold, weightKey: "bold")
         button.setImage(image, for: .normal)
         NSLayoutConstraint.activate([
             button.widthAnchor.constraint(equalToConstant: 56.0),
@@ -175,8 +213,7 @@ struct KCEditorUIFactory {
         button.layer.borderColor = KCEditorVisualStyle.subtleBorderColor
         button.layer.borderWidth = 2.0
         button.imageView?.contentMode = .scaleAspectFill
-        let configuration = UIImage.SymbolConfiguration(pointSize: 24.0, weight: .semibold)
-        let placeholder = UIImage(systemName: "photo", withConfiguration: configuration)?
+        let placeholder = Self.cachedConfiguredSystemImage(symbolName: "photo", pointSize: 24.0, weight: .semibold, weightKey: "semibold")?
             .withTintColor(UIColor(red: 0.62, green: 0.67, blue: 0.74, alpha: 0.52), renderingMode: .alwaysOriginal)
         button.setImage(placeholder, for: .normal)
         button.imageView?.contentMode = .center
@@ -195,8 +232,7 @@ struct KCEditorUIFactory {
             shadowOffset: CGSize(width: 0.0, height: 4.0)
         )
         button.tintColor = slim ? KCEditorVisualStyle.accentInkColor : KCEditorVisualStyle.inkColor
-        let configuration = UIImage.SymbolConfiguration(pointSize: 20.0, weight: .bold)
-        let image = UIImage(systemName: symbolName, withConfiguration: configuration)
+        let image = Self.cachedConfiguredSystemImage(symbolName: symbolName, pointSize: 20.0, weight: .bold, weightKey: "bold")
         button.setImage(image, for: .normal)
 
         NSLayoutConstraint.activate([
@@ -252,8 +288,7 @@ struct KCEditorUIFactory {
         let button = UIButton(type: .system)
         button.translatesAutoresizingMaskIntoConstraints = false
         KCEditorVisualStyle.applySmallToolButtonAppearance(to: button, accent: accent)
-        let configuration = UIImage.SymbolConfiguration(pointSize: 16.0, weight: .bold)
-        let image = UIImage(systemName: symbolName, withConfiguration: configuration)
+        let image = Self.cachedConfiguredSystemImage(symbolName: symbolName, pointSize: 16.0, weight: .bold, weightKey: "bold")
         button.setImage(image, for: .normal)
         button.heightAnchor.constraint(equalToConstant: 36.0).isActive = true
         return button
@@ -271,8 +306,7 @@ struct KCEditorUIFactory {
             shadowOffset: CGSize(width: 0.0, height: 3.0)
         )
         button.tintColor = KCEditorVisualStyle.inkColor
-        let configuration = UIImage.SymbolConfiguration(pointSize: 18.0, weight: .bold)
-        button.setImage(UIImage(systemName: symbolName, withConfiguration: configuration), for: .normal)
+        button.setImage(Self.cachedConfiguredSystemImage(symbolName: symbolName, pointSize: 18.0, weight: .bold, weightKey: "bold"), for: .normal)
         NSLayoutConstraint.activate([
             button.widthAnchor.constraint(equalToConstant: 44.0),
             button.heightAnchor.constraint(equalToConstant: 44.0)
@@ -330,8 +364,12 @@ struct KCEditorUIFactory {
 
         let iconView = UIImageView()
         iconView.translatesAutoresizingMaskIntoConstraints = false
-        let configuration = UIImage.SymbolConfiguration(pointSize: metrics.brushCardIconSize, weight: .bold)
-        iconView.image = UIImage(systemName: symbolName, withConfiguration: configuration)?.withRenderingMode(.alwaysTemplate)
+        iconView.image = Self.cachedConfiguredSystemImage(
+            symbolName: symbolName,
+            pointSize: metrics.brushCardIconSize,
+            weight: .bold,
+            weightKey: "bold"
+        )?.withRenderingMode(.alwaysTemplate)
         iconView.tintColor = accentColor
         iconView.contentMode = .scaleAspectFit
 

@@ -66,7 +66,7 @@ extension KCMainViewController {
         // 折叠态下的图标/标签/各视图 alpha·hidden·enabled 决策由编辑器面板 Feature（KCDomain）给出。
         let state = self.editorPanels.collapseState
 
-        self.collapseToggleButton.setImage(UIImage(systemName: state.toggleIconName), for: .normal)
+        self.collapseToggleButton.setImage(self.safeSystemImageNamed(state.toggleIconName), for: .normal)
         self.collapseToggleButton.accessibilityLabel = KCL10n.tr(state.toggleAccessibilityLabel)
 
         // 渐变过程中保留面板在视图层级中（已布局），在完成回调里再切换 hidden。

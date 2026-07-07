@@ -40,6 +40,8 @@ final class KCContentPickerFeature {
 
     /// 最近使用的颜色（最新在前，最多 8 个）。
     private(set) var recentColors: [UIColor] = []
+    /// 最近色写入 UserDefaults 的延迟任务，避免连续点色时同步写磁盘。
+    private var recentColorSaveWorkItem: DispatchWorkItem?
     /// UserDefaults 存储键，与 Objective-C 原型保持一致以兼容已存数据。
     static let recentColorsKey = "KDRecentColors"
 
@@ -63,6 +65,10 @@ final class KCContentPickerFeature {
             uniqueKeysWithValues: groups.map { ($0.title, $0.symbols) }
         )
         self.selectedStickerCategory = self.stickerCategories.first ?? ""
+    }
+
+    deinit {
+        flushRecentColorSave()
     }
 
     // MARK: 色盘切换
@@ -106,6 +112,26 @@ final class KCContentPickerFeature {
         recentColors = KCRecentColorQueue.inserting(
             color, into: recentColors, areEqual: KCContentPickerFeature.colorsMatch
         )
+        scheduleRecentColorSave()
+    }
+
+    /// 延迟写入最近色，连续点色时只保留最后一次写入。
+    private func scheduleRecentColorSave() {
+        recentColorSaveWorkItem?.cancel()
+        let workItem = DispatchWorkItem { [weak self] in
+            self?.flushRecentColorSave()
+        }
+        recentColorSaveWorkItem = workItem
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.35, execute: workItem)
+    }
+
+    /// 立即写回最近色，用于场景退后台、控制器释放等生命周期边界。
+    func flushRecentColorSave() {
+        guard recentColorSaveWorkItem != nil else {
+            return
+        }
+        recentColorSaveWorkItem?.cancel()
+        recentColorSaveWorkItem = nil
         persistRecentColors()
     }
 

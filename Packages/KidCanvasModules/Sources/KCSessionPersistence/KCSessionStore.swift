@@ -44,6 +44,7 @@ public final class KCSessionStore: KCSessionRepository, @unchecked Sendable {
     private let now: () -> Date
     private let makeID: () -> String
     private let fileManager: FileManager
+    private let replaceFileItem: @Sendable (FileManager, URL, URL) throws -> Void
     private let lock = NSLock()
 
     /// 创建以 `Documents/KidCanvasSessions/` 为根目录的 store。
@@ -62,7 +63,8 @@ public final class KCSessionStore: KCSessionRepository, @unchecked Sendable {
         legacyMigrator: KCLegacySessionMigrator? = nil,
         now: @escaping () -> Date = Date.init,
         makeID: @escaping () -> String = { UUID().uuidString },
-        fileManager: FileManager = .default
+        fileManager: FileManager = .default,
+        replaceFileItem: (@Sendable (FileManager, URL, URL) throws -> Void)? = nil
     ) {
         self.directoryURL = directoryURL
         self.metadataURL = directoryURL.appendingPathComponent(Self.metadataFileName)
@@ -72,6 +74,14 @@ public final class KCSessionStore: KCSessionRepository, @unchecked Sendable {
         self.now = now
         self.makeID = makeID
         self.fileManager = fileManager
+        self.replaceFileItem = replaceFileItem ?? { fileManager, originalURL, backupURL in
+            _ = try fileManager.replaceItemAt(
+                originalURL,
+                withItemAt: backupURL,
+                backupItemName: nil,
+                options: []
+            )
+        }
     }
 
     // MARK: - KCSessionRepository
@@ -139,21 +149,32 @@ public final class KCSessionStore: KCSessionRepository, @unchecked Sendable {
 
         let artworkURL = directoryURL.appendingPathComponent(session.artworkFileName)
         let thumbnailURL = directoryURL.appendingPathComponent(session.thumbnailFileName)
-        let hadArtwork = fileManager.fileExists(atPath: artworkURL.path)
-        let hadThumbnail = fileManager.fileExists(atPath: thumbnailURL.path)
-        let previousArtwork = hadArtwork ? try? Data(contentsOf: artworkURL) : nil
-        let previousThumbnail = hadThumbnail ? try? Data(contentsOf: thumbnailURL) : nil
+        let rollbackID = UUID().uuidString
+        var artworkBackup: KCFileRollbackBackup?
+        var thumbnailBackup: KCFileRollbackBackup?
+        do {
+            artworkBackup = try rollbackBackup(for: artworkURL, transactionID: rollbackID)
+            thumbnailBackup = try rollbackBackup(for: thumbnailURL, transactionID: rollbackID)
+        } catch {
+            cleanupRollbackBackup(artworkBackup)
+            cleanupRollbackBackup(thumbnailBackup)
+            return nil
+        }
+        guard let artworkBackup, let thumbnailBackup else { return nil }
 
         do {
             try pngData.write(to: artworkURL, options: .atomic)
         } catch {
+            cleanupRollbackBackup(artworkBackup)
+            cleanupRollbackBackup(thumbnailBackup)
             return nil
         }
 
         do {
             try thumbnailJPEGData.write(to: thumbnailURL, options: .atomic)
         } catch {
-            restore(url: artworkURL, previousData: previousArtwork, existed: hadArtwork)
+            restore(artworkBackup)
+            cleanupRollbackBackup(thumbnailBackup)
             return nil
         }
 
@@ -169,11 +190,13 @@ public final class KCSessionStore: KCSessionRepository, @unchecked Sendable {
                 sessions: sessions
             ))
         } catch {
-            restore(url: artworkURL, previousData: previousArtwork, existed: hadArtwork)
-            restore(url: thumbnailURL, previousData: previousThumbnail, existed: hadThumbnail)
+            restore(artworkBackup)
+            restore(thumbnailBackup)
             return nil
         }
 
+        cleanupRollbackBackup(artworkBackup)
+        cleanupRollbackBackup(thumbnailBackup)
         return session
     }
 
@@ -195,12 +218,6 @@ public final class KCSessionStore: KCSessionRepository, @unchecked Sendable {
         let indexes = sessions.enumerated().compactMap { $0.element.id == session.id ? $0.offset : nil }
         guard !indexes.isEmpty else { return }
 
-        if !session.artworkFileName.isEmpty {
-            try? fileManager.removeItem(at: directoryURL.appendingPathComponent(session.artworkFileName))
-        }
-        if !session.thumbnailFileName.isEmpty {
-            try? fileManager.removeItem(at: directoryURL.appendingPathComponent(session.thumbnailFileName))
-        }
         for index in indexes.sorted(by: >) {
             sessions.remove(at: index)
         }
@@ -208,10 +225,22 @@ public final class KCSessionStore: KCSessionRepository, @unchecked Sendable {
             schemaVersion: Self.schemaVersion,
             sessions: sessions
         ))
+
+        if !session.artworkFileName.isEmpty {
+            try? fileManager.removeItem(at: directoryURL.appendingPathComponent(session.artworkFileName))
+        }
+        if !session.thumbnailFileName.isEmpty {
+            try? fileManager.removeItem(at: directoryURL.appendingPathComponent(session.thumbnailFileName))
+        }
     }
 
     public func hasSavedSessions() throws -> Bool {
         try !loadSessions().isEmpty
+    }
+
+    public func hasDraft() -> Bool {
+        lock.lock(); defer { lock.unlock() }
+        return fileManager.fileExists(atPath: draftURL.path)
     }
 
     public func saveDraft(pngData: Data) throws -> Bool {
@@ -273,15 +302,49 @@ public final class KCSessionStore: KCSessionRepository, @unchecked Sendable {
         return decoder
     }
 
-    /// 将文件恢复到之前的内容；若之前不存在则移除该文件——
-    /// 对应原型的 `restoreFileAtURL:previousData:existed:`。
-    private func restore(url: URL, previousData: Data?, existed: Bool) {
-        if existed, let previousData {
-            try? previousData.write(to: url, options: .atomic)
+    /// 保存前将旧文件复制到同目录临时文件，避免为了回滚把旧大图整份读入内存。
+    private func rollbackBackup(for url: URL, transactionID: String) throws -> KCFileRollbackBackup {
+        guard fileManager.fileExists(atPath: url.path) else {
+            return KCFileRollbackBackup(originalURL: url, backupURL: nil)
+        }
+
+        let backupFileName = ".\(url.lastPathComponent).\(transactionID).rollback"
+        let backupURL = directoryURL.appendingPathComponent(backupFileName)
+        if fileManager.fileExists(atPath: backupURL.path) {
+            try fileManager.removeItem(at: backupURL)
+        }
+        try fileManager.copyItem(at: url, to: backupURL)
+        return KCFileRollbackBackup(originalURL: url, backupURL: backupURL)
+    }
+
+    /// 将文件恢复到保存前状态；若之前不存在则移除新写出的文件。
+    private func restore(_ backup: KCFileRollbackBackup) {
+        if let backupURL = backup.backupURL {
+            do {
+                if fileManager.fileExists(atPath: backup.originalURL.path) {
+                    try replaceFileItem(fileManager, backup.originalURL, backupURL)
+                } else {
+                    try fileManager.moveItem(at: backupURL, to: backup.originalURL)
+                }
+            } catch {
+                // 恢复失败时保留 .rollback 文件，避免为了清理临时文件造成二次数据丢失。
+            }
         } else {
-            try? fileManager.removeItem(at: url)
+            try? fileManager.removeItem(at: backup.originalURL)
         }
     }
+
+    private func cleanupRollbackBackup(_ backup: KCFileRollbackBackup?) {
+        if let backupURL = backup?.backupURL {
+            try? fileManager.removeItem(at: backupURL)
+        }
+    }
+}
+
+/// 单个会话文件的回滚备份位置；`backupURL == nil` 表示保存前该文件不存在。
+private struct KCFileRollbackBackup {
+    let originalURL: URL
+    let backupURL: URL?
 }
 
 /// JSON 元数据文件的 Codable 外层结构，携带 schema 版本号。

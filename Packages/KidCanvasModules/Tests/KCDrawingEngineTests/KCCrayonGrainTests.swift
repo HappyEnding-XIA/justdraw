@@ -74,4 +74,15 @@ final class CrayonGrainTests: XCTestCase {
             XCTAssertEqual(dash.lineWidth, 0.7, accuracy: 1e-9)
         }
     }
+
+    func testDashWidthScalesForWideCrayonLines() {
+        let dashes = KCCrayonGrain.dashes(pathBounds: CGRect(x: 0, y: 0, width: 80, height: 40),
+                                          lineWidth: 24.0)
+
+        // 宽蜡笔需要更明显的颗粒短线，否则实际观感会退化成平滑粗笔。
+        XCTAssertFalse(dashes.isEmpty)
+        for dash in dashes {
+            XCTAssertEqual(dash.lineWidth, 1.56, accuracy: 1e-9)
+        }
+    }
 }

@@ -13,6 +13,11 @@ import KCContentCatalog
 final class KCLineArtFeature {
     private let contentCatalog: KCBundledContentCatalog
     private let drawingEngine: KCDrawingEngineProviding
+    private let thumbnailCache: NSCache<NSString, UIImage> = {
+        let cache = NSCache<NSString, UIImage>()
+        cache.countLimit = 32
+        return cache
+    }()
 
     init(contentCatalog: KCBundledContentCatalog, drawingEngine: KCDrawingEngineProviding) {
         self.contentCatalog = contentCatalog
@@ -27,6 +32,17 @@ final class KCLineArtFeature {
     }
 
     func thumbnailImage(for item: KCLineArtItem) -> UIImage {
+        let cacheKey = item.id as NSString
+        if let cachedImage = self.thumbnailCache.object(forKey: cacheKey) {
+            return cachedImage
+        }
+
+        let image = self.renderThumbnailImage(for: item)
+        self.thumbnailCache.setObject(image, forKey: cacheKey)
+        return image
+    }
+
+    private func renderThumbnailImage(for item: KCLineArtItem) -> UIImage {
         let size = CGSize(width: 160.0, height: 112.0)
         let renderer = UIGraphicsImageRenderer(size: size)
         return renderer.image { (_: UIGraphicsImageRendererContext) in

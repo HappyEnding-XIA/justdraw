@@ -15,6 +15,13 @@ SCHEME="KidCanvas"
 BUNDLE_ID="com.kidcanvas.drawing"
 CONFIGURATION="${CONFIGURATION:-Debug}"
 WAIT_SECONDS="${WAIT_SECONDS:-10}"
+if [ -z "${PYTHON_BIN:-}" ]; then
+  if [ -x /usr/bin/python3 ]; then
+    PYTHON_BIN="/usr/bin/python3"
+  else
+    PYTHON_BIN="python3"
+  fi
+fi
 safe_path_component() {
   printf '%s' "$1" | tr -cs '[:alnum:]' '_'
 }
@@ -78,7 +85,7 @@ step "清理 ._*/.!* 临时文件"
 find "$PROJECT_ROOT" -type f \( -name '._*' -o -name '.!*' \) -delete 2>/dev/null || true
 
 UDID="$(xcrun simctl list devices available -j \
-  | python3 -c "import sys,json;d=json.load(sys.stdin);print(next((t['udid'] for rt in d['devices'].values() for t in rt if t.get('name')=='$DEVICE_NAME'), ''))")"
+  | "$PYTHON_BIN" -c "import sys,json;d=json.load(sys.stdin);print(next((t['udid'] for rt in d['devices'].values() for t in rt if t.get('name')=='$DEVICE_NAME'), ''))")"
 if [ -z "$UDID" ]; then
   red "错误：找不到可用模拟器 '$DEVICE_NAME'。"
   exit 2
@@ -146,7 +153,7 @@ if [ -z "$RESULT_PATH" ]; then
   exit 6
 fi
 
-python3 - "$RESULT_PATH" <<'PY'
+"$PYTHON_BIN" - "$RESULT_PATH" <<'PY'
 import json
 import sys
 
