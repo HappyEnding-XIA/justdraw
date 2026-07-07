@@ -63,6 +63,7 @@ final class KCSessionService: NSObject {
     private let thumbnailPreloadQueue = DispatchQueue(label: "com.kidcanvas.session.thumbnail-preload", qos: .utility)
     private let thumbnailPreloadLock = NSLock()
     private var thumbnailPreloadInFlight: Set<String> = []
+    private var thumbnailPreloadCompletions: [String: [() -> Void]] = [:]
     private let artworkSessionCacheLock = NSLock()
     private var artworkSessionCache: [KCArtworkSession]?
     private let draftCacheLock = NSLock()
@@ -215,25 +216,39 @@ final class KCSessionService: NSObject {
             return
         }
 
-        let sessionsToPreload = cachedArtworkSessions().filter { session in
-            guard requestedIds.contains(session.id) else { return false }
+        let completionGroup = completion.map { _ in DispatchGroup() }
+        var pendingPreloadCount = 0
+        var sessionsToPreload: [KCArtworkSession] = []
+        for session in cachedArtworkSessions() {
+            guard requestedIds.contains(session.id) else { continue }
             let cacheKey = session.id as NSString
             if thumbnailImageCache.object(forKey: cacheKey) != nil {
-                return false
+                continue
             }
 
-            thumbnailPreloadLock.lock()
-            defer { thumbnailPreloadLock.unlock() }
-            guard !thumbnailPreloadInFlight.contains(session.id) else {
-                return false
+            pendingPreloadCount += 1
+            var waiter: (() -> Void)?
+            if let completionGroup {
+                completionGroup.enter()
+                waiter = {
+                    completionGroup.leave()
+                }
             }
-            thumbnailPreloadInFlight.insert(session.id)
-            return true
+
+            if enqueueThumbnailPreloadCompletion(for: session.id, completion: waiter) {
+                sessionsToPreload.append(session)
+            }
         }
-        guard !sessionsToPreload.isEmpty else {
-            if let completion {
+
+        if let completion {
+            if pendingPreloadCount == 0 {
                 DispatchQueue.main.async(execute: completion)
+            } else {
+                completionGroup?.notify(queue: .main, execute: completion)
             }
+        }
+
+        guard !sessionsToPreload.isEmpty else {
             return
         }
 
@@ -247,12 +262,12 @@ final class KCSessionService: NSObject {
                     self.thumbnailImageCache.setObject(image, forKey: cacheKey)
                 }
 
-                self.thumbnailPreloadLock.lock()
-                self.thumbnailPreloadInFlight.remove(session.id)
-                self.thumbnailPreloadLock.unlock()
-            }
-            if let completion {
-                DispatchQueue.main.async(execute: completion)
+                let completions = self.drainThumbnailPreloadCompletions(for: session.id)
+                if !completions.isEmpty {
+                    DispatchQueue.main.async {
+                        completions.forEach { $0() }
+                    }
+                }
             }
         }
     }
@@ -433,6 +448,30 @@ final class KCSessionService: NSObject {
         thumbnailPreloadLock.lock()
         thumbnailPreloadInFlight.remove(sessionId)
         thumbnailPreloadLock.unlock()
+    }
+
+    /// 把重复请求挂到同一个缩略图预热任务上，返回是否需要启动新的后台解码。
+    private func enqueueThumbnailPreloadCompletion(for sessionId: String, completion: (() -> Void)?) -> Bool {
+        thumbnailPreloadLock.lock()
+        if let completion {
+            thumbnailPreloadCompletions[sessionId, default: []].append(completion)
+        }
+        let shouldStartPreload = !thumbnailPreloadInFlight.contains(sessionId)
+        if shouldStartPreload {
+            thumbnailPreloadInFlight.insert(sessionId)
+        }
+        thumbnailPreloadLock.unlock()
+        return shouldStartPreload
+    }
+
+    /// 后台预热结束时一次性释放等待者，避免后续刷新把旧 completion 判过期。
+    private func drainThumbnailPreloadCompletions(for sessionId: String) -> [() -> Void] {
+        thumbnailPreloadLock.lock()
+        let completions = thumbnailPreloadCompletions[sessionId] ?? []
+        thumbnailPreloadCompletions[sessionId] = nil
+        thumbnailPreloadInFlight.remove(sessionId)
+        thumbnailPreloadLock.unlock()
+        return completions
     }
 
     /// 生成 240×180 缩略图，白底、aspect-fit，与原型 `thumbnailImageFromImage:`
