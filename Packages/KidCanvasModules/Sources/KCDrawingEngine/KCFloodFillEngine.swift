@@ -37,12 +37,13 @@ public enum KCFloodFillEngine {
               startX >= 0, startX < width,
               startY >= 0, startY < height else { return 0 }
 
-        let pixelCount = width * height
         // 与原型保持一致的溢出保护。
         guard width <= Int.max / height else { return 0 }
+        let pixelCount = width * height
         guard pixelCount <= Int.max / 4 else { return 0 }
 
         let seedColor = buffer.pixel(x: startX, y: startY)
+        guard seedColor != fillColor else { return 0 }
         let threshold = tolerance * 4.0
 
         var visited = [Bool](repeating: false, count: pixelCount)

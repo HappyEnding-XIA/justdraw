@@ -29,9 +29,16 @@ T038 后，内置线稿的程序化几何不再放在 `KCMainViewController`。
 - `KCDrawingCanvasView` 继续只依赖 `KCDrawingEngineProviding.sampleColorFromImage(...)`，不直接接触具体采样实现。
 - 如果后续要优化为异步取色或批量取色，应在 adapter 协议下新增能力，不把 UIKit 取色细节回流到画布视图。
 
-## 4. 测试与验收
+## 4. 填色性能边界
+
+- `KCFloodFillEngine.fill(...)` 必须先校验尺寸乘法溢出，再计算 `pixelCount`。
+- 当种子色已经等于目标填充色时，必须在分配 `visited` 和 `queue` 前直接返回，避免无效填色触发整图 BFS。
+- App 层仍负责把 UIKit 画布渲染为 `CGImage`，引擎层只处理 `KCBitmapBuffer` 内的纯算法。
+
+## 5. 测试与验收
 
 - `KCLineArtDrawingTests` 覆盖支持 id 顺序、每个模板的 stroke 数量、路径非空与未知 id 返回 nil。
 - `KCImagePixelSamplerTests` 覆盖 `CGImage` 单点采样与越界保护，防止取色器退回整图解码路径。
+- `KCFloodFillEngineTests.testReturnsZeroWhenSeedEqualsFill` 覆盖同色填充返回 0 的行为，validator 额外守住短路位置。
 - 双端验收仍以 iPhone + iPad 构建、validator 和 runtime smoke 为准。
 - 如后续调整线稿视觉，需要补截图、像素对比或明确的人工视觉验收记录。

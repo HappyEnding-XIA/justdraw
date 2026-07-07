@@ -1133,6 +1133,8 @@ def app_feature_checks(
     checks.append(require_text(bitmap_buffer_text, "public init?(cgImage: CGImage)", "Swift bitmap buffer can decode CGImage input"))
     checks.append(require_text(flood_fill_text, "public enum KCFloodFillEngine", "Flood fill engine is implemented in Swift"))
     checks.append(require_text(flood_fill_text, "guard width <= Int.max / height", "Swift flood fill guards pixel-count multiplication overflow"))
+    checks.append(require_text(flood_fill_text, "let pixelCount = width * height", "Swift flood fill computes pixel count after overflow guard"))
+    checks.append(require_regex(flood_fill_text, r"let seedColor = buffer\.pixel[\s\S]*guard seedColor != fillColor else \{ return 0 \}", "Swift flood fill short-circuits no-op fills before allocating traversal buffers"))
     checks.append(require_text(flood_fill_text, "var visited = [Bool]", "Swift flood fill tracks visited pixels"))
     checks.append(require_text(flood_fill_text, "var queue = [Int]()", "Swift flood fill uses an indexed queue"))
     checks.append(require_text(color_sampler_text, "public enum KCColorSampler", "Buffer color sampler is implemented in Swift"))
