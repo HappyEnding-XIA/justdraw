@@ -98,6 +98,8 @@
 "history.previous-page.title" = "Previous History Page";
 "history.next-page.title" = "Next History Page";
 "history.draft-thumb.accessibility" = "Draft Thumbnail";
+"history.draft-thumb.available.accessibility" = "Draft Thumbnail";
+"history.draft-thumb.empty.accessibility" = "No Draft Thumbnail";
 "history.saved-thumb.accessibility" = "Saved Thumbnail %d";
 "history.thumb.empty" = "Empty Saved Thumbnail";
 "history.thumb.unsaved" = "Unsaved Saved Thumbnail";

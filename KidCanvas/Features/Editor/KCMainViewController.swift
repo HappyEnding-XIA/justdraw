@@ -29,6 +29,7 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
     var palette24Button: UIButton!
     var palette36Button: UIButton!
     var customColorButton: UIButton!
+    var paletteGridView: UIView!
     var paletteGridHeightConstraint: NSLayoutConstraint!
     var recentColorRowStack: UIStackView!
     var deleteHistoryButton: UIButton!
@@ -486,6 +487,7 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
         self.palette24Button = renderedPanel.palette24Button
         self.palette36Button = renderedPanel.palette36Button
         self.customColorButton = renderedPanel.customColorButton
+        self.paletteGridView = renderedPanel.paletteGridView
         self.paletteGridHeightConstraint = renderedPanel.paletteGridHeightConstraint
         self.recentColorRowStack = renderedPanel.recentColorRowStack
         self.reloadRecentColorRow()
@@ -847,7 +849,9 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
     }
 
     func reloadPaletteGrid() {
-        let grid = self.view.viewWithTag(701)!
+        guard let grid = self.paletteGridView else {
+            return
+        }
         let palette = self.currentPalette()
         let result = self.colorPaletteRenderer.reloadPaletteGrid(
             in: grid,
@@ -872,8 +876,7 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
     }
 
     func reloadRecentColorRow() {
-        let recentRow: UIView? = self.recentColorRowStack ?? self.view.viewWithTag(702)
-        guard let recentStack = recentRow as? UIStackView else {
+        guard let recentStack = self.recentColorRowStack else {
             return
         }
 
@@ -1043,7 +1046,9 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
         Self.setHistoryButtonPlaceholderVisible(draftImage == nil, on: self.draftThumbButton)
         self.draftThumbButton.isEnabled = draftImage != nil
         self.draftThumbButton.alpha = draftImage != nil ? 1.0 : 0.55
-        self.draftThumbButton.accessibilityLabel = draftImage != nil ? "Draft Thumbnail" : "No Draft Thumbnail"
+        self.draftThumbButton.accessibilityLabel = draftImage != nil
+            ? KCL10n.draftThumbAvailableAccessibility
+            : KCL10n.draftThumbEmptyAccessibility
         self.draftThumbButton.layer.borderColor = (draftImage != nil && self.activeSession == nil
             ? UIColor(red: 0.97, green: 0.82, blue: 0.46, alpha: 0.92)
             : UIColor(red: 0.17, green: 0.22, blue: 0.30, alpha: 0.08)).cgColor

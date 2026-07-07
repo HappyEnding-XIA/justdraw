@@ -79,7 +79,6 @@ final class KCColorPalettePanelRenderer {
 
         let grid = UIView()
         grid.translatesAutoresizingMaskIntoConstraints = false
-        grid.tag = 701
         panel.addSubview(grid)
 
         let customButton = UIButton(type: .system)
@@ -106,7 +105,6 @@ final class KCColorPalettePanelRenderer {
         recentRow.axis = .horizontal
         recentRow.spacing = configuration.paletteColorButtonSpacing
         recentRow.distribution = .equalSpacing
-        recentRow.tag = 702
         recentScrollView.addSubview(recentRow)
 
         let segmentWidth: CGFloat = configuration.isCompactPhoneLayout ? 132.0 : 146.0

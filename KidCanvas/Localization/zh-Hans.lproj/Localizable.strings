@@ -98,6 +98,8 @@
 "history.previous-page.title" = "上一页";
 "history.next-page.title" = "下一页";
 "history.draft-thumb.accessibility" = "草稿缩略图";
+"history.draft-thumb.available.accessibility" = "草稿缩略图";
+"history.draft-thumb.empty.accessibility" = "无草稿缩略图";
 "history.saved-thumb.accessibility" = "已保存缩略图 %d";
 "history.thumb.empty" = "空已保存缩略图";
 "history.thumb.unsaved" = "未保存缩略图";

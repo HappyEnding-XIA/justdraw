@@ -122,6 +122,8 @@ enum KCL10n {
     static var previousHistoryPageTitle: String { tr("history.previous-page.title") }
     static var nextHistoryPageTitle: String { tr("history.next-page.title") }
     static var draftThumbAccessibility: String { tr("history.draft-thumb.accessibility") }
+    static var draftThumbAvailableAccessibility: String { tr("history.draft-thumb.available.accessibility") }
+    static var draftThumbEmptyAccessibility: String { tr("history.draft-thumb.empty.accessibility") }
     static func savedThumbAccessibility(_ index: Int) -> String { tr("history.saved-thumb.accessibility", index) }
 
     /// 历史缩略图状态本地化 key（由 `KCHistoryThumbStatus.accessibilityPrefix` 返回）→ 本地化前缀。

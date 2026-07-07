@@ -108,6 +108,8 @@ def localization_checks(zh_localizable, en_localizable, zh_info_plist, en_info_p
             "static var redoTitle: String",
             "static var saveSuccessToastTitle: String",
             "static var saveFailedToastTitle: String",
+            "static var draftThumbAvailableAccessibility: String",
+            "static var draftThumbEmptyAccessibility: String",
         ]:
             checks.append(require_text(entry_text, top_toolbar_entry, f"Localization entry exposes top toolbar text: {top_toolbar_entry}"))
 
@@ -181,6 +183,23 @@ def localization_checks(zh_localizable, en_localizable, zh_info_plist, en_info_p
         locale_text = path.read_text(encoding="utf-8")
         for expected_line in expected_lines:
             checks.append(require_text(locale_text, expected_line, f"{locale_label} save toast text is localized: {expected_line}"))
+
+    expected_history_accessibility_strings = [
+        (zh_localizable, "zh-Hans", [
+            '"history.draft-thumb.available.accessibility" = "草稿缩略图";',
+            '"history.draft-thumb.empty.accessibility" = "无草稿缩略图";',
+        ]),
+        (en_localizable, "en", [
+            '"history.draft-thumb.available.accessibility" = "Draft Thumbnail";',
+            '"history.draft-thumb.empty.accessibility" = "No Draft Thumbnail";',
+        ]),
+    ]
+    for path, locale_label, expected_lines in expected_history_accessibility_strings:
+        if not path.exists():
+            continue
+        locale_text = path.read_text(encoding="utf-8")
+        for expected_line in expected_lines:
+            checks.append(require_text(locale_text, expected_line, f"{locale_label} history accessibility text is localized: {expected_line}"))
 
     # InfoPlist.strings must localize the photo permission keys in both languages.
     for locale_label, info_path in [("zh-Hans", zh_info_plist), ("en", en_info_plist)]:
@@ -984,11 +1003,18 @@ def app_feature_checks(
     checks.append(require_text(color_palette_renderer_text, "KCEditorVisualStyle.accentColor", "Palette segment selected state reuses shared accent token"))
     checks.append(require_text(color_palette_renderer_text, "KCEditorVisualStyle.pillBackgroundColor", "Palette segment container reuses shared pill background token"))
     checks.append(require_text(main_text, "private(set) lazy var colorPaletteRenderer: KCColorPalettePanelRenderer", "Main view controller owns a color palette renderer instance"))
+    checks.append(require_text(main_text, "var paletteGridView: UIView!", "Main view controller stores the palette grid view returned by the renderer"))
+    checks.append(require_text(main_text, "self.paletteGridView = renderedPanel.paletteGridView", "Palette grid view is wired from RenderedPanel"))
+    checks.append(require_regex(main_text, r"func reloadPaletteGrid\(\)[\s\S]*guard let grid = self\.paletteGridView else[\s\S]*self\.colorPaletteRenderer\.reloadPaletteGrid", "Palette grid reload uses the stored view reference instead of searching by tag"))
     checks.append(require_text(main_text, "self.colorPaletteRenderer.renderPanel", "Main view controller delegates color panel construction"))
     checks.append(require_text(main_text, "self.colorPaletteRenderer.reloadPaletteGrid", "Main view controller delegates palette grid rendering"))
     checks.append(require_text(main_text, "self.colorPaletteRenderer.reloadRecentColorRow", "Main view controller delegates recent color rendering"))
     checks.append(require_text(main_text, "self.colorPaletteRenderer.updateSegmentButtons", "Main view controller delegates palette segment styling"))
     checks.append(require_text(main_text, "self.colorPaletteRenderer.applyActiveColor", "Main view controller delegates current color highlighting"))
+    checks.append(forbid_text(main_text, "viewWithTag(701)", "Palette grid is no longer looked up by magic tag"))
+    checks.append(forbid_text(main_text, "viewWithTag(702)", "Recent color row is no longer looked up by magic tag"))
+    checks.append(forbid_text(color_palette_renderer_text, "grid.tag = 701", "Palette grid renderer does not publish a magic tag"))
+    checks.append(forbid_text(color_palette_renderer_text, "recentRow.tag = 702", "Recent color renderer does not publish a magic tag"))
     checks.append(forbid_text(main_text, "colorButton.layer.cornerRadius = buttonSize / 2.0", "Palette color button styling is no longer owned by the main view controller"))
     checks.append(forbid_text(main_text, "button.layer.cornerRadius = buttonSize / 2.0", "Recent color button styling is no longer owned by the main view controller"))
     checks.append(forbid_text(main_text, "self.palette24Button.setTitleColor", "Palette segment styling is no longer owned by the main view controller"))
@@ -1521,6 +1547,10 @@ def app_feature_checks(
     checks.append(require_regex(refresh_history_text, r"status == \.empty[\s\S]*Self\.setHistoryButtonPlaceholderVisible\(true, on: button\)[\s\S]*else \{[\s\S]*cachedThumbnailImage\(forSession: session\)[\s\S]*Self\.setHistoryButtonPlaceholderVisible\(false, on: button\)", "Saved history slots never reveal the default photo placeholder while a thumbnail is loading"))
     checks.append(require_regex(main_text, r"refreshHistoryUI[\s\S]*applyHistoryBackgroundImageIfNeeded\([\s\S]*historyImageIdentityForSession", "History refresh uses image identity checks before setting saved thumbnails"))
     checks.append(require_regex(main_text, r"refreshHistoryUI[\s\S]*applyHistoryBackgroundImageIfNeeded\([\s\S]*historyImageIdentityForDraft", "History refresh uses image identity checks before setting the draft thumbnail"))
+    checks.append(require_text(main_text, "KCL10n.draftThumbAvailableAccessibility", "Draft thumbnail available accessibility text is localized"))
+    checks.append(require_text(main_text, "KCL10n.draftThumbEmptyAccessibility", "Draft thumbnail empty accessibility text is localized"))
+    checks.append(forbid_text(main_text, '"Draft Thumbnail"', "Draft thumbnail accessibility text is not hardcoded in English"))
+    checks.append(forbid_text(main_text, '"No Draft Thumbnail"', "Empty draft thumbnail accessibility text is not hardcoded in English"))
     checks.append(require_text(history_feature_text, "func canDeleteHistory(", "Delete-history availability is decided by the history feature"))
     # T033: canvas creation and action-state decisions are now behind the App-layer
     # KCCanvasFeature boundary. The controller keeps UIKit coordination, but it should
