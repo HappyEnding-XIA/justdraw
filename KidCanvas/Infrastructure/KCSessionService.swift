@@ -121,6 +121,15 @@ final class KCSessionService: NSObject {
         return (pngData: pngData, thumbnailJPEGData: thumbData)
     }
 
+    /// 将图片 Data 转成已解码的 UIKit 位图。
+    ///
+    /// `UIImage(data:)` 可能延迟到首次 `draw(in:)` 时才真正解码像素；打开历史作品
+    /// 或恢复草稿时必须在后台队列调用本入口，避免主线程首次绘制画布时承担大图解码。
+    func displayDecodedImage(from data: Data) -> UIImage? {
+        guard let image = UIImage(data: data) else { return nil }
+        return Self.displayDecodedImage(image)
+    }
+
     // MARK: - 保存/读取画作（Data）
 
     /// 保存画作 PNG + JPEG 缩略图。若 `existingSessionId` 非空则更新该会话，
@@ -136,7 +145,7 @@ final class KCSessionService: NSObject {
             thumbnailJPEGData: thumbnailJPEGData,
             existing: existing
         ) else { return nil }
-        if let cachedThumbnail = UIImage(data: thumbnailJPEGData) {
+        if let cachedThumbnail = displayDecodedImage(from: thumbnailJPEGData) {
             thumbnailImageCache.setObject(cachedThumbnail, forKey: session.id as NSString)
         } else {
             thumbnailImageCache.removeObject(forKey: session.id as NSString)
@@ -148,7 +157,7 @@ final class KCSessionService: NSObject {
     /// 返回全分辨率画作 UIImage。
     @objc func artworkImage(forSessionId sessionId: String) -> UIImage? {
         guard let data = artworkData(forSessionId: sessionId) else { return nil }
-        return UIImage(data: data)
+        return displayDecodedImage(from: data)
     }
 
     /// 返回指定会话的全分辨率画作 PNG 数据。
@@ -176,7 +185,7 @@ final class KCSessionService: NSObject {
             return cachedThumbnail
         }
         guard let data = thumbnailData(forSessionId: sessionId) else { return nil }
-        guard let image = UIImage(data: data) else { return nil }
+        guard let image = displayDecodedImage(from: data) else { return nil }
         thumbnailImageCache.setObject(image, forKey: sessionId as NSString)
         return image
     }
@@ -234,7 +243,7 @@ final class KCSessionService: NSObject {
                 let cacheKey = session.id as NSString
                 if self.thumbnailImageCache.object(forKey: cacheKey) == nil,
                    let data = self.store.thumbnailData(for: session),
-                   let image = UIImage(data: data) {
+                   let image = self.displayDecodedImage(from: data) {
                     self.thumbnailImageCache.setObject(image, forKey: cacheKey)
                 }
 
@@ -281,7 +290,7 @@ final class KCSessionService: NSObject {
         }
         draftCacheLock.unlock()
         guard let data = store.loadDraft() else { return nil }
-        guard let image = UIImage(data: data) else { return nil }
+        guard let image = displayDecodedImage(from: data) else { return nil }
         cacheLoadedDraftImage(image)
         return image
     }
@@ -318,7 +327,7 @@ final class KCSessionService: NSObject {
         if let cachedDraftImage {
             sourceImage = cachedDraftImage
         } else {
-            guard let data = store.loadDraft(), let image = UIImage(data: data) else { return nil }
+            guard let data = store.loadDraft(), let image = displayDecodedImage(from: data) else { return nil }
             sourceImage = image
         }
 
@@ -445,6 +454,21 @@ final class KCSessionService: NSObject {
                 height: drawSize.height
             )
             image.draw(in: drawRect)
+        }
+    }
+
+    private static func displayDecodedImage(_ image: UIImage) -> UIImage? {
+        let imageSize = image.size
+        guard imageSize.width > 0.0, imageSize.height > 0.0 else { return nil }
+
+        let format = UIGraphicsImageRendererFormat()
+        format.scale = image.scale
+        format.opaque = false
+
+        return autoreleasepool {
+            UIGraphicsImageRenderer(size: imageSize, format: format).image { _ in
+                image.draw(in: CGRect(origin: .zero, size: imageSize))
+            }
         }
     }
 }

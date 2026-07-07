@@ -1603,7 +1603,7 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
         self.draftPersistenceQueue.async { [weak self] in
             guard let self else { return }
             guard let data = self.sessionStore.loadDraftData(),
-                  let draftImage = UIImage(data: data) else { return }
+                  let draftImage = self.sessionStore.displayDecodedImage(from: data) else { return }
 
             DispatchQueue.main.async { [weak self] in
                 guard let self else { return }
@@ -1644,7 +1644,7 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
         self.artworkLoadingQueue.async { [weak self, session] in
             guard let self else { return }
             guard let data = self.sessionStore.artworkData(forSession: session),
-                  let image = UIImage(data: data) else {
+                  let image = self.sessionStore.displayDecodedImage(from: data) else {
                 DispatchQueue.main.async { [weak self] in
                     guard let self else { return }
                     guard self.artworkLoadGeneration == generation else { return }
@@ -2733,7 +2733,7 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
         self.draftPersistenceQueue.async { [weak self] in
             guard let self else { return }
             guard let data = self.sessionStore.loadDraftData(),
-                  let draftImage = UIImage(data: data) else { return }
+                  let draftImage = self.sessionStore.displayDecodedImage(from: data) else { return }
 
             DispatchQueue.main.async { [weak self] in
                 guard let self else { return }
