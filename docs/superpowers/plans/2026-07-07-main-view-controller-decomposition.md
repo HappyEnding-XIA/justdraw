@@ -105,6 +105,35 @@ xcodebuild -project KidCanvas.xcodeproj -scheme KidCanvas -destination 'platform
 
 Expected: commands exit 0; validation still sees collapse wiring.
 
+## Task 4: Extract Tool Selection Coordination
+
+**Files:**
+- Create: `KidCanvas/Features/Editor/KCMainViewController+ToolSelection.swift`
+- Modify: `KidCanvas/Features/Editor/KCMainViewController.swift`
+- Modify: `KidCanvas.xcodeproj/project.pbxproj`
+- Modify: `scripts/validate_project.py`
+
+- [x] **Step 1: Move low-risk tool selection methods**
+
+Move tool, brush, size preview, brush dock scrolling, color selection, custom color picker, eraser shape, sticker selection, and matching button actions into the extension.
+
+- [x] **Step 2: Keep high-risk flows in the main controller**
+
+Keep new canvas, save, history, photo import, line-art replacement, draft autosave, and runtime acceptance in the main controller for later dedicated tasks.
+
+- [x] **Step 3: Verify**
+
+Run:
+
+```bash
+python3 scripts/validate_project.py
+xcodebuild -project KidCanvas.xcodeproj -scheme KidCanvas -destination 'platform=iOS Simulator,name=iPhone 17 Pro' -derivedDataPath /tmp/KidCanvasToolSelection-iPhone build -quiet
+xcodebuild -project KidCanvas.xcodeproj -scheme KidCanvas -destination 'platform=iOS Simulator,name=iPad Pro 11 M4' -derivedDataPath /tmp/KidCanvasToolSelection-iPad build -quiet
+swift test --package-path Packages/KidCanvasModules
+```
+
+Expected: all commands exit 0.
+
 ## Self-Review
 
 - Spec coverage: covers first low-risk split and next two extension-based splits.

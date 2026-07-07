@@ -20,6 +20,7 @@ APP_FILE_PATHS = {
     "KCEditorColorBridge.swift": APP_ROOT / "Features" / "Editor" / "KCEditorColorBridge.swift",
     "KCMainViewController+LayoutMetrics.swift": APP_ROOT / "Features" / "Editor" / "KCMainViewController+LayoutMetrics.swift",
     "KCMainViewController+PanelCollapse.swift": APP_ROOT / "Features" / "Editor" / "KCMainViewController+PanelCollapse.swift",
+    "KCMainViewController+ToolSelection.swift": APP_ROOT / "Features" / "Editor" / "KCMainViewController+ToolSelection.swift",
     "KCCanvasFeature.swift": APP_ROOT / "Features" / "Canvas" / "KCCanvasFeature.swift",
     "KCDrawingCanvasView.swift": APP_ROOT / "Features" / "Canvas" / "KCDrawingCanvasView.swift",
     "KCToolRailFeature.swift": APP_ROOT / "Features" / "Tools" / "KCToolRailFeature.swift",
@@ -1377,6 +1378,7 @@ def main():
         APP_FILE_PATHS["KCMainViewController.swift"],
         APP_FILE_PATHS["KCMainViewController+LayoutMetrics.swift"],
         APP_FILE_PATHS["KCMainViewController+PanelCollapse.swift"],
+        APP_FILE_PATHS["KCMainViewController+ToolSelection.swift"],
         APP_FILE_PATHS["KCDrawingCanvasView.swift"],
     ]
     for path in objc_files:
@@ -1389,6 +1391,7 @@ def main():
         APP_FILE_PATHS["KCMainViewController.swift"].read_text(encoding="utf-8"),
         APP_FILE_PATHS["KCMainViewController+LayoutMetrics.swift"].read_text(encoding="utf-8"),
         APP_FILE_PATHS["KCMainViewController+PanelCollapse.swift"].read_text(encoding="utf-8"),
+        APP_FILE_PATHS["KCMainViewController+ToolSelection.swift"].read_text(encoding="utf-8"),
     ])
     canvas_text = APP_FILE_PATHS["KCDrawingCanvasView.swift"].read_text(encoding="utf-8")
     session_store_bridge_text = APP_FILE_PATHS["KCSessionService.swift"].read_text(encoding="utf-8")

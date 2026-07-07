@@ -9,6 +9,7 @@
 - [Technical Architecture](./architecture/TECHNICAL_ARCHITECTURE.md)
 - [Modular Architecture Design](./architecture/MODULAR_ARCHITECTURE_DESIGN.md)
 - [Architecture Evolution Plan](./architecture/ARCHITECTURE_EVOLUTION_PLAN.md)
+- [Technical Debt Roadmap](./architecture/TECHNICAL_DEBT_ROADMAP.md)
 - [Coding Standards](./architecture/CODING_STANDARDS.md)
 - [Module Decoupling Guidelines](./architecture/MODULE_DECOUPLING_GUIDELINES.md)
 - [Localization](./architecture/LOCALIZATION.md) — 默认中文、支持英文；资源位置 / 命名规范 / 新增文案流程。
