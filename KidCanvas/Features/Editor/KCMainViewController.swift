@@ -95,6 +95,7 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
     private var draftThumbImageIdentity: String?
     private var historyThumbImageIdentities: [String?] = []
     private var cachedLineArtItems: [KCLineArtItem]?
+    private var historySessionRefreshGeneration: Int = 0
     private var historyThumbnailRefreshGeneration: Int = 0
     var collapsiblePanels: [UIView] = []
     var collapseToggleButton: UIButton!
@@ -174,7 +175,7 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
         self.selectStickerSymbol(self.currentStickerSymbols().first!)
         self.refreshEraserShapeButtons()
         self.refreshStickerEditButtons()
-        self.refreshHistoryUI(loadDraftThumbnail: false, preloadThumbnails: false)
+        self.refreshHistoryUI(loadDraftThumbnail: false, preloadThumbnails: false, loadSessions: false)
         self.refreshActionButtons()
     }
 
@@ -1001,8 +1002,11 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
 
     // MARK: - 历史
 
-    func refreshHistoryUI(loadDraftThumbnail: Bool = true, preloadThumbnails: Bool = true) {
-        self.sessions = self.sessionStore.loadAllSessions()
+    func refreshHistoryUI(loadDraftThumbnail: Bool = true, preloadThumbnails: Bool = true, loadSessions: Bool = true) {
+        if loadSessions {
+            self.historySessionRefreshGeneration += 1
+            self.sessions = self.sessionStore.loadAllSessions()
+        }
         let maxPageIndex = self.maxHistoryPageIndex()
         self.historyPageIndex = self.drawingEngine.historyClampedPageIndex(
             self.historyPageIndex,
@@ -1104,6 +1108,21 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
         if preloadThumbnails {
             self.preloadVisibleHistoryThumbnailsIfNeeded(missingVisibleThumbnailIds)
             self.preloadAdjacentHistoryThumbnails()
+        }
+    }
+
+    func refreshHistorySessionsAsync(loadDraftThumbnail: Bool = true, preloadThumbnails: Bool = true) {
+        let generation = self.historySessionRefreshGeneration + 1
+        self.historySessionRefreshGeneration = generation
+        self.sessionStore.loadAllSessionsAsync { [weak self] sessions in
+            guard let self else { return }
+            guard self.historySessionRefreshGeneration == generation else { return }
+            self.sessions = sessions
+            self.refreshHistoryUI(
+                loadDraftThumbnail: loadDraftThumbnail,
+                preloadThumbnails: preloadThumbnails,
+                loadSessions: false
+            )
         }
     }
 
@@ -2634,7 +2653,7 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
         self.didScheduleStartupDeferredWork = true
         DispatchQueue.main.async { [weak self] in
             guard let self else { return }
-            self.refreshHistoryUI(loadDraftThumbnail: false)
+            self.refreshHistorySessionsAsync(loadDraftThumbnail: false)
             self.restoreDraftIfNeeded()
         }
     }

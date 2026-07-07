@@ -59,9 +59,11 @@ final class KCSessionService: NSObject {
         cache.countLimit = 100
         return cache
     }()
+    private let sessionMetadataQueue = DispatchQueue(label: "com.kidcanvas.session.metadata", qos: .utility)
     private let thumbnailPreloadQueue = DispatchQueue(label: "com.kidcanvas.session.thumbnail-preload", qos: .utility)
     private let thumbnailPreloadLock = NSLock()
     private var thumbnailPreloadInFlight: Set<String> = []
+    private let artworkSessionCacheLock = NSLock()
     private var artworkSessionCache: [KCArtworkSession]?
     private var draftImageCache: UIImage?
     private var draftThumbnailCache: UIImage?
@@ -80,6 +82,17 @@ final class KCSessionService: NSObject {
     /// 返回所有会话（类型化的 `KCSessionMetadata` DTO，按最新优先排序）。
     @objc func loadAllSessions() -> [KCSessionMetadata] {
         cachedArtworkSessions().map { KCSessionMetadata($0) }
+    }
+
+    /// 后台加载会话 metadata，避免启动后的首次历史栏刷新读取
+    /// `sessions.json` 时阻塞主线程。
+    func loadAllSessionsAsync(completion: @escaping ([KCSessionMetadata]) -> Void) {
+        sessionMetadataQueue.async { [weak self] in
+            let sessions = self?.loadAllSessions() ?? []
+            DispatchQueue.main.async {
+                completion(sessions)
+            }
+        }
     }
 
     // MARK: - 保存画作（UIImage 便捷方法）
@@ -330,25 +343,54 @@ final class KCSessionService: NSObject {
     }
 
     private func cachedArtworkSessions() -> [KCArtworkSession] {
+        artworkSessionCacheLock.lock()
         if let artworkSessionCache {
+            artworkSessionCacheLock.unlock()
             return artworkSessionCache
         }
+        artworkSessionCacheLock.unlock()
+
         let sessions = (try? store.loadSessions()) ?? []
+
+        artworkSessionCacheLock.lock()
+        if let artworkSessionCache {
+            artworkSessionCacheLock.unlock()
+            return artworkSessionCache
+        }
         artworkSessionCache = sessions
+        artworkSessionCacheLock.unlock()
         return sessions
     }
 
     private func replaceCachedSession(_ session: KCArtworkSession) {
-        guard var sessions = artworkSessionCache else { return }
-        sessions.removeAll { $0.id == session.id }
-        sessions.insert(session, at: 0)
+        artworkSessionCacheLock.lock()
+        if var sessions = artworkSessionCache {
+            sessions.removeAll { $0.id == session.id }
+            sessions.insert(session, at: 0)
+            artworkSessionCache = sessions
+            artworkSessionCacheLock.unlock()
+            return
+        }
+        artworkSessionCacheLock.unlock()
+
+        guard let sessions = try? store.loadSessions() else { return }
+        artworkSessionCacheLock.lock()
         artworkSessionCache = sessions
+        artworkSessionCacheLock.unlock()
     }
 
     private func removeCachedSession(id sessionId: String) {
-        guard var sessions = artworkSessionCache else { return }
+        artworkSessionCacheLock.lock()
+        guard var sessions = artworkSessionCache else {
+            artworkSessionCacheLock.unlock()
+            thumbnailPreloadLock.lock()
+            thumbnailPreloadInFlight.remove(sessionId)
+            thumbnailPreloadLock.unlock()
+            return
+        }
         sessions.removeAll { $0.id == sessionId }
         artworkSessionCache = sessions
+        artworkSessionCacheLock.unlock()
         thumbnailPreloadLock.lock()
         thumbnailPreloadInFlight.remove(sessionId)
         thumbnailPreloadLock.unlock()
