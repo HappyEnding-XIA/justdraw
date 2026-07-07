@@ -63,15 +63,15 @@ Expected: both commands exit 0.
 - Modify: `KidCanvas.xcodeproj/project.pbxproj`
 - Modify if needed: `scripts/validate_project.py`
 
-- [ ] **Step 1: Move layout metrics proxy methods**
+- [x] **Step 1: Move layout metrics proxy methods**
 
 Move the `// MARK: - 设备布局指标` section into an extension file.
 
-- [ ] **Step 2: Keep validation coverage**
+- [x] **Step 2: Keep validation coverage**
 
 If `scripts/validate_project.py` checks those methods by reading only `KCMainViewController.swift`, update it to read the extension file too.
 
-- [ ] **Step 3: Verify iPhone and iPad builds**
+- [x] **Step 3: Verify iPhone and iPad builds**
 
 Run:
 

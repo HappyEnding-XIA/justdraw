@@ -41,6 +41,7 @@
 		A1FA010000000000C0A10017 /* KCBrushStickerPanelView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1FA110000000000C0A10017 /* KCBrushStickerPanelView.swift */; };
 		A1FB010000000000D0A10101 /* KCEditorToolControls.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1FB110000000000D0A10101 /* KCEditorToolControls.swift */; };
 		A1FB010000000000D0A10102 /* KCEditorColorBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1FB110000000000D0A10102 /* KCEditorColorBridge.swift */; };
+		A1FB010000000000D0A10103 /* KCMainViewController+LayoutMetrics.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1FB110000000000D0A10103 /* KCMainViewController+LayoutMetrics.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -77,6 +78,7 @@
 		A1FA110000000000C0A10017 /* KCBrushStickerPanelView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KCBrushStickerPanelView.swift; sourceTree = "<group>"; };
 		A1FB110000000000D0A10101 /* KCEditorToolControls.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KCEditorToolControls.swift; sourceTree = "<group>"; };
 		A1FB110000000000D0A10102 /* KCEditorColorBridge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KCEditorColorBridge.swift; sourceTree = "<group>"; };
+		A1FB110000000000D0A10103 /* KCMainViewController+LayoutMetrics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "KCMainViewController+LayoutMetrics.swift"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -147,6 +149,7 @@
 				A1FA110000000000C0A10008 /* KCDeviceLayoutMetrics.swift */,
 				A1FB110000000000D0A10101 /* KCEditorToolControls.swift */,
 				A1FB110000000000D0A10102 /* KCEditorColorBridge.swift */,
+				A1FB110000000000D0A10103 /* KCMainViewController+LayoutMetrics.swift */,
 			);
 			path = Editor;
 			sourceTree = "<group>";
@@ -351,6 +354,7 @@
 				A1FA010000000000C0A10003 /* KCLocalizedStrings.swift in Sources */,
 				A1FB010000000000D0A10101 /* KCEditorToolControls.swift in Sources */,
 				A1FB010000000000D0A10102 /* KCEditorColorBridge.swift in Sources */,
+				A1FB010000000000D0A10103 /* KCMainViewController+LayoutMetrics.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

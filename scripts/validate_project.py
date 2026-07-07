@@ -18,6 +18,7 @@ APP_FILE_PATHS = {
     "KCDeviceLayoutMetrics.swift": APP_ROOT / "Features" / "Editor" / "KCDeviceLayoutMetrics.swift",
     "KCEditorToolControls.swift": APP_ROOT / "Features" / "Editor" / "KCEditorToolControls.swift",
     "KCEditorColorBridge.swift": APP_ROOT / "Features" / "Editor" / "KCEditorColorBridge.swift",
+    "KCMainViewController+LayoutMetrics.swift": APP_ROOT / "Features" / "Editor" / "KCMainViewController+LayoutMetrics.swift",
     "KCCanvasFeature.swift": APP_ROOT / "Features" / "Canvas" / "KCCanvasFeature.swift",
     "KCDrawingCanvasView.swift": APP_ROOT / "Features" / "Canvas" / "KCDrawingCanvasView.swift",
     "KCToolRailFeature.swift": APP_ROOT / "Features" / "Tools" / "KCToolRailFeature.swift",
@@ -805,7 +806,7 @@ def app_feature_checks(
     checks.append(require_text(brush_sticker_panel_text, "KCEditorVisualStyle.applyActionButtonAvailability", "Brush/stamp panel reuses shared disabled button styling"))
     checks.append(forbid_text(brush_sticker_panel_text, "activePillBackgroundColor", "Brush/stamp panel does not duplicate active pill color tokens"))
     checks.append(forbid_text(brush_sticker_panel_text, "inactiveButtonBackgroundColor", "Brush/stamp panel does not duplicate button color tokens"))
-    checks.append(require_text(main_text, "private var editorUIFactory: KCEditorUIFactory", "Main view controller delegates common UI creation to KCEditorUIFactory"))
+    checks.append(require_text(main_text, "var editorUIFactory: KCEditorUIFactory", "Main view controller delegates common UI creation to KCEditorUIFactory"))
     checks.append(require_text(main_text, "return self.editorUIFactory.floatingPanel()", "Floating panel helper delegates to KCEditorUIFactory"))
     checks.append(require_text(main_text, "let toggle = self.editorUIFactory.collapseToggleButton", "Main view controller delegates collapse-toggle construction"))
     checks.append(require_text(main_text, "let chip = self.editorUIFactory.toolStateChip()", "Main view controller delegates collapsed chip construction"))
@@ -1023,7 +1024,7 @@ def app_feature_checks(
     checks.append(require_regex(device_layout_metrics_text, r"var brushCardWidth: CGFloat[\s\S]*100\.0 : 126\.0", "Bottom brush cards shrink on iPhone"))
     checks.append(require_regex(device_layout_metrics_text, r"var brushCardHeight: CGFloat[\s\S]*50\.0 : 68\.0", "Bottom brush cards stay inside the compact iPhone dock"))
     checks.append(require_regex(device_layout_metrics_text, r"var historyThumbSize: CGFloat[\s\S]*82\.0 : 92\.0", "History thumbnails keep compact iPhone sizing"))
-    checks.append(require_text(main_text, "private var layoutMetrics: KCDeviceLayoutMetrics", "Main view controller delegates device sizing to KCDeviceLayoutMetrics"))
+    checks.append(require_text(main_text, "var layoutMetrics: KCDeviceLayoutMetrics", "Main view controller delegates device sizing to KCDeviceLayoutMetrics"))
     checks.append(require_text(main_text, "return self.layoutMetrics.rightPanelWidth", "Right panel width is delegated to KCDeviceLayoutMetrics"))
     checks.append(require_text(main_text, "return self.layoutMetrics.bottomDockWidth", "Bottom dock width is delegated to KCDeviceLayoutMetrics"))
     checks.append(require_text(main_text, "return self.layoutMetrics.brushCardWidth", "Brush card width is delegated to KCDeviceLayoutMetrics"))
@@ -1373,6 +1374,7 @@ def main():
 
     objc_files = [
         APP_FILE_PATHS["KCMainViewController.swift"],
+        APP_FILE_PATHS["KCMainViewController+LayoutMetrics.swift"],
         APP_FILE_PATHS["KCDrawingCanvasView.swift"],
     ]
     for path in objc_files:
@@ -1381,7 +1383,10 @@ def main():
         else:
             checks.append(fail(f"{path.relative_to(ROOT)} is missing"))
 
-    main_text = APP_FILE_PATHS["KCMainViewController.swift"].read_text(encoding="utf-8")
+    main_text = "\n".join([
+        APP_FILE_PATHS["KCMainViewController.swift"].read_text(encoding="utf-8"),
+        APP_FILE_PATHS["KCMainViewController+LayoutMetrics.swift"].read_text(encoding="utf-8"),
+    ])
     canvas_text = APP_FILE_PATHS["KCDrawingCanvasView.swift"].read_text(encoding="utf-8")
     session_store_bridge_text = APP_FILE_PATHS["KCSessionService.swift"].read_text(encoding="utf-8")
     kc_session_store_text = (ROOT / "Packages" / "KidCanvasModules" / "Sources" / "KCSessionPersistence" / "KCSessionStore.swift").read_text(encoding="utf-8")
