@@ -1138,7 +1138,7 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
         self.sessionStore.preloadThumbnailImages(forSessionIds: uniqueSessionIds) { [weak self] in
             guard let self else { return }
             guard self.historyThumbnailRefreshGeneration == generation else { return }
-            self.refreshHistoryUI()
+            self.refreshHistoryUI(loadDraftThumbnail: false, preloadThumbnails: false, loadSessions: false)
         }
     }
 
