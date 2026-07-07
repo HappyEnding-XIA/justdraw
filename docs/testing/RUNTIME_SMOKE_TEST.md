@@ -83,7 +83,7 @@ scripts/runtime_acceptance_test.sh "iPad Pro 11 M4" system-ui
 
 `runtime_acceptance_test.sh` 的第二个参数为探针名，默认 `empty-save`，可选：
 
-- `empty-save`：空画布保存反馈。
+- `empty-save`：空画布保存反馈，必须显示“先画再保存”，不复用真实保存失败文案。
 - `layout-safe-area`：首屏浮动控件是否落在 safe area 约束内，并检查 iPhone 横屏紧凑布局下左侧工具栏、右侧面板的最低可视高度。
 - `sticker-undo-redo`：空白画布插入印章后检查选中态、可保存状态，再删除印章并验证撤销可恢复、重做可再次删除。
 - `save-history-restore`：空白画布插入一条 Debug-only 画笔笔触，通过真实保存入口写入历史并触发成功 Toast，再清空画布并从历史恢复可见内容。脚本会在启动前对模拟器授予 `photos-add` 权限，避免系统相册权限弹窗干扰自动验收。

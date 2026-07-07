@@ -275,6 +275,9 @@ struct KCEditorUIFactory {
         let button = UIButton(type: .system)
         button.setTitle(title, for: .normal)
         button.titleLabel?.font = UIFont.systemFont(ofSize: 13.0, weight: .bold)
+        button.titleLabel?.adjustsFontSizeToFitWidth = true
+        button.titleLabel?.minimumScaleFactor = 0.72
+        button.titleLabel?.lineBreakMode = .byTruncatingTail
         button.setTitleColor(
             accent ? KCEditorVisualStyle.accentInkColor : KCEditorVisualStyle.inkColor,
             for: .normal

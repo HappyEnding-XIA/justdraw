@@ -14,6 +14,7 @@
 /* 保存反馈 */
 "toast.save.success" = "已保存";
 "toast.save.failed" = "无法保存";
+"toast.save.empty" = "先画再保存";
 "toast.photo-export.failed" = "已保存，相册未保存";
 
 /* 左侧工具栏 */
@@ -96,6 +97,9 @@
 "history.open-latest.title" = "打开最近";
 "history.import-photo.title" = "导入照片";
 "history.delete-latest.title" = "删除最近";
+"history.delete-selected.title" = "删除选中";
+"history.delete-current.title" = "删除当前";
+"history.delete-draft.title" = "删除草稿";
 "history.previous-page.title" = "上一页";
 "history.next-page.title" = "下一页";
 "history.draft-thumb.accessibility" = "草稿缩略图";

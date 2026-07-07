@@ -1093,6 +1093,12 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
             sessionCount: self.sessions.count,
             hasDraft: hasDraft
         )
+        let deleteHistoryTitle = self.historyDeleteActionTitle(
+            selectedSession: selectedSession,
+            hasDraft: hasDraft
+        )
+        self.deleteHistoryButton.setTitle(deleteHistoryTitle, for: .normal)
+        self.deleteHistoryButton.accessibilityLabel = deleteHistoryTitle
         self.deleteHistoryButton.isEnabled = canDeleteHistoryItem
         self.deleteHistoryButton.alpha = canDeleteHistoryItem ? 1.0 : 0.55
 
@@ -1183,6 +1189,22 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
             self.preloadVisibleHistoryThumbnailsIfNeeded(missingVisibleThumbnailIds)
             self.preloadAdjacentHistoryThumbnails()
         }
+    }
+
+    private func historyDeleteActionTitle(
+        selectedSession: KCSessionMetadata?,
+        hasDraft: Bool
+    ) -> String {
+        if selectedSession != nil {
+            return KCL10n.deleteSelectedHistoryTitle
+        }
+        if self.activeSession != nil {
+            return KCL10n.deleteCurrentHistoryTitle
+        }
+        if hasDraft {
+            return KCL10n.deleteDraftHistoryTitle
+        }
+        return KCL10n.deleteLatestHistoryTitle
     }
 
     func refreshHistorySessionsAsync(loadDraftThumbnail: Bool = true, preloadThumbnails: Bool = true) {
@@ -1487,7 +1509,7 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
 
     @objc func didTapSaveSession() {
         if !self.canvasFeature.hasVisibleContent(self.canvasView) {
-            self.showSaveToastWithSuccess(false)
+            self.showEmptyCanvasSaveToast()
             return
         }
 
@@ -2094,6 +2116,14 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
         self.saveToastView = self.toastPresenter.showSaveToast(success: success, in: self.view, anchorView: self.saveButton)
     }
 
+    func showEmptyCanvasSaveToast() {
+#if DEBUG
+        self.runtimeAcceptanceLastSaveToastTitle = KCL10n.emptySaveToastTitle
+#endif
+        self.toastPresenter.dismiss(self.saveToastView)
+        self.saveToastView = self.toastPresenter.showEmptyCanvasSaveToast(in: self.view, anchorView: self.saveButton)
+    }
+
     func showPhotoExportFailedToast() {
         self.toastPresenter.dismiss(self.saveToastView)
         self.saveToastView = self.toastPresenter.showPhotoExportFailedToast(in: self.view, anchorView: self.saveButton)
@@ -2164,19 +2194,19 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
         let hasVisibleContentBefore = self.canvasFeature.hasVisibleContent(self.canvasView)
         let saveButtonEnabledBeforeTap = self.saveButton.isEnabled
         self.didTapSaveSession()
-        let failureToastVisible = self.saveToastView?.accessibilityLabel == KCL10n.saveFailedToastTitle
+        let emptySaveToastVisible = self.saveToastView?.accessibilityLabel == KCL10n.emptySaveToastTitle
         let result: [String: Any] = [
             "probe": "empty-save",
             "passed": !hasVisibleContentBefore
                 && saveButtonEnabledBeforeTap
-                && failureToastVisible
+                && emptySaveToastVisible
                 && self.sessions.count == historyCountBefore,
             "hasVisibleContentBefore": hasVisibleContentBefore,
             "saveButtonEnabledBeforeTap": saveButtonEnabledBeforeTap,
-            "failureToastVisible": failureToastVisible,
+            "emptySaveToastVisible": emptySaveToastVisible,
             "historyCountBefore": historyCountBefore,
             "historyCountAfter": self.sessions.count,
-            "expectedToast": KCL10n.saveFailedToastTitle
+            "expectedToast": KCL10n.emptySaveToastTitle
         ]
         self.writeRuntimeAcceptanceResult(result, fileName: "kc_runtime_acceptance_empty_save.json")
     }

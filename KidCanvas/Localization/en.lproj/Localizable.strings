@@ -14,6 +14,7 @@
 /* Save feedback */
 "toast.save.success" = "Saved";
 "toast.save.failed" = "Unable to Save";
+"toast.save.empty" = "Draw First";
 "toast.photo-export.failed" = "Saved, Photo Export Failed";
 
 /* Left tool rail */
@@ -96,6 +97,9 @@
 "history.open-latest.title" = "Open Latest";
 "history.import-photo.title" = "Import Photo";
 "history.delete-latest.title" = "Delete Latest";
+"history.delete-selected.title" = "Delete Selected";
+"history.delete-current.title" = "Delete Current";
+"history.delete-draft.title" = "Delete Draft";
 "history.previous-page.title" = "Previous History Page";
 "history.next-page.title" = "Next History Page";
 "history.draft-thumb.accessibility" = "Draft Thumbnail";

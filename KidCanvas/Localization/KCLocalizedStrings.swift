@@ -42,6 +42,7 @@ enum KCL10n {
     static var saveTitle: String { tr("top.save.title") }
     static var saveSuccessToastTitle: String { tr("toast.save.success") }
     static var saveFailedToastTitle: String { tr("toast.save.failed") }
+    static var emptySaveToastTitle: String { tr("toast.save.empty") }
     static var photoExportFailedToastTitle: String { tr("toast.photo-export.failed") }
 
     // MARK: - 左侧工具栏
@@ -120,6 +121,9 @@ enum KCL10n {
     static var openLatestHistoryTitle: String { tr("history.open-latest.title") }
     static var importPhotoHistoryTitle: String { tr("history.import-photo.title") }
     static var deleteLatestHistoryTitle: String { tr("history.delete-latest.title") }
+    static var deleteSelectedHistoryTitle: String { tr("history.delete-selected.title") }
+    static var deleteCurrentHistoryTitle: String { tr("history.delete-current.title") }
+    static var deleteDraftHistoryTitle: String { tr("history.delete-draft.title") }
     static var previousHistoryPageTitle: String { tr("history.previous-page.title") }
     static var nextHistoryPageTitle: String { tr("history.next-page.title") }
     static var draftThumbAccessibility: String { tr("history.draft-thumb.accessibility") }

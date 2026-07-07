@@ -109,7 +109,11 @@ def localization_checks(zh_localizable, en_localizable, zh_info_plist, en_info_p
             "static var redoTitle: String",
             "static var saveSuccessToastTitle: String",
             "static var saveFailedToastTitle: String",
+            "static var emptySaveToastTitle: String",
             "static var photoExportFailedToastTitle: String",
+            "static var deleteSelectedHistoryTitle: String",
+            "static var deleteCurrentHistoryTitle: String",
+            "static var deleteDraftHistoryTitle: String",
             "static var draftThumbAvailableAccessibility: String",
             "static var draftThumbEmptyAccessibility: String",
         ]:
@@ -173,11 +177,13 @@ def localization_checks(zh_localizable, en_localizable, zh_info_plist, en_info_p
         (zh_localizable, "zh-Hans", [
             '"toast.save.success" = "已保存";',
             '"toast.save.failed" = "无法保存";',
+            '"toast.save.empty" = "先画再保存";',
             '"toast.photo-export.failed" = "已保存，相册未保存";',
         ]),
         (en_localizable, "en", [
             '"toast.save.success" = "Saved";',
             '"toast.save.failed" = "Unable to Save";',
+            '"toast.save.empty" = "Draw First";',
             '"toast.photo-export.failed" = "Saved, Photo Export Failed";',
         ]),
     ]
@@ -187,6 +193,27 @@ def localization_checks(zh_localizable, en_localizable, zh_info_plist, en_info_p
         locale_text = path.read_text(encoding="utf-8")
         for expected_line in expected_lines:
             checks.append(require_text(locale_text, expected_line, f"{locale_label} save toast text is localized: {expected_line}"))
+
+    expected_history_action_strings = [
+        (zh_localizable, "zh-Hans", [
+            '"history.delete-latest.title" = "删除最近";',
+            '"history.delete-selected.title" = "删除选中";',
+            '"history.delete-current.title" = "删除当前";',
+            '"history.delete-draft.title" = "删除草稿";',
+        ]),
+        (en_localizable, "en", [
+            '"history.delete-latest.title" = "Delete Latest";',
+            '"history.delete-selected.title" = "Delete Selected";',
+            '"history.delete-current.title" = "Delete Current";',
+            '"history.delete-draft.title" = "Delete Draft";',
+        ]),
+    ]
+    for path, locale_label, expected_lines in expected_history_action_strings:
+        if not path.exists():
+            continue
+        locale_text = path.read_text(encoding="utf-8")
+        for expected_line in expected_lines:
+            checks.append(require_text(locale_text, expected_line, f"{locale_label} history delete action text is localized: {expected_line}"))
 
     expected_history_accessibility_strings = [
         (zh_localizable, "zh-Hans", [
@@ -335,7 +362,8 @@ def delivery_acceptance_checks():
     for flow in required_flows:
         checks.append(require_text(checklist_text, flow, f"Delivery checklist covers core flow: {flow}"))
         checks.append(require_text(manual_runbook_text, flow, f"Manual acceptance runbook covers core flow: {flow}"))
-    checks.append(require_text(checklist_text, "空画布点保存应显示“无法保存”", "Delivery checklist requires localized save-failure feedback"))
+    checks.append(require_text(checklist_text, "空画布点保存应显示“先画再保存”", "Delivery checklist requires localized empty-canvas save feedback"))
+    checks.append(require_text(checklist_text, "真实保存失败仍使用“无法保存”", "Delivery checklist keeps localized real save-failure feedback"))
     checks.append(require_text(checklist_text, "画一笔后保存应显示“已保存”", "Delivery checklist requires localized save-success feedback"))
     checks.append(require_text(checklist_text, "相册权限弹窗", "Delivery checklist records photo permission prompt validation"))
     checks.append(require_text(manual_runbook_text, "iPhone 结果", "Manual acceptance runbook records iPhone results"))
@@ -970,9 +998,11 @@ def app_feature_checks(
     checks.append(require_text(toast_presenter_text, "UIVisualEffectView(effect: UIBlurEffect(style: .systemThinMaterialLight))", "Toast keeps the existing blur style"))
     checks.append(require_text(toast_presenter_text, "KCL10n.saveSuccessToastTitle", "Save success toast uses localized text"))
     checks.append(require_text(toast_presenter_text, "KCL10n.saveFailedToastTitle", "Save failure toast uses localized text"))
+    checks.append(require_text(toast_presenter_text, "KCL10n.emptySaveToastTitle", "Empty-canvas save toast uses localized text"))
     checks.append(require_text(toast_presenter_text, "KCL10n.photoExportFailedToastTitle", "Photo export failure toast uses localized text"))
     checks.append(require_text(toast_presenter_text, "toast.accessibilityLabel = titleLabel.text", "Save toast exposes localized accessibility text"))
     checks.append(require_text(main_text, "self.toastPresenter.showSaveToast(success: success, in: self.view, anchorView: self.saveButton)", "Main view controller delegates save toast presentation"))
+    checks.append(require_text(main_text, "self.toastPresenter.showEmptyCanvasSaveToast(in: self.view, anchorView: self.saveButton)", "Main view controller delegates empty-canvas save feedback presentation"))
     checks.append(require_text(main_text, "self.toastPresenter.showPhotoExportFailedToast(in: self.view, anchorView: self.saveButton)", "Main view controller delegates photo-export failure toast presentation"))
     checks.append(require_text(main_text, "self.toastPresenter.dismiss(self.saveToastView)", "Main view controller delegates save toast dismissal"))
     checks.append(require_text(main_text, "#if DEBUG", "Runtime acceptance probe is Debug-only"))
@@ -991,7 +1021,12 @@ def app_feature_checks(
     checks.append(require_text(main_text, "kc_runtime_acceptance_drawing_tools.json", "Runtime drawing-tools probe writes the drawing-tools JSON result"))
     checks.append(require_text(main_text, "kc_runtime_acceptance_system_ui.json", "Runtime system-ui probe writes the system-ui JSON result"))
     checks.append(require_text(main_text, "saveButtonEnabledBeforeTap", "Runtime acceptance probe verifies empty-canvas save remains tappable"))
-    checks.append(require_text(main_text, "failureToastVisible", "Runtime acceptance probe verifies the localized save-failure toast"))
+    checks.append(require_text(main_text, "emptySaveToastVisible", "Runtime acceptance probe verifies the localized empty-canvas save toast"))
+    checks.append(require_text(main_text, "func historyDeleteActionTitle", "Main view controller computes a dynamic history delete title"))
+    checks.append(require_text(main_text, "KCL10n.deleteSelectedHistoryTitle", "History delete action labels selected-session deletion explicitly"))
+    checks.append(require_text(main_text, "KCL10n.deleteCurrentHistoryTitle", "History delete action labels current-session deletion explicitly"))
+    checks.append(require_text(main_text, "KCL10n.deleteDraftHistoryTitle", "History delete action labels draft deletion explicitly"))
+    checks.append(require_text(main_text, "self.deleteHistoryButton.setTitle(deleteHistoryTitle, for: .normal)", "History delete button title follows the actual delete target"))
     checks.append(require_text(main_text, "layout-safe-area", "Runtime layout probe reports its probe name"))
     checks.append(require_text(main_text, "safeAreaInsets", "Runtime layout probe records safe area insets"))
     checks.append(require_text(main_text, "layoutCheckResult", "Runtime layout probe checks key floating controls"))

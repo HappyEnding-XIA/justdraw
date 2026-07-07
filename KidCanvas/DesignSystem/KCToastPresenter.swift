@@ -23,6 +23,16 @@ final class KCToastPresenter {
         )
     }
 
+    func showEmptyCanvasSaveToast(in view: UIView, anchorView: UIView) -> UIView {
+        self.showToast(
+            title: KCL10n.emptySaveToastTitle,
+            symbolName: "paintbrush.pointed.fill",
+            tintColor: UIColor(red: 0.83, green: 0.36, blue: 0.24, alpha: 1.0),
+            in: view,
+            anchorView: anchorView
+        )
+    }
+
     func showPhotoExportFailedToast(in view: UIView, anchorView: UIView) -> UIView {
         self.showToast(
             title: KCL10n.photoExportFailedToastTitle,
