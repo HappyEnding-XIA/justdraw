@@ -65,6 +65,7 @@ final class KCSessionService: NSObject {
     private var thumbnailPreloadInFlight: Set<String> = []
     private let artworkSessionCacheLock = NSLock()
     private var artworkSessionCache: [KCArtworkSession]?
+    private let draftCacheLock = NSLock()
     private var draftImageCache: UIImage?
     private var draftThumbnailCache: UIImage?
     private static let thumbnailSize = CGSize(width: 240, height: 180)
@@ -267,9 +268,12 @@ final class KCSessionService: NSObject {
 
     /// 以 UIImage 形式加载草稿。
     @objc func loadDraftImage() -> UIImage? {
+        draftCacheLock.lock()
         if let draftImageCache {
+            draftCacheLock.unlock()
             return draftImageCache
         }
+        draftCacheLock.unlock()
         guard let data = store.loadDraft() else { return nil }
         guard let image = UIImage(data: data) else { return nil }
         cacheLoadedDraftImage(image)
@@ -278,40 +282,55 @@ final class KCSessionService: NSObject {
 
     /// 只读取草稿缩略图内存缓存，不触发读盘或图片解码。
     @objc func cachedDraftThumbnailImage() -> UIImage? {
-        return draftThumbnailCache
+        draftCacheLock.lock()
+        let thumbnail = draftThumbnailCache
+        draftCacheLock.unlock()
+        return thumbnail
     }
 
     /// 缓存已经异步解码出的草稿图，并同步补齐历史栏缩略图缓存。
     func cacheLoadedDraftImage(_ image: UIImage) {
+        let thumbnail = Self.generateThumbnail(from: image)
+        draftCacheLock.lock()
         draftImageCache = image
-        draftThumbnailCache = Self.generateThumbnail(from: image)
+        draftThumbnailCache = thumbnail
+        draftCacheLock.unlock()
     }
 
     /// 返回草稿缩略图，供历史面板使用。该路径不长期持有全尺寸草稿图，避免
     /// 高频历史刷新为了一个 240×180 缩略图保留整张画布。
     @objc func draftThumbnailImage() -> UIImage? {
+        draftCacheLock.lock()
         if let draftThumbnailCache {
+            draftCacheLock.unlock()
             return draftThumbnailCache
         }
+        let cachedDraftImage = draftImageCache
+        draftCacheLock.unlock()
 
         let sourceImage: UIImage
-        if let draftImageCache {
-            sourceImage = draftImageCache
+        if let cachedDraftImage {
+            sourceImage = cachedDraftImage
         } else {
             guard let data = store.loadDraft(), let image = UIImage(data: data) else { return nil }
             sourceImage = image
         }
 
         let thumbnail = Self.generateThumbnail(from: sourceImage)
+        draftCacheLock.lock()
         draftThumbnailCache = thumbnail
+        draftCacheLock.unlock()
         return thumbnail
     }
 
     /// 轻量判断是否存在草稿文件，不读取或解码 `draft.png`，用于按钮状态和删除流程。
     @objc func hasDraft() -> Bool {
+        draftCacheLock.lock()
         if draftImageCache != nil || draftThumbnailCache != nil {
+            draftCacheLock.unlock()
             return true
         }
+        draftCacheLock.unlock()
         return store.hasDraft()
     }
 
@@ -321,8 +340,11 @@ final class KCSessionService: NSObject {
 
     func saveDraftData(pngData: Data, cachedImage: UIImage?) -> Bool {
         let saved = (try? store.saveDraft(pngData: pngData)) ?? false
+        let thumbnail = saved ? cachedImage.map { Self.generateThumbnail(from: $0) } : nil
+        draftCacheLock.lock()
         draftImageCache = nil
-        draftThumbnailCache = saved ? cachedImage.map { Self.generateThumbnail(from: $0) } : nil
+        draftThumbnailCache = thumbnail
+        draftCacheLock.unlock()
         return saved
     }
 
@@ -331,8 +353,10 @@ final class KCSessionService: NSObject {
     }
 
     @objc func clearDraft() {
+        draftCacheLock.lock()
         draftImageCache = nil
         draftThumbnailCache = nil
+        draftCacheLock.unlock()
         store.clearDraft()
     }
 

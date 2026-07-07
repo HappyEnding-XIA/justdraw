@@ -109,10 +109,12 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
     private let imageImportProcessingQueue = DispatchQueue(label: "com.kidcanvas.editor.image-import-processing", qos: .userInitiated)
     private let draftPersistenceQueue = DispatchQueue(label: "com.kidcanvas.editor.draft-persistence", qos: .utility)
     private let lineArtRenderingQueue = DispatchQueue(label: "com.kidcanvas.editor.line-art-rendering", qos: .userInitiated)
+    private static let historyThumbnailImageStates: [UIControl.State] = [.normal, .highlighted, .selected, .disabled]
     private var sessionSaveGeneration: Int = 0
     private var artworkLoadGeneration: Int = 0
     private var imageImportGeneration: Int = 0
     private var draftSaveGeneration: Int = 0
+    private var draftProtectionGeneration: Int = 0
     private var lineArtLoadGeneration: Int = 0
     private var didScheduleStartupDeferredWork = false
     private var activeDraftMatchesCanvas: Bool = false
@@ -1035,7 +1037,7 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
             to: self.draftThumbButton,
             storedIdentity: &self.draftThumbImageIdentity
         )
-        self.draftThumbButton.imageView?.isHidden = draftImage != nil
+        Self.setHistoryButtonPlaceholderVisible(draftImage == nil, on: self.draftThumbButton)
         self.draftThumbButton.isEnabled = draftImage != nil
         self.draftThumbButton.alpha = draftImage != nil ? 1.0 : 0.55
         self.draftThumbButton.accessibilityLabel = draftImage != nil ? "Draft Thumbnail" : "No Draft Thumbnail"
@@ -1079,7 +1081,7 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
                     to: button,
                     storedIdentity: &self.historyThumbImageIdentities[index]
                 )
-                button.imageView?.isHidden = false
+                Self.setHistoryButtonPlaceholderVisible(true, on: button)
                 button.isEnabled = false
                 button.accessibilityLabel = "\(KCL10n.historyThumbPrefix(status.accessibilityPrefix)) \(index + 1)"
                 button.backgroundColor = UIColor(red: 1.0, green: 0.995, blue: 0.98, alpha: 1.0)
@@ -1096,7 +1098,7 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
                     to: button,
                     storedIdentity: &self.historyThumbImageIdentities[index]
                 )
-                button.imageView?.isHidden = true
+                Self.setHistoryButtonPlaceholderVisible(false, on: button)
                 button.isEnabled = true
                 button.accessibilityLabel = "\(KCL10n.historyThumbPrefix(status.accessibilityPrefix)) \(sessionIndex + 1)"
                 button.transform = status.isEmphasized
@@ -1186,8 +1188,27 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
             return
         }
 
-        button.setBackgroundImage(image, for: .normal)
+        Self.setHistoryBackgroundImage(image, to: button)
         storedIdentity = identity
+    }
+
+    private static func setHistoryBackgroundImage(_ image: UIImage?, to button: UIButton) {
+        for state in Self.historyThumbnailImageStates {
+            button.setBackgroundImage(image, for: state)
+        }
+    }
+
+    private static func setHistoryButtonPlaceholderVisible(_ visible: Bool, on button: UIButton) {
+        let image = visible ? Self.historySlotPlaceholderImage() : nil
+        for state in Self.historyThumbnailImageStates {
+            button.setImage(image, for: state)
+        }
+        button.imageView?.contentMode = .center
+        button.imageView?.isHidden = !visible
+    }
+
+    private static func historySlotPlaceholderImage() -> UIImage? {
+        KCEditorUIFactory.historySlotPlaceholderImage()
     }
 
     func historyPageSize() -> Int {
@@ -1655,12 +1676,37 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
 
         self.invalidateDraftSaveTimer()
         let snapshot = self.canvasView.snapshotImage()
-        let saved = self.sessionStore.saveDraftImage(snapshot)
-        self.activeDraftMatchesCanvas = saved
-        return saved
+        let generation = self.draftProtectionGeneration + 1
+        self.draftProtectionGeneration = generation
+        self.draftPersistenceQueue.async { [weak self, snapshot, generation] in
+            guard let self else { return }
+            guard let pngData = snapshot.pngData() else {
+                DispatchQueue.main.async { [weak self] in
+                    self?.refreshHistoryUI(loadSessions: false)
+                }
+                return
+            }
+
+            let shouldSave = DispatchQueue.main.sync { [weak self] in
+                self?.draftProtectionGeneration == generation
+            }
+            guard shouldSave else { return }
+
+            let saved = self.sessionStore.saveDraftData(pngData: pngData, cachedImage: snapshot)
+            DispatchQueue.main.async { [weak self] in
+                guard let self else { return }
+                guard self.draftProtectionGeneration == generation else { return }
+                if !saved {
+                    self.activeDraftMatchesCanvas = false
+                }
+                self.refreshHistoryUI(loadSessions: false)
+            }
+        }
+        return true
     }
 
     func clearDraftAndInvalidateCurrentDraftMarker() {
+        self.draftProtectionGeneration += 1
         self.sessionStore.clearDraft()
         self.activeDraftMatchesCanvas = false
     }

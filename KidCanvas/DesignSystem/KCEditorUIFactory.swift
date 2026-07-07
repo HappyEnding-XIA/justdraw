@@ -135,6 +135,11 @@ struct KCEditorUIFactory {
         }
     }
 
+    static func historySlotPlaceholderImage() -> UIImage? {
+        cachedConfiguredSystemImage(symbolName: "photo", pointSize: 24.0, weight: .semibold, weightKey: "semibold")?
+            .withTintColor(UIColor(red: 0.62, green: 0.67, blue: 0.74, alpha: 0.52), renderingMode: .alwaysOriginal)
+    }
+
     private static func cachedConfiguredSystemImage(
         symbolName: String,
         pointSize: CGFloat,
@@ -213,9 +218,7 @@ struct KCEditorUIFactory {
         button.layer.borderColor = KCEditorVisualStyle.subtleBorderColor
         button.layer.borderWidth = 2.0
         button.imageView?.contentMode = .scaleAspectFill
-        let placeholder = Self.cachedConfiguredSystemImage(symbolName: "photo", pointSize: 24.0, weight: .semibold, weightKey: "semibold")?
-            .withTintColor(UIColor(red: 0.62, green: 0.67, blue: 0.74, alpha: 0.52), renderingMode: .alwaysOriginal)
-        button.setImage(placeholder, for: .normal)
+        button.setImage(Self.historySlotPlaceholderImage(), for: .normal)
         button.imageView?.contentMode = .center
         return button
     }
