@@ -213,25 +213,50 @@ final class KCDrawingCanvasView: UIView, UIGestureRecognizerDelegate {
         clipPath.lineJoinStyle = .round
         clipPath.addClip()
 
-        color.withAlphaComponent(alpha).setStroke()
         let dashWidth = self.drawingEngine.crayonGrainDashWidth(lineWidth: lineWidth)
         let dashPoints = cachedCrayonGrainDashPoints(forStroke: stroke, pathBounds: bounds, lineWidth: lineWidth)
-        let pointCount = dashPoints.count
+        let grainPath = crayonGrainPath(from: dashPoints, lineWidth: dashWidth)
+
+        color.withAlphaComponent(alpha).setStroke()
+        grainPath.stroke()
+
+        // 叠一层浅色纸纹间隙，让蜡笔读起来像蜡痕压在纸面上，而不是平滑粗马克笔。
+        context?.setBlendMode(.normal)
+        UIColor.white.withAlphaComponent(0.36).setStroke()
+        let paperToothPath = crayonGrainPath(
+            from: dashPoints,
+            lineWidth: max(0.8, dashWidth * 0.72),
+            pointOffset: CGPoint(x: dashWidth * 0.85, y: -dashWidth * 0.55),
+            stride: 4
+        )
+        paperToothPath.stroke()
+
+        context?.restoreGState()
+    }
+
+    private func crayonGrainPath(
+        from dashPoints: [NSValue],
+        lineWidth: CGFloat,
+        pointOffset: CGPoint = .zero,
+        stride: Int = 2
+    ) -> UIBezierPath {
         let grainPath = UIBezierPath()
-        grainPath.lineWidth = dashWidth
+        grainPath.lineWidth = lineWidth
         grainPath.lineCapStyle = .round
         grainPath.lineJoinStyle = .round
+
+        let pointCount = dashPoints.count
+        let requestedStep = max(2, stride)
+        let step = requestedStep.isMultiple(of: 2) ? requestedStep : requestedStep + 1
         var index = 0
         while index + 1 < pointCount {
             let start = dashPoints[index].cgPointValue
             let end = dashPoints[index + 1].cgPointValue
-            grainPath.move(to: start)
-            grainPath.addLine(to: end)
-            index += 2
+            grainPath.move(to: CGPoint(x: start.x + pointOffset.x, y: start.y + pointOffset.y))
+            grainPath.addLine(to: CGPoint(x: end.x + pointOffset.x, y: end.y + pointOffset.y))
+            index += step
         }
-        grainPath.stroke()
-
-        context?.restoreGState()
+        return grainPath
     }
 
     private func cachedCrayonGrainDashPoints(forStroke stroke: KDStroke,

@@ -95,6 +95,7 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
     var selectedHistorySession: KCSessionMetadata?
     private var draftThumbImageIdentity: String?
     private var historyThumbImageIdentities: [String?] = []
+    private var historyThumbSessionIdentifiers: [String?] = []
     private var cachedLineArtItems: [KCLineArtItem]?
     private var historySessionRefreshGeneration: Int = 0
     private var historyThumbnailRefreshGeneration: Int = 0
@@ -112,6 +113,10 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
     private let lineArtRenderingQueue = DispatchQueue(label: "com.kidcanvas.editor.line-art-rendering", qos: .userInitiated)
     private let draftGenerationLock = NSLock()
     private static let historyThumbnailImageStates: [UIControl.State] = [.normal, .highlighted, .selected, .disabled]
+    private static let historySlotTransparentImage: UIImage = {
+        let renderer = UIGraphicsImageRenderer(size: CGSize(width: 1.0, height: 1.0))
+        return renderer.image { _ in }
+    }()
     private let sessionSaveGenerationLock = NSLock()
     private var sessionSaveGeneration: Int = 0
     private var artworkLoadGeneration: Int = 0
@@ -121,6 +126,8 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
     private var lineArtLoadGeneration: Int = 0
     private var appliedCanvasActionState: KCCanvasFeature.ActionState?
     private var didScheduleStartupDeferredWork = false
+    private var didLoadPaletteGrid = false
+    private var didLoadRecentColors = false
     private var didLoadStickerButtons = false
     private var activeDraftMatchesCanvas: Bool = false
     private var brushWidthPreferenceSaveTimer: Timer?
@@ -158,8 +165,7 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
         super.viewDidLoad()
 
         self.view.backgroundColor = UIColor(red: 0.97, green: 0.94, blue: 0.89, alpha: 1.0)
-        // 内容选择 Feature 在构造时从 contentCatalog 建好色盘与贴纸分组；这里载入最近色。
-        self.contentPicker.loadRecentColors()
+        // 最近色、色盘按钮网格、历史读盘都延后到首帧后，降低启动同步工作。
         self.colorButtons = []
         self.recentColorButtons = []
         self.toolButtons = []
@@ -174,7 +180,6 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
 
         self.buildInterface()
         self.updatePaletteButtons()
-        self.reloadPaletteGrid()
         self.selectToolMode(.brush)
         self.selectBrushStyle(.pencil)
         self.selectColor(self.contentPicker.palette24.first!, sender: nil)
@@ -182,7 +187,7 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
         self.refreshEraserShapeButtons()
         self.refreshStickerCategoryButtons()
         self.refreshStickerEditButtons()
-        self.refreshHistoryUI(loadDraftThumbnail: false, preloadThumbnails: false, loadSessions: false)
+        self.refreshHistoryUI(loadDraftThumbnail: false, preloadThumbnails: false, loadSessions: false, checkDraftExistence: false)
         self.refreshActionButtons()
     }
 
@@ -491,7 +496,6 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
         self.paletteGridView = renderedPanel.paletteGridView
         self.paletteGridHeightConstraint = renderedPanel.paletteGridHeightConstraint
         self.recentColorRowStack = renderedPanel.recentColorRowStack
-        self.reloadRecentColorRow()
     }
 
     func buildSizePanel(_ panel: UIView) {
@@ -853,6 +857,7 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
         guard let grid = self.paletteGridView else {
             return
         }
+        self.didLoadPaletteGrid = true
         let palette = self.currentPalette()
         let result = self.colorPaletteRenderer.reloadPaletteGrid(
             in: grid,
@@ -895,6 +900,19 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
             }
         )
         self.recentColorButtons = result.buttons
+    }
+
+    func loadRecentColorsIfNeeded() {
+        guard !self.didLoadRecentColors else { return }
+        self.didLoadRecentColors = true
+        self.contentPicker.loadRecentColors()
+    }
+
+    func loadColorControlsAfterStartupIfNeeded() {
+        self.loadRecentColorsIfNeeded()
+        self.reloadRecentColorRow()
+        guard !self.didLoadPaletteGrid else { return }
+        self.reloadPaletteGrid()
     }
 
     func currentStickerSymbols() -> [String] {
@@ -948,6 +966,7 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
     }
 
     func addRecentColor(_ color: UIColor?) {
+        self.loadRecentColorsIfNeeded()
         self.contentPicker.addRecentColor(color)
         self.reloadRecentColorRow()
     }
@@ -1018,7 +1037,12 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
 
     // MARK: - 历史
 
-    func refreshHistoryUI(loadDraftThumbnail: Bool = true, preloadThumbnails: Bool = true, loadSessions: Bool = true) {
+    func refreshHistoryUI(
+        loadDraftThumbnail: Bool = true,
+        preloadThumbnails: Bool = true,
+        loadSessions: Bool = true,
+        checkDraftExistence: Bool = true
+    ) {
         if loadSessions {
             self.historySessionRefreshGeneration += 1
             self.sessions = self.sessionStore.loadAllSessions()
@@ -1035,7 +1059,7 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
         self.nextHistoryButton.alpha = self.nextHistoryButton.isEnabled ? 1.0 : 0.45
 
         let draftImage = loadDraftThumbnail ? self.sessionStore.draftThumbnailImage() : self.sessionStore.cachedDraftThumbnailImage()
-        let hasDraft = draftImage != nil || self.sessionStore.hasDraft()
+        let hasDraft = draftImage != nil || (checkDraftExistence && self.sessionStore.hasDraft())
         let selectedSession = self.currentSelectedHistorySession()
         let canDeleteHistoryItem = self.history.canDeleteHistory(
             hasSelectedSession: selectedSession != nil,
@@ -1097,6 +1121,7 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
                     to: button,
                     storedIdentity: &self.historyThumbImageIdentities[index]
                 )
+                self.historyThumbSessionIdentifiers[index] = nil
                 Self.setHistoryButtonPlaceholderVisible(true, on: button)
                 button.isEnabled = false
                 button.accessibilityLabel = "\(KCL10n.historyThumbPrefix(status.accessibilityPrefix)) \(index + 1)"
@@ -1108,12 +1133,16 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
                 if image == nil {
                     missingVisibleThumbnailIds.append(session.identifier)
                 }
-                Self.applyHistoryBackgroundImageIfNeeded(
-                    image,
-                    identity: self.historyImageIdentityForSession(session, image: image),
-                    to: button,
-                    storedIdentity: &self.historyThumbImageIdentities[index]
-                )
+                let representsSameSession = self.historyThumbSessionIdentifiers[index] == session.identifier
+                if image != nil || !representsSameSession {
+                    Self.applyHistoryBackgroundImageIfNeeded(
+                        image,
+                        identity: self.historyImageIdentityForSession(session, image: image),
+                        to: button,
+                        storedIdentity: &self.historyThumbImageIdentities[index]
+                    )
+                }
+                self.historyThumbSessionIdentifiers[index] = session.identifier
                 Self.setHistoryButtonPlaceholderVisible(false, on: button)
                 button.isEnabled = true
                 button.accessibilityLabel = "\(KCL10n.historyThumbPrefix(status.accessibilityPrefix)) \(sessionIndex + 1)"
@@ -1179,10 +1208,12 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
     }
 
     private func ensureHistoryThumbImageIdentityCapacity() {
-        if self.historyThumbImageIdentities.count == self.historyThumbButtons.count {
-            return
+        if self.historyThumbImageIdentities.count != self.historyThumbButtons.count {
+            self.historyThumbImageIdentities = Array(repeating: nil, count: self.historyThumbButtons.count)
         }
-        self.historyThumbImageIdentities = Array(repeating: nil, count: self.historyThumbButtons.count)
+        if self.historyThumbSessionIdentifiers.count != self.historyThumbButtons.count {
+            self.historyThumbSessionIdentifiers = Array(repeating: nil, count: self.historyThumbButtons.count)
+        }
     }
 
     private func historyImageIdentityForDraft(_ image: UIImage?) -> String? {
@@ -1221,7 +1252,7 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
     }
 
     private static func setHistoryButtonPlaceholderVisible(_ visible: Bool, on button: UIButton) {
-        let image = visible ? Self.historySlotPlaceholderImage() : nil
+        let image = visible ? Self.historySlotPlaceholderImage() : Self.historySlotTransparentImage
         for state in Self.historyThumbnailImageStates {
             button.setImage(image, for: state)
         }
@@ -2727,6 +2758,7 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
         self.didScheduleStartupDeferredWork = true
         DispatchQueue.main.async { [weak self] in
             guard let self else { return }
+            self.loadColorControlsAfterStartupIfNeeded()
             self.refreshHistorySessionsAsync(loadDraftThumbnail: false)
             self.restoreDraftIfNeeded()
             DispatchQueue.main.async { [weak self] in

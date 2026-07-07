@@ -215,11 +215,11 @@ final class KCDrawingEngineAdapter: NSObject, KCDrawingEngineProviding {
         return values
     }
 
-    /// 蜡笔纹理每条 dash 的常量描边宽度（`max(0.7, lineWidth * 0.065)`）。
+    /// 蜡笔纹理每条 dash 的常量描边宽度（`max(0.9, lineWidth * 0.09)`）。
     /// 等于 `KCCrayonGrain.dashes(...)` 生成的每条 dash 的 `lineWidth`；
     /// 单独暴露，避免纹理绘制方内联重复推导该常量。
     func crayonGrainDashWidth(lineWidth: CGFloat) -> CGFloat {
-        max(0.7, lineWidth * 0.065)
+        max(0.9, lineWidth * 0.09)
     }
 
     // MARK: - 贴纸变换约束
