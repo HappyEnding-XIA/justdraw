@@ -54,23 +54,27 @@ final class KCSessionMetadata: NSObject {
 @objc(KCSessionService)
 final class KCSessionService: NSObject {
     private let store = KCSessionStore(legacyMigrator: LegacyArchiveMigrator())
-    private let thumbnailImageCache = NSCache<NSString, UIImage>()
+    private let thumbnailImageCache: NSCache<NSString, UIImage> = {
+        let cache = NSCache<NSString, UIImage>()
+        cache.countLimit = 100
+        return cache
+    }()
+    private var artworkSessionCache: [KCArtworkSession]?
     private static let thumbnailSize = CGSize(width: 240, height: 180)
 
     // MARK: - 会话查询
 
     @objc func hasSavedSessions() -> Bool {
-        (try? store.hasSavedSessions()) ?? false
+        !cachedArtworkSessions().isEmpty
     }
 
     @objc func sessionCount() -> Int {
-        (try? store.loadSessions().count) ?? 0
+        cachedArtworkSessions().count
     }
 
     /// 返回所有会话（类型化的 `KCSessionMetadata` DTO，按最新优先排序）。
     @objc func loadAllSessions() -> [KCSessionMetadata] {
-        guard let sessions = try? store.loadSessions() else { return [] }
-        return sessions.map { KCSessionMetadata($0) }
+        cachedArtworkSessions().map { KCSessionMetadata($0) }
     }
 
     // MARK: - 保存画作（UIImage 便捷方法）
@@ -107,6 +111,7 @@ final class KCSessionService: NSObject {
         } else {
             thumbnailImageCache.removeObject(forKey: session.id as NSString)
         }
+        replaceCachedSession(session)
         return KCSessionMetadata(session)
     }
 
@@ -124,6 +129,10 @@ final class KCSessionService: NSObject {
 
     /// 返回缩略图 UIImage。
     @objc func thumbnailImage(forSessionId sessionId: String) -> UIImage? {
+        guard findSession(id: sessionId) != nil else {
+            thumbnailImageCache.removeObject(forKey: sessionId as NSString)
+            return nil
+        }
         if let cachedThumbnail = thumbnailImageCache.object(forKey: sessionId as NSString) {
             return cachedThumbnail
         }
@@ -144,8 +153,9 @@ final class KCSessionService: NSObject {
     /// 删除会话及其关联文件。
     @objc func deleteSession(withId sessionId: String) {
         guard let session = findSession(id: sessionId) else { return }
-        try? store.delete(session)
+        guard (try? store.delete(session)) != nil else { return }
         thumbnailImageCache.removeObject(forKey: sessionId as NSString)
+        removeCachedSession(id: sessionId)
     }
 
     // MARK: - 草稿自动保存
@@ -177,7 +187,29 @@ final class KCSessionService: NSObject {
     // MARK: - 私有辅助方法
 
     private func findSession(id: String) -> KCArtworkSession? {
-        try? store.loadSessions().first { $0.id == id }
+        cachedArtworkSessions().first { $0.id == id }
+    }
+
+    private func cachedArtworkSessions() -> [KCArtworkSession] {
+        if let artworkSessionCache {
+            return artworkSessionCache
+        }
+        let sessions = (try? store.loadSessions()) ?? []
+        artworkSessionCache = sessions
+        return sessions
+    }
+
+    private func replaceCachedSession(_ session: KCArtworkSession) {
+        guard var sessions = artworkSessionCache else { return }
+        sessions.removeAll { $0.id == session.id }
+        sessions.insert(session, at: 0)
+        artworkSessionCache = sessions
+    }
+
+    private func removeCachedSession(id sessionId: String) {
+        guard var sessions = artworkSessionCache else { return }
+        sessions.removeAll { $0.id == sessionId }
+        artworkSessionCache = sessions
     }
 
     /// 生成 240×180 缩略图，白底、aspect-fit，与原型 `thumbnailImageFromImage:`
