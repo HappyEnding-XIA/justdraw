@@ -82,16 +82,14 @@ final class KCDrawingEngineAdapter: NSObject, KCDrawingEngineProviding {
         return buffer.makeCGImage()
     }
 
-    /// 从 `image` 的像素坐标（`x`、`y`）采样单个像素颜色，使用与原型
-    /// `colorAtPoint:` 相同的 1×1 位图上下文技巧——无需分配完整的
-    /// KCBitmapBuffer。
+    /// 从 `image` 的像素坐标（`x`、`y`）采样单个像素颜色，只裁剪并渲染目标
+    /// 1×1 像素，避免为高频取色路径分配整张位图缓冲区。
     func sampleColorFromImage(
         _ image: CGImage,
         x: Int,
         y: Int
     ) -> UIColor? {
-        guard let buffer = KCBitmapBuffer(cgImage: image),
-              let pixel = KCColorSampler.sample(buffer: buffer, x: x, y: y) else {
+        guard let pixel = KCImagePixelSampler.sample(cgImage: image, x: x, y: y) else {
             return nil
         }
         return UIColor(

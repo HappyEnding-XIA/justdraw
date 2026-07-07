@@ -712,6 +712,7 @@ def app_feature_checks(
     bitmap_buffer_text,
     flood_fill_text,
     color_sampler_text,
+    image_pixel_sampler_text,
     pressure_model_text,
     crayon_grain_text,
     sticker_constraints_text,
@@ -1088,8 +1089,8 @@ def app_feature_checks(
     checks.append(require_text(content_picker_feature_text, "KCRecentColorQueue.inserting(", "Content picker feature delegates recent-color insertion to KCDomain"))
     checks.append(require_text(canvas_text, "case picker", "Eyedropper tool mode exists"))
     checks.append(require_text(canvas_text, "sampleColorFromImage(", "Eyedropper delegates pixel sampling to Swift"))
-    checks.append(require_text(drawing_bridge_text, "KCBitmapBuffer(cgImage: image)", "Eyedropper bridge rasterizes the snapshot image"))
-    checks.append(require_text(drawing_bridge_text, "KCColorSampler.sample(buffer: buffer, x: x, y: y)", "Eyedropper bridge samples using the Swift sampler"))
+    checks.append(require_text(drawing_bridge_text, "KCImagePixelSampler.sample(cgImage: image, x: x, y: y)", "Eyedropper bridge samples a single pixel without rasterizing the whole image"))
+    checks.append(forbid_text(drawing_bridge_text, "KCColorSampler.sample(buffer: buffer, x: x, y: y)", "Eyedropper bridge no longer samples through a full-image bitmap buffer"))
     checks.append(forbid_text(canvas_text, "CGContextTranslateCTM", "Eyedropper avoids fragile manual context flipping"))
     # T036: drawing algorithms are accessed through an injected protocol instance.
     checks.append(require_text(drawing_bridge_text, "protocol KCDrawingEngineProviding", "Drawing engine protocol boundary exists"))
@@ -1125,17 +1126,17 @@ def app_feature_checks(
     checks.append(require_text(canvas_text, "final class KCDrawingCanvasView", "Canvas is a Swift class (no Objective-C bridge header needed)"))
     checks.append(require_text(drawing_bridge_text, "KCBitmapBuffer(cgImage:", "Flood fill bridge uses Swift bitmap buffer"))
     checks.append(require_text(drawing_bridge_text, "KCFloodFillEngine.fill(", "Flood fill bridge calls the Swift engine"))
-    checks.append(require_text(drawing_bridge_text, "KCColorSampler.sample(", "Color sampling bridge calls the Swift sampler"))
+    checks.append(require_text(drawing_bridge_text, "KCImagePixelSampler.sample(", "Color sampling bridge calls the single-pixel Swift sampler"))
     checks.append(require_text(drawing_bridge_text, "KCPressureModel.normalized(", "Pressure bridge calls the Swift model"))
     checks.append(require_text(drawing_bridge_text, "guard let buffer = KCBitmapBuffer(cgImage:", "Swift bridge validates CGImage input before fill"))
-    checks.append(require_text(drawing_bridge_text, "guard let buffer = KCBitmapBuffer(cgImage: image),", "Swift bridge validates CGImage input before sampling"))
     checks.append(require_text(drawing_bridge_text, "return UIColor(", "Swift bridge returns UIKit color objects"))
     checks.append(require_text(bitmap_buffer_text, "public init?(cgImage: CGImage)", "Swift bitmap buffer can decode CGImage input"))
     checks.append(require_text(flood_fill_text, "public enum KCFloodFillEngine", "Flood fill engine is implemented in Swift"))
     checks.append(require_text(flood_fill_text, "guard width <= Int.max / height", "Swift flood fill guards pixel-count multiplication overflow"))
     checks.append(require_text(flood_fill_text, "var visited = [Bool]", "Swift flood fill tracks visited pixels"))
     checks.append(require_text(flood_fill_text, "var queue = [Int]()", "Swift flood fill uses an indexed queue"))
-    checks.append(require_text(color_sampler_text, "public enum KCColorSampler", "Color sampler is implemented in Swift"))
+    checks.append(require_text(color_sampler_text, "public enum KCColorSampler", "Buffer color sampler is implemented in Swift"))
+    checks.append(require_text(image_pixel_sampler_text, "public enum KCImagePixelSampler", "CGImage single-pixel sampler is implemented in Swift"))
     checks.append(require_text(pressure_model_text, "public enum KCPressureModel", "Pressure model is implemented in Swift"))
     # T021: built-in sticker/line-art content is externalized to the KCContentCatalog resource (content.json);
     # the main view controller consumes it via contentCatalog instead of hardcoding metadata.
@@ -1403,6 +1404,7 @@ def main():
     bitmap_buffer_text = (ROOT / "Packages" / "KidCanvasModules" / "Sources" / "KCDrawingEngine" / "KCBitmapBuffer.swift").read_text(encoding="utf-8")
     flood_fill_text = (ROOT / "Packages" / "KidCanvasModules" / "Sources" / "KCDrawingEngine" / "KCFloodFillEngine.swift").read_text(encoding="utf-8")
     color_sampler_text = (ROOT / "Packages" / "KidCanvasModules" / "Sources" / "KCDrawingEngine" / "KCColorSampler.swift").read_text(encoding="utf-8")
+    image_pixel_sampler_text = (ROOT / "Packages" / "KidCanvasModules" / "Sources" / "KCDrawingEngine" / "KCImagePixelSampler.swift").read_text(encoding="utf-8")
     pressure_model_text = (ROOT / "Packages" / "KidCanvasModules" / "Sources" / "KCDrawingEngine" / "KCPressureModel.swift").read_text(encoding="utf-8")
     crayon_grain_text = (ROOT / "Packages" / "KidCanvasModules" / "Sources" / "KCDrawingEngine" / "KCCrayonGrain.swift").read_text(encoding="utf-8")
     sticker_constraints_text = (ROOT / "Packages" / "KidCanvasModules" / "Sources" / "KCDomain" / "KCStickerConstraints.swift").read_text(encoding="utf-8")
@@ -1456,6 +1458,7 @@ def main():
         bitmap_buffer_text,
         flood_fill_text,
         color_sampler_text,
+        image_pixel_sampler_text,
         pressure_model_text,
         crayon_grain_text,
         sticker_constraints_text,
