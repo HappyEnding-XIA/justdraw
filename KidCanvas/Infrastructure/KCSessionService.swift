@@ -190,6 +190,12 @@ final class KCSessionService: NSObject {
         return thumbnailImageCache.object(forKey: sessionId as NSString)
     }
 
+    /// 按已加载 metadata 读取内存缩略图缓存，供历史栏刷新使用，避免主线程重复查找会话列表。
+    func cachedThumbnailImage(forSession session: KCSessionMetadata) -> UIImage? {
+        guard !session.identifier.isEmpty else { return nil }
+        return thumbnailImageCache.object(forKey: session.identifier as NSString)
+    }
+
     /// 后台预热指定会话的缩略图缓存，减少历史翻页时的主线程读盘/解码。
     func preloadThumbnailImages(forSessionIds sessionIds: [String], completion: (() -> Void)? = nil) {
         let requestedIds = Set(sessionIds)

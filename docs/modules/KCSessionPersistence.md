@@ -31,7 +31,8 @@
 - App 接入路径：`KCAppCompositionRoot` 构造 `KCSessionService`，再由 `KCMainViewController` 调用服务层方法。
 - `KCSessionService.encodedArtworkData(from:)`：集中生成正式保存所需的 PNG 与 240×180 JPEG 缩略图数据；该入口不读写磁盘和缓存，可由 `KCMainViewController` 放到后台队列执行。
 - `KCSessionService.thumbnailImage(forSessionId:)`：面向 UIKit 历史栏的便捷入口，会先确认会话仍存在，再优先返回内存缓存；`saveArtwork` 成功后刷新对应缩略图缓存，`deleteSession` 调用后会移除对应缓存。
-- `KCSessionService.cachedThumbnailImage(forSessionId:)`：只读取内存缓存，不触发磁盘读取或图片解码；`KCMainViewController.refreshHistoryUI()` 必须使用该入口刷新当前页已保存缩略图，缓存 miss 时先显示占位。
+- `KCSessionService.cachedThumbnailImage(forSession:)`：按已加载 `KCSessionMetadata` 只读取内存缓存，不触发磁盘读取、图片解码或重复查找 session 列表；`KCMainViewController.refreshHistoryUI()` 必须使用该入口刷新当前页已保存缩略图，缓存 miss 时先显示占位。
+- `KCSessionService.cachedThumbnailImage(forSessionId:)`：保留为低频兼容入口，会先确认会话仍存在；历史栏当前页刷新不得走该入口重复查询 metadata。
 - `KCSessionService.preloadThumbnailImages(forSessionIds:completion:)`：在 utility 后台队列预热历史缩略图缓存；已缓存或正在预热的 id 不得重复排队，避免历史面板频繁刷新时造成重复读盘/解码；completion 回主线程执行，用于当前页 miss 解码完成后刷新 UI。
 - `KCSessionService.loadAllSessions()` / `sessionCount()` / `hasSavedSessions()` / `findSession(id:)`：共享服务层会话元数据缓存，避免历史栏刷新和缩略图读取反复解码 `sessions.json`；服务层 cache 必须加锁，保存成功后替换缓存中的最新会话，删除成功后移除对应会话。
 - `KCSessionService.loadAllSessionsAsync(completion:)`：启动后的历史栏首次 metadata 加载必须走后台 `sessionMetadataQueue`，完成后回主线程刷新 UI，避免主线程首次读取 `sessions.json`。

@@ -1090,7 +1090,7 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
                 button.transform = .identity
             } else {
                 let session = self.sessions[sessionIndex]
-                let image = self.sessionStore.cachedThumbnailImage(forSessionId: session.identifier)
+                let image = self.sessionStore.cachedThumbnailImage(forSession: session)
                 if image == nil {
                     missingVisibleThumbnailIds.append(session.identifier)
                 }
