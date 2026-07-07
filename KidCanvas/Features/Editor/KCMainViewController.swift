@@ -109,6 +109,7 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
     private let imageImportProcessingQueue = DispatchQueue(label: "com.kidcanvas.editor.image-import-processing", qos: .userInitiated)
     private let draftPersistenceQueue = DispatchQueue(label: "com.kidcanvas.editor.draft-persistence", qos: .utility)
     private let lineArtRenderingQueue = DispatchQueue(label: "com.kidcanvas.editor.line-art-rendering", qos: .userInitiated)
+    private let draftGenerationLock = NSLock()
     private static let historyThumbnailImageStates: [UIControl.State] = [.normal, .highlighted, .selected, .disabled]
     private var sessionSaveGeneration: Int = 0
     private var artworkLoadGeneration: Int = 0
@@ -1676,26 +1677,24 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
 
         self.invalidateDraftSaveTimer()
         let snapshot = self.canvasView.snapshotImage()
-        let generation = self.draftProtectionGeneration + 1
-        self.draftProtectionGeneration = generation
+        let generation = self.nextDraftProtectionGeneration()
         self.draftPersistenceQueue.async { [weak self, snapshot, generation] in
             guard let self else { return }
             guard let pngData = snapshot.pngData() else {
                 DispatchQueue.main.async { [weak self] in
-                    self?.refreshHistoryUI(loadSessions: false)
+                    guard let self else { return }
+                    guard self.isDraftProtectionGenerationCurrent(generation) else { return }
+                    self.refreshHistoryUI(loadSessions: false)
                 }
                 return
             }
 
-            let shouldSave = DispatchQueue.main.sync { [weak self] in
-                self?.draftProtectionGeneration == generation
-            }
-            guard shouldSave else { return }
+            guard self.isDraftProtectionGenerationCurrent(generation) else { return }
 
             let saved = self.sessionStore.saveDraftData(pngData: pngData, cachedImage: snapshot)
             DispatchQueue.main.async { [weak self] in
                 guard let self else { return }
-                guard self.draftProtectionGeneration == generation else { return }
+                guard self.isDraftProtectionGenerationCurrent(generation) else { return }
                 if !saved {
                     self.activeDraftMatchesCanvas = false
                 }
@@ -1706,7 +1705,7 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
     }
 
     func clearDraftAndInvalidateCurrentDraftMarker() {
-        self.draftProtectionGeneration += 1
+        self.nextDraftProtectionGeneration()
         self.sessionStore.clearDraft()
         self.activeDraftMatchesCanvas = false
     }
@@ -2734,7 +2733,35 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
     func invalidateDraftSaveTimer() {
         self.draftSaveTimer?.invalidate()
         self.draftSaveTimer = nil
+        self.nextDraftSaveGeneration()
+    }
+
+    @discardableResult
+    func nextDraftSaveGeneration() -> Int {
+        self.draftGenerationLock.lock()
+        defer { self.draftGenerationLock.unlock() }
         self.draftSaveGeneration += 1
+        return self.draftSaveGeneration
+    }
+
+    @discardableResult
+    func nextDraftProtectionGeneration() -> Int {
+        self.draftGenerationLock.lock()
+        defer { self.draftGenerationLock.unlock() }
+        self.draftProtectionGeneration += 1
+        return self.draftProtectionGeneration
+    }
+
+    func isDraftSaveGenerationCurrent(_ generation: Int) -> Bool {
+        self.draftGenerationLock.lock()
+        defer { self.draftGenerationLock.unlock() }
+        return self.draftSaveGeneration == generation
+    }
+
+    func isDraftProtectionGenerationCurrent(_ generation: Int) -> Bool {
+        self.draftGenerationLock.lock()
+        defer { self.draftGenerationLock.unlock() }
+        return self.draftProtectionGeneration == generation
     }
 
     func invalidateSessionSaveWork() {
@@ -2785,20 +2812,25 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
         }
 
         let snapshot = self.canvasView.snapshotImage()
-        let generation = self.draftSaveGeneration + 1
-        self.draftSaveGeneration = generation
+        let generation = self.nextDraftSaveGeneration()
         self.draftPersistenceQueue.async { [weak self, snapshot] in
             guard let self else { return }
             let pngData = snapshot.pngData()
 
+            guard self.isDraftSaveGenerationCurrent(generation) else { return }
+            guard let pngData else {
+                DispatchQueue.main.async { [weak self] in
+                    guard let self else { return }
+                    guard self.isDraftSaveGenerationCurrent(generation) else { return }
+                    self.refreshHistoryUI()
+                }
+                return
+            }
+            let saved = self.sessionStore.saveDraftData(pngData: pngData, cachedImage: snapshot)
+
             DispatchQueue.main.async { [weak self] in
                 guard let self else { return }
-                guard self.draftSaveGeneration == generation else { return }
-                guard let pngData else {
-                    self.refreshHistoryUI()
-                    return
-                }
-                let saved = self.sessionStore.saveDraftData(pngData: pngData, cachedImage: snapshot)
+                guard self.isDraftSaveGenerationCurrent(generation) else { return }
                 self.activeDraftMatchesCanvas = saved
                 if !saved {
                     self.clearDraftAndInvalidateCurrentDraftMarker()

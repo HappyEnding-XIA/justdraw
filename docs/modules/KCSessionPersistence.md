@@ -41,7 +41,7 @@
 - `KCSessionService.draftThumbnailImage()`：面向历史面板的轻量入口，优先返回加锁保护的 `draftThumbnailCache`；自动保存或替换前草稿保护成功时用快照刷新缩略图缓存，历史面板不得为了显示 240×180 草稿槽位直接调用 `loadDraftImage()`。
 - `KCSessionService.hasDraft()`：用于删除按钮可用性和删除流程的轻量草稿存在性判断；当只需要知道草稿是否存在时，不得调用 `loadDraftImage()` 触发同步读盘和图片解码。
 - 正式保存流程先由 `KCMainViewController` 在主线程生成画布快照，再把 PNG/JPEG 编码放入 `sessionEncodingQueue`；回主线程确认 `sessionSaveGeneration` 仍有效后，才调用 `saveArtwork(pngData:thumbnailJPEGData:existingSessionId:)` 更新磁盘、缓存、历史和相册输出。
-- App 层自动草稿保存先由 `KCMainViewController` 在主线程生成画布快照，再把 PNG 编码合并到后台队列；正式写入前必须通过 generation guard 确认任务仍有效，避免旧后台任务在清空/替换画布后复活旧草稿，同时用当前快照刷新草稿缩略图缓存，不长期持有全尺寸自动保存图。
+- App 层自动草稿保存先由 `KCMainViewController` 在主线程生成画布快照，再把 PNG 编码和 `saveDraftData(pngData:cachedImage:)` 写盘合并到 `draftPersistenceQueue` 后台队列；正式写入前必须通过加锁 generation guard 确认任务仍有效，避免旧后台任务在清空/替换画布后复活旧草稿，同时用当前快照刷新草稿缩略图缓存，不长期持有全尺寸自动保存图。
 - 历史栏当前页缩略图 miss 时，`KCMainViewController` 只能记录缺失 session id 并调用 `preloadVisibleHistoryThumbnailsIfNeeded(_:)`；后台预热完成后再统一刷新 UI，禁止在刷新循环中同步读盘/解码。
 - 启动首帧前不得同步读取会话 metadata；`viewDidLoad` 只能用当前内存 `sessions` 渲染空历史槽位，首帧后由 `refreshHistorySessionsAsync(loadDraftThumbnail:preloadThumbnails:)` 后台加载 metadata，再回主线程调用 `refreshHistoryUI(..., loadSessions: false)`。
 - 用户真正打开已保存作品或草稿时，也不得在主线程读取完整 PNG 或执行 `UIImage(data:)`；历史作品走 `artworkLoadingQueue + artworkData(forSession:)`，草稿走 `draftPersistenceQueue + loadDraftData()`，并统一通过 `artworkLoadGeneration` 丢弃过期后台结果。
@@ -62,3 +62,4 @@
 - 禁止把正式保存的 PNG/JPEG 编码重新塞回 `didTapSaveSession()` 主线程同步路径；编码必须复用 `KCSessionService.encodedArtworkData(from:)` 并通过 generation guard 回主线程提交。
 - 禁止在 `KCMainViewController` 业务路径直接调用 `sessionStore.clearDraft()`；统一走 `clearDraftAndInvalidateCurrentDraftMarker()`，保证磁盘草稿和 `activeDraftMatchesCanvas` 状态不会分叉。
 - 禁止在 `preserveUnsavedActiveSessionDraftIfNeeded()` 中调用 `saveDraftImage(_:)` 或在主线程执行 PNG 编码/草稿写盘；替换画布前的草稿保护必须返回“已安排保护”并由后台队列落盘。
+- 禁止在 `saveDraftIfNeeded()` 的 `DispatchQueue.main.async` 回调中调用 `saveDraftData(pngData:cachedImage:)`；主线程只负责最终刷新 `activeDraftMatchesCanvas`、历史缩略图和按钮状态。
