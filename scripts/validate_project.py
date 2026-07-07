@@ -22,6 +22,7 @@ APP_FILE_PATHS = {
     "KCMainViewController+PanelCollapse.swift": APP_ROOT / "Features" / "Editor" / "KCMainViewController+PanelCollapse.swift",
     "KCMainViewController+ToolSelection.swift": APP_ROOT / "Features" / "Editor" / "KCMainViewController+ToolSelection.swift",
     "KCCanvasFeature.swift": APP_ROOT / "Features" / "Canvas" / "KCCanvasFeature.swift",
+    "KCDrawingCanvasModels.swift": APP_ROOT / "Features" / "Canvas" / "KCDrawingCanvasModels.swift",
     "KCDrawingCanvasView.swift": APP_ROOT / "Features" / "Canvas" / "KCDrawingCanvasView.swift",
     "KCToolRailFeature.swift": APP_ROOT / "Features" / "Tools" / "KCToolRailFeature.swift",
     "KCBrushDockFeature.swift": APP_ROOT / "Features" / "Tools" / "KCBrushDockFeature.swift",
@@ -703,6 +704,7 @@ def forbid_text(text, needle, message):
 def app_feature_checks(
     main_text,
     canvas_text,
+    canvas_models_text,
     session_store_bridge_text,
     kc_session_store_text,
     kc_artwork_session_text,
@@ -1087,7 +1089,7 @@ def app_feature_checks(
     # T022: recent-color dedupe/cap logic moved to KCDomain KCRecentColorQueue (tested); controller delegates via the feature.
     checks.append(require_text(kc_recent_color_queue_text, "defaultLimit: Int = 8", "Recent colors keep up to eight colors (KCDomain KCRecentColorQueue)"))
     checks.append(require_text(content_picker_feature_text, "KCRecentColorQueue.inserting(", "Content picker feature delegates recent-color insertion to KCDomain"))
-    checks.append(require_text(canvas_text, "case picker", "Eyedropper tool mode exists"))
+    checks.append(require_text(canvas_models_text, "case picker", "Eyedropper tool mode exists"))
     checks.append(require_text(canvas_text, "sampleColorFromImage(", "Eyedropper delegates pixel sampling to Swift"))
     checks.append(require_text(drawing_bridge_text, "KCImagePixelSampler.sample(cgImage: image, x: x, y: y)", "Eyedropper bridge samples a single pixel without rasterizing the whole image"))
     checks.append(forbid_text(drawing_bridge_text, "KCColorSampler.sample(buffer: buffer, x: x, y: y)", "Eyedropper bridge no longer samples through a full-image bitmap buffer"))
@@ -1104,9 +1106,9 @@ def app_feature_checks(
     checks.append(require_text(canvas_text, "self.drawingEngine.normalizedPressure", "Pressure normalization is bridged through DI"))
     checks.append(require_text(canvas_text, "self.drawingEngine.floodFillImage", "Flood fill is bridged through DI"))
     checks.append(require_text(canvas_text, "self.drawingEngine.sampleColorFromImage", "Color sampling is bridged through DI"))
-    checks.append(require_text(canvas_text, "case pencil", "Pencil brush style exists"))
-    checks.append(require_text(canvas_text, "case pen", "Pen brush style exists"))
-    checks.append(require_text(canvas_text, "case crayon", "Crayon brush style exists"))
+    checks.append(require_text(canvas_models_text, "case pencil", "Pencil brush style exists"))
+    checks.append(require_text(canvas_models_text, "case pen", "Pen brush style exists"))
+    checks.append(require_text(canvas_models_text, "case crayon", "Crayon brush style exists"))
     checks.append(require_regex(canvas_text, r"\.crayon[\s\S]*drawCrayonGrain\(forPath: renderPath", "Crayon brush adds clipped grain texture"))
     checks.append(require_regex(canvas_text, r"func drawCrayonGrain[\s\S]*clipPath\.addClip\(\)", "Crayon grain texture is clipped to the stroke (UIKit drawing in Swift)"))
     checks.append(require_text(canvas_text, "self.drawingEngine.crayonGrainDashPoints(pathBounds:", "Crayon grain geometry is delegated to the injected drawing engine"))
@@ -1116,14 +1118,21 @@ def app_feature_checks(
     checks.append(require_text(crayon_grain_text, "let rowCount = min(180", "Crayon grain has a row safety cap"))
     checks.append(require_text(main_text, "bottomDock.centerXAnchor.constraint(equalTo: self.view.centerXAnchor)", "Bottom brush dock is centered as a floating control"))
     checks.append(require_regex(main_text, r"func buildBottomDock[\s\S]*\.pencil[\s\S]*\.pen[\s\S]*\.crayon", "Bottom dock contains brush choices only", re.S))
-    checks.append(require_text(canvas_text, "case circle", "Circle eraser shape exists"))
-    checks.append(require_text(canvas_text, "case cloud", "Cloud eraser shape exists"))
-    checks.append(require_text(canvas_text, "case star", "Star eraser shape exists"))
+    checks.append(require_text(canvas_models_text, "case circle", "Circle eraser shape exists"))
+    checks.append(require_text(canvas_models_text, "case cloud", "Cloud eraser shape exists"))
+    checks.append(require_text(canvas_models_text, "case star", "Star eraser shape exists"))
     checks.append(require_text(canvas_text, "func performFloodFill", "Flood fill entry point remains in the Swift canvas"))
     checks.append(require_text(canvas_text, "self.drawingEngine.floodFillImage", "Flood fill delegates to the injected drawing engine"))
     checks.append(require_text(canvas_text, "self.drawingEngine.normalizedPressure", "Pressure normalization delegates to the injected drawing engine"))
     checks.append(require_text(canvas_text, "self.drawingEngine.sampleColorFromImage", "Color sampling delegates to the injected drawing engine"))
     checks.append(require_text(canvas_text, "final class KCDrawingCanvasView", "Canvas is a Swift class (no Objective-C bridge header needed)"))
+    checks.append(require_text(canvas_models_text, "enum KDToolMode", "Canvas tool mode enum is extracted to KCDrawingCanvasModels"))
+    checks.append(require_text(canvas_models_text, "final class KDStroke", "Canvas stroke model is extracted to KCDrawingCanvasModels"))
+    checks.append(require_text(canvas_models_text, "final class KDCanvasState", "Canvas state model is extracted to KCDrawingCanvasModels"))
+    checks.append(require_text(canvas_models_text, "final class KDStickerView", "Canvas sticker view model is extracted to KCDrawingCanvasModels"))
+    checks.append(forbid_text(canvas_text, "final class KDStroke", "Canvas view no longer owns the stroke model type"))
+    checks.append(forbid_text(canvas_text, "final class KDCanvasState", "Canvas view no longer owns the canvas state model type"))
+    checks.append(forbid_text(canvas_text, "final class KDStickerView", "Canvas view no longer owns the sticker view model type"))
     checks.append(require_text(drawing_bridge_text, "KCBitmapBuffer(cgImage:", "Flood fill bridge uses Swift bitmap buffer"))
     checks.append(require_text(drawing_bridge_text, "KCFloodFillEngine.fill(", "Flood fill bridge calls the Swift engine"))
     checks.append(require_text(drawing_bridge_text, "KCImagePixelSampler.sample(", "Color sampling bridge calls the single-pixel Swift sampler"))
@@ -1397,6 +1406,7 @@ def main():
         APP_FILE_PATHS["KCMainViewController+ToolSelection.swift"].read_text(encoding="utf-8"),
     ])
     canvas_text = APP_FILE_PATHS["KCDrawingCanvasView.swift"].read_text(encoding="utf-8")
+    canvas_models_text = APP_FILE_PATHS["KCDrawingCanvasModels.swift"].read_text(encoding="utf-8")
     session_store_bridge_text = APP_FILE_PATHS["KCSessionService.swift"].read_text(encoding="utf-8")
     kc_session_store_text = (ROOT / "Packages" / "KidCanvasModules" / "Sources" / "KCSessionPersistence" / "KCSessionStore.swift").read_text(encoding="utf-8")
     kc_artwork_session_text = (ROOT / "Packages" / "KidCanvasModules" / "Sources" / "KCDomain" / "KCArtworkSession.swift").read_text(encoding="utf-8")
@@ -1451,6 +1461,7 @@ def main():
     checks.extend(app_feature_checks(
         main_text,
         canvas_text,
+        canvas_models_text,
         session_store_bridge_text,
         kc_session_store_text,
         kc_artwork_session_text,

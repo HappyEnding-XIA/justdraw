@@ -8,31 +8,6 @@
 import UIKit
 import KCDomain
 
-// MARK: - 工具枚举
-
-@objc(KDToolMode)
-enum KDToolMode: Int {
-    case brush = 0
-    case eraser
-    case fill
-    case sticker
-    case picker
-}
-
-@objc(KDBrushStyle)
-enum KDBrushStyle: Int {
-    case pencil = 0
-    case pen
-    case crayon
-}
-
-@objc(KDEraserShape)
-enum KDEraserShape: Int {
-    case circle = 0
-    case cloud
-    case star
-}
-
 // MARK: - 代理
 
 @objc(KDDrawingCanvasViewDelegate)
@@ -42,47 +17,6 @@ protocol KDDrawingCanvasViewDelegate: AnyObject {
     @objc optional func drawingCanvasViewSelectionDidChange(_ canvasView: KCDrawingCanvasView)
     @objc optional func drawingCanvasViewContentDidChange(_ canvasView: KCDrawingCanvasView)
 }
-
-// MARK: - 画布状态模型类型
-
-final class KDStroke: NSObject {
-    var path: UIBezierPath = UIBezierPath()
-    var color: UIColor = .black
-    var lineWidth: CGFloat = 0
-    var pressureTotal: CGFloat = 0
-    var pressureSampleCount: Int = 0
-    var startPoint: CGPoint = .zero
-    var dotStroke: Bool = false
-    var toolMode: KDToolMode = .brush
-    var brushStyle: KDBrushStyle = .pencil
-    var eraserShape: KDEraserShape = .circle
-
-    var averagePressure: CGFloat {
-        pressureSampleCount <= 0 ? 1.0 : pressureTotal / CGFloat(pressureSampleCount)
-    }
-}
-
-final class KDStickerState: NSObject {
-    var symbolName: String = ""
-    var symbolColor: UIColor = .black
-    var center: CGPoint = .zero
-    var transform: CGAffineTransform = .identity
-}
-
-final class KDCanvasState: NSObject {
-    var backgroundImage: UIImage?
-    var strokes: [KDStroke] = []
-    var stickers: [KDStickerState] = []
-}
-
-// MARK: - 贴纸视图
-
-final class KDStickerView: UIImageView {
-    var symbolName: String = ""
-    var symbolColor: UIColor = .black
-}
-
-// MARK: - 画布视图
 
 /// 原 Objective-C `KDDrawingCanvasView` 的忠实 Swift 移植。行为保持 1:1 一致
 ///（触摸绘制、撤销/重做、贴纸手势、渲染）。纯绘制算法通过
