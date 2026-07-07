@@ -37,8 +37,7 @@ final class KCDrawingCanvasView: UIView, UIGestureRecognizerDelegate {
 
     private var strokes: [KDStroke] = []
     private var stickers: [KDStickerView] = []
-    private var undoStates: [KDCanvasState] = []
-    private var redoStates: [KDCanvasState] = []
+    private let historyStore = KCCanvasHistoryStore()
     private var activeStroke: KDStroke?
     private var backgroundImage: UIImage?
     private var pendingStrokeState: KDCanvasState?
@@ -48,7 +47,6 @@ final class KCDrawingCanvasView: UIView, UIGestureRecognizerDelegate {
     private var activeStickerGestureCount = 0
     private weak var selectedStickerView: KDStickerView?
 
-    private static let maximumHistoryStates = 48
     private static let stickerCornerRadius: CGFloat = 18.0
     private static let stickerIdleShadowOpacity: Float = 0.16
     private static let stickerSelectedShadowOpacity: Float = 0.26
@@ -297,29 +295,17 @@ final class KCDrawingCanvasView: UIView, UIGestureRecognizerDelegate {
     // MARK: - 撤销 / 重做
 
     @objc func undoLastAction() {
-        if undoStates.isEmpty {
-            return
-        }
-
+        guard historyStore.canUndo else { return }
         let currentState = canvasStateSnapshot()
-        redoStates.append(currentState)
-        trimHistoryStack(&redoStates)
-
-        let state = undoStates.removeLast()
+        guard let state = historyStore.undoState(afterRecordingRedo: currentState) else { return }
         applyCanvasState(state)
         notifyContentChanged()
     }
 
     @objc func redoLastAction() {
-        if redoStates.isEmpty {
-            return
-        }
-
+        guard historyStore.canRedo else { return }
         let currentState = canvasStateSnapshot()
-        undoStates.append(currentState)
-        trimHistoryStack(&undoStates)
-
-        let state = redoStates.removeLast()
+        guard let state = historyStore.redoState(afterRecordingUndo: currentState) else { return }
         applyCanvasState(state)
         notifyContentChanged()
     }
@@ -554,21 +540,11 @@ final class KCDrawingCanvasView: UIView, UIGestureRecognizerDelegate {
     }
 
     private func commitUndoStateSnapshot(_ state: KDCanvasState?) {
-        guard let state else { return }
-        undoStates.append(state)
-        trimHistoryStack(&undoStates)
-        redoStates.removeAll()
+        historyStore.recordUndoState(state)
     }
 
     private func clearHistoryStacks() {
-        undoStates.removeAll()
-        redoStates.removeAll()
-    }
-
-    private func trimHistoryStack(_ stack: inout [KDCanvasState]) {
-        while stack.count > Self.maximumHistoryStates {
-            stack.removeFirst()
-        }
+        historyStore.clear()
     }
 
     private func applyCanvasState(_ state: KDCanvasState) {
@@ -911,11 +887,11 @@ final class KCDrawingCanvasView: UIView, UIGestureRecognizerDelegate {
     }
 
     @objc func canUndo() -> Bool {
-        !undoStates.isEmpty
+        historyStore.canUndo
     }
 
     @objc func canRedo() -> Bool {
-        !redoStates.isEmpty
+        historyStore.canRedo
     }
 
     @objc func hasVisibleContent() -> Bool {

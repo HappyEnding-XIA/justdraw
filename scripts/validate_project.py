@@ -23,6 +23,7 @@ APP_FILE_PATHS = {
     "KCMainViewController+ToolSelection.swift": APP_ROOT / "Features" / "Editor" / "KCMainViewController+ToolSelection.swift",
     "KCCanvasFeature.swift": APP_ROOT / "Features" / "Canvas" / "KCCanvasFeature.swift",
     "KCDrawingCanvasModels.swift": APP_ROOT / "Features" / "Canvas" / "KCDrawingCanvasModels.swift",
+    "KCCanvasHistoryStore.swift": APP_ROOT / "Features" / "Canvas" / "KCCanvasHistoryStore.swift",
     "KCDrawingCanvasView.swift": APP_ROOT / "Features" / "Canvas" / "KCDrawingCanvasView.swift",
     "KCToolRailFeature.swift": APP_ROOT / "Features" / "Tools" / "KCToolRailFeature.swift",
     "KCBrushDockFeature.swift": APP_ROOT / "Features" / "Tools" / "KCBrushDockFeature.swift",
@@ -705,6 +706,7 @@ def app_feature_checks(
     main_text,
     canvas_text,
     canvas_models_text,
+    canvas_history_store_text,
     session_store_bridge_text,
     kc_session_store_text,
     kc_artwork_session_text,
@@ -1254,14 +1256,18 @@ def app_feature_checks(
     checks.append(require_text(canvas_text, "touch.type == .pencil", "Apple Pencil pressure handling exists"))
     checks.append(require_text(canvas_text, "func undoLastAction", "Undo implementation exists"))
     checks.append(require_text(canvas_text, "func redoLastAction", "Redo implementation exists"))
-    checks.append(require_text(canvas_text, "maximumHistoryStates", "Undo/redo history has a bounded capacity"))
-    checks.append(require_text(canvas_text, "func trimHistoryStack", "Undo/redo history stacks are trimmed"))
+    checks.append(require_text(canvas_history_store_text, "final class KCCanvasHistoryStore", "Canvas undo/redo history store is extracted"))
+    checks.append(require_text(canvas_history_store_text, "maximumStates: Int = 48", "Canvas history store keeps the bounded capacity"))
+    checks.append(require_text(canvas_history_store_text, "func trimHistoryStack", "Undo/redo history stacks are trimmed"))
+    checks.append(require_text(canvas_text, "private let historyStore = KCCanvasHistoryStore()", "Canvas view delegates undo/redo stacks to KCCanvasHistoryStore"))
+    checks.append(forbid_text(canvas_text, "private var undoStates", "Canvas view no longer owns the undo stack array"))
+    checks.append(forbid_text(canvas_text, "private var redoStates", "Canvas view no longer owns the redo stack array"))
     checks.append(require_text(canvas_text, "func startBlankCanvas", "Canvas exposes clean blank-session reset"))
     checks.append(require_regex(canvas_text, r"func startBlankCanvas[\s\S]*resetCanvasContents\(\)[\s\S]*clearHistoryStacks\(\)", "New blank canvas clears content and undo/redo history"))
     checks.append(require_regex(canvas_text, r"func restoreCanvas[\s\S]*clearHistoryStacks\(\)", "Restoring/opening artwork clears undo/redo history"))
     checks.append(require_regex(canvas_text, r"func replaceCanvas[\s\S]*resetCanvasContents\(\)[\s\S]*clearHistoryStacks\(\)", "Imported photos start a clean canvas session"))
     checks.append(require_regex(canvas_text, r"func loadLineArtImage[\s\S]*resetCanvasContents\(\)[\s\S]*clearHistoryStacks\(\)", "Line-art templates start a clean canvas session"))
-    checks.append(require_regex(canvas_text, r"func clearHistoryStacks[\s\S]*undoStates\.removeAll\(\)[\s\S]*redoStates\.removeAll\(\)", "Canvas history stacks can be fully cleared"))
+    checks.append(require_regex(canvas_text, r"func clearHistoryStacks[\s\S]*historyStore\.clear\(\)", "Canvas history stacks can be fully cleared"))
     checks.append(require_regex(main_text, r"func openSession[\s\S]*self\.canvasView\.restoreCanvas\(with: image\)", "Opening saved history restores a clean canvas session", re.S))
     checks.append(require_text(main_text, "var suppressNextDraftSave", "Programmatic restore can suppress one draft save"))
     checks.append(require_text(main_text, "var activeSessionHasUnsavedChanges", "Saved sessions track unsaved edits"))
@@ -1407,6 +1413,7 @@ def main():
     ])
     canvas_text = APP_FILE_PATHS["KCDrawingCanvasView.swift"].read_text(encoding="utf-8")
     canvas_models_text = APP_FILE_PATHS["KCDrawingCanvasModels.swift"].read_text(encoding="utf-8")
+    canvas_history_store_text = APP_FILE_PATHS["KCCanvasHistoryStore.swift"].read_text(encoding="utf-8")
     session_store_bridge_text = APP_FILE_PATHS["KCSessionService.swift"].read_text(encoding="utf-8")
     kc_session_store_text = (ROOT / "Packages" / "KidCanvasModules" / "Sources" / "KCSessionPersistence" / "KCSessionStore.swift").read_text(encoding="utf-8")
     kc_artwork_session_text = (ROOT / "Packages" / "KidCanvasModules" / "Sources" / "KCDomain" / "KCArtworkSession.swift").read_text(encoding="utf-8")
@@ -1462,6 +1469,7 @@ def main():
         main_text,
         canvas_text,
         canvas_models_text,
+        canvas_history_store_text,
         session_store_bridge_text,
         kc_session_store_text,
         kc_artwork_session_text,
