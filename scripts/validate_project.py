@@ -836,6 +836,20 @@ def app_feature_checks(
         if view_did_load_start >= 0 and view_did_load_end > view_did_load_start
         else ""
     )
+    select_tool_mode_start = main_text.find("func selectToolMode(")
+    select_tool_mode_end = main_text.find("func selectBrushStyle(", select_tool_mode_start)
+    select_tool_mode_text = (
+        main_text[select_tool_mode_start:select_tool_mode_end]
+        if select_tool_mode_start >= 0 and select_tool_mode_end > select_tool_mode_start
+        else ""
+    )
+    select_brush_style_start = main_text.find("func selectBrushStyle(")
+    select_brush_style_end = main_text.find("func applyStoredWidthForCurrentTool(", select_brush_style_start)
+    select_brush_style_text = (
+        main_text[select_brush_style_start:select_brush_style_end]
+        if select_brush_style_start >= 0 and select_brush_style_end > select_brush_style_start
+        else ""
+    )
     stroke_render_math_tests_text = (
         ROOT / "Packages" / "KidCanvasModules" / "Tests" / "KCDrawingEngineTests" / "KCStrokeRenderMathTests.swift"
     ).read_text(encoding="utf-8")
@@ -1070,6 +1084,9 @@ def app_feature_checks(
     checks.append(require_text(main_text, "let brushItems = self.brushDockFeature.brushItems()", "Main view controller delegates brush dock item creation to KCBrushDockFeature"))
     checks.append(require_text(main_text, "self.brushDockFeature.isButton(", "Main view controller delegates brush Dock selection matching"))
     checks.append(require_text(main_text, "self.brushDockFeature.applySelectionAppearance(to: button, active: active)", "Main view controller delegates brush Dock selected-state styling"))
+    checks.append(require_regex(main_text, r"func refreshBrushDockSelection\(\)[\s\S]*if active \{[\s\S]*self\.scrollBrushDockToButton\(button\)", "Brush Dock selection refresh owns the single active-button scroll"))
+    checks.append(forbid_text(main_text, "func scrollBrushDockToToolMode", "Main view controller does not keep a second Dock scrolling helper"))
+    checks.append(forbid_text(select_tool_mode_text, "scrollBrushDockToToolMode", "Tool mode selection does not trigger duplicate Dock scrolling"))
     checks.append(forbid_text(main_text, "let brushItems: [(id:", "Brush Dock tuple configuration is no longer hardcoded in the main view controller"))
     checks.append(forbid_text(main_text, "func brushColor(for style: KDBrushStyle) -> UIColor", "Brush accent color decisions live outside the main view controller"))
     checks.append(forbid_text(main_text, "button.backgroundColor = active ? UIColor(red: 0.66, green: 0.89, blue: 0.72", "Brush Dock selected background is no longer written in the main view controller"))
@@ -1127,6 +1144,10 @@ def app_feature_checks(
     checks.append(require_text(main_text, "let items = self.toolRailFeature.toolItems()", "Main view controller delegates tool rail item creation to KCToolRailFeature"))
     checks.append(require_text(main_text, "self.toolRailFeature.isButton(", "Main view controller delegates tool rail active-state matching"))
     checks.append(require_text(main_text, "self.toolRailFeature.applySelectionAppearance(to: button, active: active)", "Main view controller delegates tool rail selected-state styling"))
+    checks.append(require_text(select_tool_mode_text, "self.applyStoredWidthForCurrentTool()", "Tool mode selection refreshes width and preview through the shared width application path"))
+    checks.append(forbid_text(select_tool_mode_text, "self.refreshSizePreview()", "Tool mode selection does not refresh the size preview twice"))
+    checks.append(require_text(select_brush_style_text, "self.applyStoredWidthForCurrentTool()", "Brush style selection refreshes width and preview through the shared width application path"))
+    checks.append(forbid_text(select_brush_style_text, "self.refreshSizePreview()", "Brush style selection does not refresh the size preview twice"))
     checks.append(forbid_text(main_text, "let items: [(symbol: String, mode: KDToolMode, id: String, label: String)]", "Tool Rail tuple configuration is no longer hardcoded in the main view controller"))
     checks.append(forbid_text(main_text, "button.backgroundColor = active\n                ? UIColor(red: 0.66, green: 0.89, blue: 0.72", "Tool Rail selected background is no longer written in the main view controller"))
     checks.append(forbid_text(main_text, "button.layer.shadowOpacity = active ? 0.14 : 0.08", "Tool Rail selected shadow is no longer written in the main view controller"))
@@ -1651,6 +1672,8 @@ def app_feature_checks(
     checks.append(require_text(main_text, "private var brushWidthPreferenceSaveTimer", "Brush width preferences use a debounced save timer"))
     checks.append(require_regex(main_text, r"func didChangeSizeSlider[\s\S]*self\.scheduleBrushWidthPreferenceSave\(\)[\s\S]*self\.refreshSizePreview\(\)", "Size slider changes debounce UserDefaults writes"))
     checks.append(forbid_regex(main_text, r"func didChangeSizeSlider[\s\S]*self\.persistBrushWidthPreferences\(\)", "Size slider does not write UserDefaults on every value change"))
+    for eraser_handler in ["didTapCircleEraser", "didTapCloudEraser", "didTapStarEraser"]:
+        checks.append(forbid_regex(main_text, rf"func {eraser_handler}\(\)[\s\S]{{0,220}}self\.selectToolMode\(\.eraser\)[\s\S]{{0,120}}self\.refreshSizePreview\(\)", f"{eraser_handler} relies on selectToolMode to refresh the size preview once"))
     checks.append(require_text(main_text, "didFinishChangingSizeSlider", "Size slider flushes preferences when dragging ends"))
     checks.append(require_regex(main_text, r"func buildSizePanel[\s\S]*self\.sizeSlider\.addTarget\(self, action: #selector\(didFinishChangingSizeSlider", "Size slider registers touch-end preference flush"))
     checks.append(require_regex(main_text, r"sceneWillResignActiveNotification[\s\S]*self\.flushBrushWidthPreferenceSave\(\)[\s\S]*self\.saveDraftIfNeeded\(\)", "Scene deactivation flushes brush width preferences before draft save"))

@@ -20,8 +20,6 @@ extension KCMainViewController {
         }
         self.refreshStickerEditButtons()
         self.refreshBrushDockSelection()
-        self.scrollBrushDockToToolMode(mode)
-        self.refreshSizePreview()
         self.refreshToolStateChip()
     }
 
@@ -29,7 +27,6 @@ extension KCMainViewController {
         self.canvasView.currentBrushStyle = style
         self.applyStoredWidthForCurrentTool()
         self.refreshBrushDockSelection()
-        self.refreshSizePreview()
         self.refreshToolStateChip()
     }
 
@@ -109,20 +106,6 @@ extension KCMainViewController {
             self.brushDockFeature.applySelectionAppearance(to: button, active: active)
             if active {
                 self.scrollBrushDockToButton(button)
-            }
-        }
-    }
-
-    func scrollBrushDockToToolMode(_ mode: KDToolMode) {
-        for button in self.brushButtons {
-            let matches = self.brushDockFeature.button(
-                button,
-                matchesToolMode: mode,
-                brushStyle: self.canvasView.currentBrushStyle
-            )
-            if matches {
-                self.scrollBrushDockToButton(button)
-                return
             }
         }
     }
@@ -227,21 +210,18 @@ extension KCMainViewController {
         self.canvasView.currentEraserShape = .circle
         self.refreshEraserShapeButtons()
         self.selectToolMode(.eraser)
-        self.refreshSizePreview()
     }
 
     @objc func didTapCloudEraser() {
         self.canvasView.currentEraserShape = .cloud
         self.refreshEraserShapeButtons()
         self.selectToolMode(.eraser)
-        self.refreshSizePreview()
     }
 
     @objc func didTapStarEraser() {
         self.canvasView.currentEraserShape = .star
         self.refreshEraserShapeButtons()
         self.selectToolMode(.eraser)
-        self.refreshSizePreview()
     }
 
     @objc func didTapDeleteSticker() {

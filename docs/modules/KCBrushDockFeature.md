@@ -20,7 +20,7 @@ App 层画笔 Dock Feature：集中底部画笔项配置，包括画笔 id、`KD
 
 - `KCMainViewController.brushDockFeature` 持有 `KCBrushDockFeature` 实例。
 - `buildBottomDock(_:)` 通过 `brushDockFeature.brushItems()` 获取画笔配置，再交给 `toolCardButtonWithSymbolName(...)` 创建卡片按钮。
-- `refreshBrushDockSelection()` 委托 `brushDockFeature.isButton(...)` 和 `applySelectionAppearance(...)` 处理选中态判断与外观。
+- `refreshBrushDockSelection()` 委托 `brushDockFeature.isButton(...)` 和 `applySelectionAppearance(...)` 处理选中态判断与外观，并只对当前活跃按钮执行一次 `scrollRectToVisible`。
 - `scripts/validate_project.py` 校验新文件已进入 App target Sources，并防止画笔 tuple 配置、`brushColor` 决策和 Dock 选中态样式回流主控制器；T056/T060/T061 后基础卡片质感和通用状态视觉来自 `KCEditorUIFactory` / `KCEditorVisualStyle`，本 Feature 只负责匹配状态并调用共享样式。
 
 ## 4. 验收规则
@@ -28,5 +28,6 @@ App 层画笔 Dock Feature：集中底部画笔项配置，包括画笔 id、`KD
 - 底部画笔项新增或调整时，优先修改 `KCBrushDockFeature`。
 - 不允许在 `KCMainViewController.buildBottomDock(_:)` 重新硬编码画笔 tuple 数组。
 - 不允许在 `KCMainViewController.refreshBrushDockSelection()` 直接硬编码 Dock 选中态颜色、边框、阴影和缩放。
+- 不允许在 `selectToolMode(_:)` 里先调用 `refreshBrushDockSelection()` 再额外调用第二套 Dock 滚动 helper；Dock 滚动只能由活跃按钮选中刷新顺带完成一次。
 - 不允许为 Dock 选中态新增 `CGAffineTransform(scaleX:y:)` 这类会导致布局跳动的缩放。
 - iPhone 与 iPad build、runtime smoke 必须通过。
