@@ -100,8 +100,8 @@ final class CrayonGrainTests: XCTestCase {
                                           lineWidth: 16.0)
 
         // 中等蜡笔线宽下，颗粒要有明显厚度，同时不能密到把纸纹空隙糊平。
-        XCTAssertGreaterThanOrEqual(dashes.count, 900)
-        XCTAssertLessThanOrEqual(dashes.count, 980)
+        XCTAssertGreaterThanOrEqual(dashes.count, 1_200)
+        XCTAssertLessThanOrEqual(dashes.count, 1_450)
         XCTAssertGreaterThanOrEqual(dashes[0].lineWidth, 3.6)
     }
 
@@ -110,8 +110,17 @@ final class CrayonGrainTests: XCTestCase {
                                           lineWidth: 16.0)
 
         // 用户侧反馈蜡笔观感不明显后，中等线宽必须能看出蜡笔碎粒和纸纹断续感。
-        XCTAssertGreaterThanOrEqual(dashes.count, 820)
-        XCTAssertLessThanOrEqual(dashes.count, 980)
+        XCTAssertGreaterThanOrEqual(dashes.count, 1_200)
+        XCTAssertLessThanOrEqual(dashes.count, 1_450)
         XCTAssertGreaterThanOrEqual(dashes[0].lineWidth, 3.6)
+    }
+
+    func testMediumCrayonGrainKeepsVisiblePaperToothDensity() {
+        let dashes = KCCrayonGrain.dashes(pathBounds: CGRect(x: 0, y: 0, width: 120, height: 80),
+                                          lineWidth: 16.0)
+
+        // 中等线宽不能稀疏到像半透明宽线；颗粒密度要足够让纸纹和蜡痕在默认手指绘制时可见。
+        XCTAssertGreaterThanOrEqual(dashes.count, 1_200)
+        XCTAssertLessThanOrEqual(dashes.count, 1_450)
     }
 }

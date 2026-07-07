@@ -126,21 +126,6 @@ struct KCEditorUIFactory {
         cache.countLimit = 120
         return cache
     }()
-    private static let historyThumbPlaceholderStates: [UIControl.State] = [
-        .normal,
-        .highlighted,
-        .selected,
-        .disabled,
-        .focused,
-        .highlighted.union(.selected),
-        .highlighted.union(.focused),
-        .selected.union(.focused),
-        .disabled.union(.selected),
-        .disabled.union(.highlighted),
-        .disabled.union(.focused),
-        .highlighted.union(.selected).union(.focused)
-    ]
-
     let metrics: KCDeviceLayoutMetrics
 
     static func cachedSystemImage(symbolName: String) -> UIImage? {
@@ -231,11 +216,9 @@ struct KCEditorUIFactory {
         )
         button.layer.borderColor = KCEditorVisualStyle.subtleBorderColor
         button.layer.borderWidth = 2.0
-        button.imageView?.contentMode = .scaleAspectFill
-        for state in Self.historyThumbPlaceholderStates {
-            button.setImage(Self.historySlotPlaceholderImage(), for: state)
-        }
         button.imageView?.contentMode = .center
+        button.imageView?.alpha = 0.0
+        button.imageView?.isHidden = true
         return button
     }
 

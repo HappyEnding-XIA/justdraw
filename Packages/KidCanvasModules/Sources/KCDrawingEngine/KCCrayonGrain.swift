@@ -40,7 +40,7 @@ public enum KCCrayonGrain {
         // grainBounds = bounds 在四周各向外扩展 lineWidth/2。
         let grainBounds = bounds.insetBy(dx: -lineWidth * 0.5, dy: -lineWidth * 0.5)
 
-        let spacing = max(3.0, lineWidth * 0.24)
+        let spacing = max(3.0, lineWidth * 0.20)
         let columnCount = min(220, max(1, Int(ceil(grainBounds.width / spacing))))
         let rowCount = min(180, max(1, Int(ceil(grainBounds.height / spacing))))
         let dashWidth = max(1.4, lineWidth * 0.24)

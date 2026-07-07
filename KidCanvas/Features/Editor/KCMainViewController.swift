@@ -12,10 +12,10 @@ import KCDomain
 import KCContentCatalog
 
 private enum KCStartupDeferredDelay {
-    static let colorControls: TimeInterval = 0.02
+    static let colorControls: TimeInterval = 0.16
     static let restoreDraft: TimeInterval = 0.08
-    static let historySessions: TimeInterval = 0.12
-    static let stickerButtons: TimeInterval = 0.24
+    static let historySessions: TimeInterval = 0.32
+    static let stickerButtons: TimeInterval = 0.48
 }
 
 // MARK: - KCMainViewController

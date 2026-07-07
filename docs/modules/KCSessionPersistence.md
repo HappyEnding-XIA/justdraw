@@ -35,7 +35,7 @@
 - `KCSessionService.cachedThumbnailImage(forSessionId:)`：保留为低频兼容入口，会先确认会话仍存在；历史栏当前页刷新不得走该入口重复查询 metadata。
 - `KCSessionService.preloadThumbnailImages(forSessionIds:completion:)`：在 utility 后台队列预热历史缩略图缓存；已缓存或正在预热的 id 不得重复排队，避免历史面板频繁刷新时造成重复读盘/解码；当新的当前页刷新命中正在预热的 id 时，completion 必须合并挂到同一个 in-flight 任务上，并在该 id 解码结束后回主线程执行，避免旧回调被 generation 判过期后 UI 长时间停留在占位或旧缩略图。
 - `KCSessionService.loadAllSessions()` / `sessionCount()` / `hasSavedSessions()` / `findSession(id:)`：共享服务层会话元数据缓存，避免历史栏刷新和缩略图读取反复解码 `sessions.json`；服务层 cache 必须加锁，保存成功后替换缓存中的最新会话，删除成功后移除对应会话。
-- `KCSessionService.loadAllSessionsAsync(completion:)`：启动后的历史栏首次 metadata 加载必须走后台 `sessionMetadataQueue`，完成后回主线程刷新 UI，避免主线程首次读取 `sessions.json`。
+- `KCSessionService.loadAllSessionsAsync(completion:)`：启动后的历史栏首次 metadata 加载必须走后台 `sessionMetadataQueue`，完成后回主线程刷新 UI，避免主线程首次读取 `sessions.json`。启动期历史 metadata 当前由 `KCStartupDeferredDelay.historySessions = 0.32` 错峰触发，避免与颜色、草稿和印章加载挤在同一启动窗口。
 - `KCSessionService.displayDecodedImage(from:)`：将 PNG/JPEG `Data` 转成已完成 display decode 的 `UIImage`；后台打开历史作品、草稿恢复和历史缩略图预热必须走该入口，避免 `UIImage(data:)` 懒解码推迟到主线程首次 `draw(in:)`。
 - `KCSessionService.artworkData(forSession:)`：用于用户点开已保存作品时按已加载的 `KCSessionMetadata` 读取原图 Data；UI 层必须在 `KCMainViewController.artworkLoadingQueue` 后台读取 Data 并调用 `displayDecodedImage(from:)`，主线程只应用已解码图片。
 - `KCSessionService.saveArtwork(pngData:thumbnailJPEGData:existingSessionId:)`：更新已有会话时必须通过 `findSession(id:)` 复用服务层 metadata cache，不再为了解析 existing session 额外读取 `sessions.json`。

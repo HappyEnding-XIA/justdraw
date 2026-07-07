@@ -25,7 +25,7 @@ App 层画笔 / 印章 / 橡皮编辑面板组装器：承接尺寸 slider、尺
 
 - `KCMainViewController.brushStickerPanelView` 持有组装器实例。
 - `buildSizePanel(_:)` 委托 `renderPanel(...)` 创建面板，并保存返回的 slider、预览 layer、印章行、橡皮按钮和印章编辑按钮引用。
-- `viewDidLoad` 只建立印章分类和默认 `currentStickerSymbol`，不立即重建印章素材按钮；`scheduleStartupDeferredWorkIfNeeded()` 把 `loadStickerButtonsAfterStartupIfNeeded()` 放到首帧后较晚批次执行，再由 `reloadStickerButtons()` 委托 `reloadStickerButtons(...)` 重建印章按钮列表，避免色盘、历史、草稿和印章同时抢主线程。主控制器继续负责当前印章选择和画布状态协调。
+- `viewDidLoad` 只建立印章分类和默认 `currentStickerSymbol`，不立即重建印章素材按钮；`scheduleStartupDeferredWorkIfNeeded()` 把 `loadStickerButtonsAfterStartupIfNeeded()` 放到首帧后较晚批次执行（当前 `KCStartupDeferredDelay.stickerButtons = 0.48`），再由 `reloadStickerButtons()` 委托 `reloadStickerButtons(...)` 重建印章按钮列表，避免色盘、历史、草稿和印章同时抢主线程。主控制器继续负责当前印章选择和画布状态协调。
 - `refreshStickerCategoryButtons()` 委托 `applyStickerCategorySelection(...)` 应用分类选中态。
 - `selectStickerSymbol(_:)` 委托 `applyStickerSymbolSelection(...)` 应用印章素材按钮选中态，避免主控制器硬编码按钮颜色或缩放。
 - `refreshStickerEditButtons()` 委托 `applyStickerEditButtonsEnabled(...)` 应用印章编辑按钮可用态。
