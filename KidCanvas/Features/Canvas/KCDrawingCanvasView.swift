@@ -611,7 +611,7 @@ final class KCDrawingCanvasView: UIView, UIGestureRecognizerDelegate {
     }
 
     private var canvasHasVisibleContent: Bool {
-        canvasStateHasVisibleContent(canvasStateSnapshot())
+        backgroundImage != nil || !strokes.isEmpty || !stickers.isEmpty
     }
 
     private func canvasStateHasVisibleContent(_ state: KDCanvasState) -> Bool {

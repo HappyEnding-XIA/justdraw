@@ -46,7 +46,7 @@ final class KCLineArtFeature {
         }
     }
 
-    func lineArtImage(for item: KCLineArtItem, canvasSize: CGSize) -> UIImage {
+    func lineArtImage(for item: KCLineArtItem, canvasSize: CGSize, drawingRect: CGRect? = nil) -> UIImage {
         let renderer = UIGraphicsImageRenderer(size: canvasSize)
         return renderer.image { (rendererContext: UIGraphicsImageRendererContext) in
             UIColor.white.setFill()
@@ -57,8 +57,9 @@ final class KCLineArtFeature {
             context.setLineJoin(.round)
             context.setStrokeColor(UIColor.black.cgColor)
 
-            let drawingRect = CGRect(origin: .zero, size: canvasSize).insetBy(dx: 110.0, dy: 90.0)
-            self.draw(item, in: drawingRect, strokeScale: 1.0)
+            let fallbackRect = CGRect(origin: .zero, size: canvasSize).insetBy(dx: 110.0, dy: 90.0)
+            let targetRect = drawingRect ?? CGRect(origin: .zero, size: canvasSize).insetBy(dx: 110.0, dy: 90.0)
+            self.draw(item, in: targetRect.isEmpty ? fallbackRect : targetRect, strokeScale: 1.0)
         }
     }
 

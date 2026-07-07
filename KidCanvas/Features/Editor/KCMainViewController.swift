@@ -1264,11 +1264,14 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
     }
 
     func loadLineArtItem(_ item: KCLineArtItem) {
+        self.view.layoutIfNeeded()
+        self.canvasView.layoutIfNeeded()
         var canvasSize = self.canvasView.bounds.size
         if canvasSize == .zero {
             canvasSize = CGSize(width: 1024.0, height: 720.0)
         }
-        let lineArt = self.lineArtFeature.lineArtImage(for: item, canvasSize: canvasSize)
+        let drawingRect = self.visibleLineArtDrawingRect(forCanvasSize: canvasSize)
+        let lineArt = self.lineArtFeature.lineArtImage(for: item, canvasSize: canvasSize, drawingRect: drawingRect)
 
         let preservedDraft = self.preserveUnsavedActiveSessionDraftIfNeeded()
         self.activeSession = nil
@@ -1283,6 +1286,45 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
         self.selectToolMode(.fill)
         self.refreshHistoryUI()
         self.refreshActionButtons()
+    }
+
+    func visibleLineArtDrawingRect(forCanvasSize canvasSize: CGSize) -> CGRect {
+        let fallbackRect = CGRect(origin: .zero, size: canvasSize).insetBy(dx: 110.0, dy: 90.0)
+        guard canvasSize.width > 0.0, canvasSize.height > 0.0, self.canvasView.bounds.size != .zero else {
+            return fallbackRect
+        }
+
+        var visibleRect = self.view.safeAreaLayoutGuide.layoutFrame
+        if visibleRect.isEmpty {
+            visibleRect = self.view.bounds
+        }
+
+        let leftRail = self.collapsiblePanels.indices.contains(2) ? self.collapsiblePanels[2] : nil
+        let rightPanel = self.collapsiblePanels.indices.contains(3) ? self.collapsiblePanels[3] : nil
+        let bottomDock = self.collapsiblePanels.indices.contains(4) ? self.collapsiblePanels[4] : nil
+        let padding: CGFloat = 24.0
+
+        if let leftRail, !leftRail.isHidden {
+            let frame = leftRail.convert(leftRail.bounds, to: self.view)
+            visibleRect.origin.x = max(visibleRect.minX, frame.maxX + padding)
+        }
+
+        if let rightPanel, !rightPanel.isHidden {
+            let frame = rightPanel.convert(rightPanel.bounds, to: self.view)
+            visibleRect.size.width = min(visibleRect.maxX, frame.minX - padding) - visibleRect.minX
+        }
+
+        if let bottomDock, !bottomDock.isHidden {
+            let frame = bottomDock.convert(bottomDock.bounds, to: self.view)
+            visibleRect.size.height = min(visibleRect.maxY, frame.minY - padding) - visibleRect.minY
+        }
+
+        let canvasRect = self.view.convert(visibleRect, to: self.canvasView).intersection(self.canvasView.bounds)
+        if canvasRect.width < 260.0 || canvasRect.height < 220.0 {
+            return fallbackRect
+        }
+
+        return canvasRect.insetBy(dx: 42.0, dy: 36.0)
     }
 
     @objc func didTapHistoryThumb(_ button: UIButton) {
