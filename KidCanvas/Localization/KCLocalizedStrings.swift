@@ -145,6 +145,9 @@ enum KCL10n {
     static var deleteTitle: String { tr("alert.delete") }
     static func deleteAlertTitle(isDraft: Bool) -> String { tr(isDraft ? "alert.delete-draft.title" : "alert.delete-session.title") }
     static func deleteAlertMessage(isDraft: Bool) -> String { tr(isDraft ? "alert.delete-draft.message" : "alert.delete-session.message") }
+    static var replaceCanvasAlertTitle: String { tr("alert.replace-canvas.title") }
+    static var replaceCanvasAlertMessage: String { tr("alert.replace-canvas.message") }
+    static var saveDraftAndContinueTitle: String { tr("alert.save-draft-continue") }
 
     // MARK: - 线稿标题（无障碍）
 

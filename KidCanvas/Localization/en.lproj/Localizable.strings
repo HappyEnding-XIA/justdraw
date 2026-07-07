@@ -128,6 +128,11 @@
 "alert.delete-session.message" = "Remove this saved artwork?";
 "alert.delete" = "Delete";
 
+/* Confirm before replacing the current canvas */
+"alert.replace-canvas.title" = "Keep This Drawing?";
+"alert.replace-canvas.message" = "The current canvas has unsaved changes. It will be saved as a draft before continuing.";
+"alert.save-draft-continue" = "Save Draft and Continue";
+
 /* Line-art titles (accessibility) */
 "line-art.bunny" = "Bunny";
 "line-art.car" = "Car";

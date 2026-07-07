@@ -257,8 +257,8 @@ extension KCMainViewController {
             return
         }
 
+        self.canvasView.currentBrushStyle = button.brushStyle
         self.selectToolMode(.brush)
-        self.selectBrushStyle(button.brushStyle)
     }
 
     @objc func didTapStickerButton(_ button: UIButton) {
@@ -281,5 +281,6 @@ extension KCMainViewController {
             self.canvasView.currentStickerSymbol = firstSymbol
         }
         self.reloadStickerButtons()
+        self.selectToolMode(.sticker)
     }
 }

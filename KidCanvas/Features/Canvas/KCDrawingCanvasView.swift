@@ -179,6 +179,7 @@ final class KCDrawingCanvasView: UIView, UIGestureRecognizerDelegate {
             guard (layer.kind == kind) == includeMatchingKind else { continue }
             color.withAlphaComponent(CGFloat(layer.alpha)).setStroke()
             let texturePath = path.copy() as! UIBezierPath
+            texturePath.lineCapStyle = layer.kind == .waxSmear ? .butt : path.lineCapStyle
             texturePath.lineWidth = max(0.7, lineWidth * CGFloat(layer.widthMultiplier))
             texturePath.apply(CGAffineTransform(translationX: CGFloat(layer.offsetX), y: CGFloat(layer.offsetY)))
             if !layer.dashPatternMultipliers.isEmpty {
@@ -603,14 +604,22 @@ final class KCDrawingCanvasView: UIView, UIGestureRecognizerDelegate {
 #endif
 
     @objc func snapshotImage() -> UIImage {
+        guard bounds.width > 0.0 && bounds.height > 0.0 else { return UIImage() }
+
         let selectedSticker = self.selectedStickerView
         let selectedBorderWidth = selectedSticker?.layer.borderWidth ?? 0
         let selectedBorderColor = selectedSticker?.layer.borderColor
         selectedSticker?.layer.borderWidth = 0.0
 
-        let renderer = UIGraphicsImageRenderer(bounds: bounds)
+        let scale = self.window?.screen.scale ?? UIScreen.main.scale
+        let format = UIGraphicsImageRendererFormat()
+        format.scale = scale
+        format.opaque = true
+        let renderer = UIGraphicsImageRenderer(bounds: bounds, format: format)
         let image = renderer.image { context in
-            layer.render(in: context.cgContext)
+            let baseImage = rasterImageExcludingStickers(includeActiveStroke: activeStroke != nil)
+            baseImage.draw(in: bounds)
+            drawStickerViewsForSnapshot(in: context.cgContext)
         }
 
         selectedSticker?.layer.borderWidth = selectedBorderWidth
@@ -618,11 +627,12 @@ final class KCDrawingCanvasView: UIView, UIGestureRecognizerDelegate {
         return image
     }
 
-    private func rasterImageExcludingStickers() -> UIImage {
+    private func rasterImageExcludingStickers(includeActiveStroke: Bool = false) -> UIImage {
         guard bounds.width > 0.0 && bounds.height > 0.0 else { return UIImage() }
 
         let scale = self.window?.screen.scale ?? UIScreen.main.scale
-        if let cachedImage = nonStickerRasterCacheImage,
+        if !includeActiveStroke,
+           let cachedImage = nonStickerRasterCacheImage,
            nonStickerRasterCacheBounds.equalTo(bounds),
            abs(nonStickerRasterCacheScale - scale) < 0.001 {
             return cachedImage
@@ -640,9 +650,28 @@ final class KCDrawingCanvasView: UIView, UIGestureRecognizerDelegate {
             for stroke in strokes {
                 drawStroke(stroke)
             }
+
+            if includeActiveStroke, let activeStroke {
+                drawStroke(activeStroke)
+            }
         }
-        cacheNonStickerRasterImage(image, scale: scale)
+        if !includeActiveStroke {
+            cacheNonStickerRasterImage(image, scale: scale)
+        }
         return image
+    }
+
+    private func drawStickerViewsForSnapshot(in context: CGContext) {
+        for sticker in stickers {
+            guard !sticker.isHidden, sticker.alpha > 0.0 else { continue }
+
+            context.saveGState()
+            context.translateBy(x: sticker.center.x, y: sticker.center.y)
+            context.concatenate(sticker.transform)
+            context.translateBy(x: -sticker.bounds.width / 2.0, y: -sticker.bounds.height / 2.0)
+            sticker.layer.render(in: context)
+            context.restoreGState()
+        }
     }
 
     private func drawImage(_ image: UIImage?, aspectFitIn rect: CGRect) {

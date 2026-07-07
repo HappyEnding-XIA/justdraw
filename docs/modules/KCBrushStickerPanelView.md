@@ -29,6 +29,7 @@ App 层画笔 / 印章 / 橡皮编辑面板组装器：承接尺寸 slider、尺
 - `refreshStickerCategoryButtons()` 委托 `applyStickerCategorySelection(...)` 应用分类选中态。
 - `selectStickerSymbol(_:)` 委托 `applyStickerSymbolSelection(...)` 应用印章素材按钮选中态，避免主控制器硬编码按钮颜色或缩放。
 - `refreshStickerEditButtons()` 委托 `applyStickerEditButtonsEnabled(...)` 应用印章编辑按钮可用态。
+- 切换印章分类时，如果自动选中该分类第一个印章，必须同步进入一次性印章工具；下一次点画布插入该印章后再恢复到进入印章前的常驻工具。
 - `applyPillSelectionAppearance(...)` 和 `applyStampButtonAppearance(...)` 作为 T056/T061 视觉精修的本地样式入口，内部复用 `KCEditorVisualStyle.applySelectableButtonAppearance(...)` / `applyActionButtonAvailability(...)`，避免分类/印章/编辑按钮各自散落样式或复制 token。
 
 ## 4. 验收规则
@@ -37,6 +38,7 @@ App 层画笔 / 印章 / 橡皮编辑面板组装器：承接尺寸 slider、尺
 - 不允许把画布状态、选中印章状态、undo/redo 或印章手势下沉到本组装器。
 - 不允许新增印章分类/印章列表/编辑按钮样式时绕过本组装器的样式 helper，或在本文件复制一套独立颜色/阴影/禁用态 token。
 - 不允许在 `KCMainViewController.selectStickerSymbol(_:)` 重新手写印章素材按钮的背景、边框、阴影或缩放。
-- 不允许在 `viewDidLoad` 首帧路径直接调用 `reloadStickerButtons()`；印章素材按钮首轮创建必须推迟到首帧后的较晚启动延迟任务。
+- 不允许在 `viewDidLoad` 首帧路径直接调用 `reloadStickerButtons()`；印章素材按钮首轮创建必须推迟到首帧后的短延迟任务（当前由 `KCStartupDeferredDelay.stickerButtons` 统一控制），避免首屏构建同步生成全部印章按钮。
 - 印章列表刷新后仍必须由主控制器调用 `selectStickerSymbol(_:)` 完成当前印章选择协调。
+- 不允许切换印章分类后只更新 `currentStickerSymbol` 而不更新当前工具状态；用户看到印章被选中时，下一次点画布必须执行插入印章。
 - iPhone 与 iPad build、`swift test` 和 validator 必须通过。

@@ -16,7 +16,7 @@ public struct KCCrayonGrainDash {
     public let start: CGPoint
     public let end: CGPoint
     /// 对于给定线宽，所有短线的该值恒定：
-    /// `max(1.1, lineWidth * 0.16)`。
+    /// `max(1.4, lineWidth * 0.24)`。
     public let lineWidth: CGFloat
 
     public init(start: CGPoint, end: CGPoint, lineWidth: CGFloat) {
@@ -43,7 +43,7 @@ public enum KCCrayonGrain {
         let spacing = max(3.0, lineWidth * 0.24)
         let columnCount = min(220, max(1, Int(ceil(grainBounds.width / spacing))))
         let rowCount = min(180, max(1, Int(ceil(grainBounds.height / spacing))))
-        let dashWidth = max(1.1, lineWidth * 0.16)
+        let dashWidth = max(1.4, lineWidth * 0.24)
 
         var dashes: [KCCrayonGrainDash] = []
         dashes.reserveCapacity((rowCount + 1) * (columnCount + 1))

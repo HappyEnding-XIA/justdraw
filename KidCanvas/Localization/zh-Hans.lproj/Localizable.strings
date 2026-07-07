@@ -128,6 +128,11 @@
 "alert.delete-session.message" = "移除这份已保存的画作？";
 "alert.delete" = "删除";
 
+/* 替换当前画布前确认 */
+"alert.replace-canvas.title" = "保留当前画作？";
+"alert.replace-canvas.message" = "当前画布有未保存修改。继续前会先保存到草稿。";
+"alert.save-draft-continue" = "保存草稿并继续";
+
 /* 线稿标题（无障碍） */
 "line-art.bunny" = "兔子";
 "line-art.car" = "小汽车";

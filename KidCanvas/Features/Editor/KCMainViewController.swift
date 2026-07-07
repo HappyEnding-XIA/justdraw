@@ -11,6 +11,13 @@ import KCCommon
 import KCDomain
 import KCContentCatalog
 
+private enum KCStartupDeferredDelay {
+    static let colorControls: TimeInterval = 0.02
+    static let restoreDraft: TimeInterval = 0.08
+    static let historySessions: TimeInterval = 0.12
+    static let stickerButtons: TimeInterval = 0.24
+}
+
 // MARK: - KCMainViewController
 
 class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIImagePickerControllerDelegate, UINavigationControllerDelegate, UIColorPickerViewControllerDelegate {
@@ -194,7 +201,6 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
         self.buildInterface()
         self.updatePaletteButtons()
         self.selectToolMode(.brush)
-        self.selectBrushStyle(.pencil)
         self.selectColor(self.contentPicker.palette24.first!, sender: nil)
         self.selectStickerSymbol(self.currentStickerSymbols().first!)
         self.refreshEraserShapeButtons()
@@ -1277,6 +1283,7 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
             button.setImage(visible ? Self.historySlotPlaceholderImage() : nil, for: state)
         }
         button.imageView?.contentMode = .center
+        button.imageView?.alpha = visible ? 1.0 : 0.0
         button.imageView?.isHidden = !visible
     }
 
@@ -1362,8 +1369,11 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
     }
 
     @objc func didTapImportImage() {
-        if !self.presentPhotoLibraryPicker(animated: true, completion: nil) {
-            self.showSaveToastWithSuccess(false)
+        self.performCanvasReplacementAfterUserConfirmation { [weak self] in
+            guard let self else { return }
+            if !self.presentPhotoLibraryPicker(animated: true, completion: nil) {
+                self.showSaveToastWithSuccess(false)
+            }
         }
     }
 
@@ -1389,6 +1399,90 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
             completion?(picker)
         }
         return true
+    }
+
+    func performCanvasReplacementAfterUserConfirmation(_ replacement: @escaping () -> Void) {
+        guard self.shouldConfirmCanvasReplacement() else {
+            replacement()
+            return
+        }
+
+        let alert = UIAlertController(
+            title: KCL10n.replaceCanvasAlertTitle,
+            message: KCL10n.replaceCanvasAlertMessage,
+            preferredStyle: .alert
+        )
+        alert.addAction(UIAlertAction(title: KCL10n.cancelTitle, style: .cancel, handler: nil))
+        alert.addAction(UIAlertAction(title: KCL10n.saveDraftAndContinueTitle, style: .default, handler: { [weak self] _ in
+            guard let self else { return }
+            self.protectCurrentCanvasDraftBeforeReplacement { [weak self] saved in
+                guard let self else { return }
+                guard saved else {
+                    self.showSaveToastWithSuccess(false)
+                    return
+                }
+                replacement()
+            }
+        }))
+        self.present(alert, animated: true, completion: nil)
+    }
+
+    private func shouldConfirmCanvasReplacement() -> Bool {
+        guard self.canvasFeature.hasVisibleContent(self.canvasView) else {
+            return false
+        }
+        if self.activeSession != nil && !self.activeSessionHasUnsavedChanges {
+            return false
+        }
+        if self.activeDraftMatchesCanvas && self.sessionStore.hasDraft() {
+            return false
+        }
+        return true
+    }
+
+    private func protectCurrentCanvasDraftBeforeReplacement(completion: @escaping (Bool) -> Void) {
+        if self.activeSession != nil && !self.activeSessionHasUnsavedChanges {
+            completion(true)
+            return
+        }
+
+        if self.activeDraftMatchesCanvas && self.sessionStore.hasDraft() {
+            completion(true)
+            return
+        }
+
+        if !self.canvasFeature.hasVisibleContent(self.canvasView) {
+            self.activeDraftMatchesCanvas = false
+            completion(true)
+            return
+        }
+
+        self.invalidateDraftSaveTimer()
+        let snapshot = self.canvasView.snapshotImage()
+        let generation = self.nextDraftProtectionGeneration()
+        self.draftPersistenceQueue.async { [weak self, snapshot, generation] in
+            guard let self else { return }
+            guard let pngData = snapshot.pngData() else {
+                DispatchQueue.main.async { [weak self] in
+                    guard let self else { return }
+                    guard self.isDraftProtectionGenerationCurrent(generation) else { return }
+                    self.activeDraftMatchesCanvas = false
+                    self.refreshHistoryUI(loadDraftThumbnail: false, loadSessions: false)
+                    completion(false)
+                }
+                return
+            }
+
+            guard self.isDraftProtectionGenerationCurrent(generation) else { return }
+            let saved = self.sessionStore.saveDraftData(pngData: pngData, cachedImage: snapshot)
+            DispatchQueue.main.async { [weak self] in
+                guard let self else { return }
+                guard self.isDraftProtectionGenerationCurrent(generation) else { return }
+                self.activeDraftMatchesCanvas = saved
+                self.refreshHistoryUI(loadDraftThumbnail: false, loadSessions: false)
+                completion(saved)
+            }
+        }
     }
 
     @objc func didTapSaveSession() {
@@ -1480,7 +1574,10 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
         if self.sessions.count == 0 {
             return
         }
-        self.openSession(self.sessions.first!)
+        let session = self.sessions.first!
+        self.performCanvasReplacementAfterUserConfirmation { [weak self] in
+            self?.openSession(session)
+        }
     }
 
     @objc func didTapDeleteLatestSession() {
@@ -1545,7 +1642,9 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
             selectionHandler: { [weak self] item in
                 guard let self = self else { return }
                 self.dismiss(animated: true) {
-                    self.loadLineArtItem(item)
+                    self.performCanvasReplacementAfterUserConfirmation { [weak self] in
+                        self?.loadLineArtItem(item)
+                    }
                 }
             }
         )
@@ -1569,9 +1668,12 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
 
     func loadLineArtItem(_ item: KCLineArtItem, completion: ((Bool) -> Void)? = nil) {
         self.invalidateArtworkLoadWork()
-        self.view.layoutIfNeeded()
-        self.canvasView.layoutIfNeeded()
         var canvasSize = self.canvasView.bounds.size
+        if canvasSize == .zero {
+            self.view.layoutIfNeeded()
+            self.canvasView.layoutIfNeeded()
+            canvasSize = self.canvasView.bounds.size
+        }
         if canvasSize == .zero {
             canvasSize = CGSize(width: 1024.0, height: 720.0)
         }
@@ -1653,8 +1755,11 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
         let index = self.sessionIndexForHistoryThumbIndex(button.tag)
         if index < self.sessions.count {
             let session = self.sessions[index]
-            self.selectedHistorySession = session
-            self.openSession(session)
+            self.performCanvasReplacementAfterUserConfirmation { [weak self] in
+                guard let self else { return }
+                self.selectedHistorySession = session
+                self.openSession(session)
+            }
         }
     }
 
@@ -1675,6 +1780,12 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
     }
 
     @objc func didTapDraftThumb() {
+        self.performCanvasReplacementAfterUserConfirmation { [weak self] in
+            self?.openDraftThumb()
+        }
+    }
+
+    private func openDraftThumb() {
         let generation = self.nextArtworkLoadGeneration()
         self.draftPersistenceQueue.async { [weak self] in
             guard let self else { return }
@@ -2866,16 +2977,16 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
     func scheduleStartupDeferredWorkIfNeeded() {
         guard !self.didScheduleStartupDeferredWork else { return }
         self.didScheduleStartupDeferredWork = true
-        self.scheduleStartupDeferredTask(after: 0.05) { controller in
+        self.scheduleStartupDeferredTask(after: KCStartupDeferredDelay.colorControls) { controller in
             controller.loadColorControlsAfterStartupIfNeeded()
         }
-        self.scheduleStartupDeferredTask(after: 0.18) { controller in
-            controller.refreshHistorySessionsAsync(loadDraftThumbnail: false)
-        }
-        self.scheduleStartupDeferredTask(after: 0.36) { controller in
+        self.scheduleStartupDeferredTask(after: KCStartupDeferredDelay.restoreDraft) { controller in
             controller.restoreDraftIfNeeded()
         }
-        self.scheduleStartupDeferredTask(after: 0.62) { controller in
+        self.scheduleStartupDeferredTask(after: KCStartupDeferredDelay.historySessions) { controller in
+            controller.refreshHistorySessionsAsync(loadDraftThumbnail: false)
+        }
+        self.scheduleStartupDeferredTask(after: KCStartupDeferredDelay.stickerButtons) { controller in
             controller.loadStickerButtonsAfterStartupIfNeeded()
         }
     }

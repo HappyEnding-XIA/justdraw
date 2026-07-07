@@ -40,8 +40,8 @@ final class StrokeRenderMathTests: XCTestCase {
     func testCrayonFormula() {
         let metrics = KCStrokeRenderMath.metrics(for: stroke(tool: .brush, brush: .crayon, width: 10, pressure: 1.0))
         // 蜡笔基础实线必须继续退后，主要质感交给断续蜡痕和颗粒层。
-        XCTAssertEqual(metrics.alpha, 0.098, accuracy: 1e-9)
-        XCTAssertEqual(metrics.renderedLineWidth, 13.4, accuracy: 1e-9)
+        XCTAssertEqual(metrics.alpha, 0.072, accuracy: 1e-9)
+        XCTAssertEqual(metrics.renderedLineWidth, 14.4, accuracy: 1e-9)
     }
 
     func testRenderedWidthFloorsToOne() {
@@ -90,8 +90,8 @@ final class StrokeRenderMathTests: XCTestCase {
 
     func testRenderedMetricsCrayonPressureScales() {
         let m = KCStrokeRenderMath.renderedMetrics(brushStyle: .crayon, lineWidth: 8, pressure: 0.5)
-        XCTAssertEqual(m.alpha, 0.063, accuracy: 1e-9)
-        XCTAssertEqual(m.renderedLineWidth, 5.36, accuracy: 1e-9)
+        XCTAssertEqual(m.alpha, 0.046, accuracy: 1e-9)
+        XCTAssertEqual(m.renderedLineWidth, 5.76, accuracy: 1e-9)
     }
 
     func testBrushStylesAreVisuallySeparatedAtSameWidthAndPressure() {
@@ -238,5 +238,16 @@ final class StrokeRenderMathTests: XCTestCase {
         XCTAssertLessThanOrEqual(crayon.metrics.alpha, 0.10)
         XCTAssertGreaterThan(waxStrength, crayon.metrics.alpha * 22.0)
         XCTAssertGreaterThanOrEqual(crayon.grainClipWidthMultiplier, 2.0)
+    }
+
+    func testCrayonDefaultStrokeUsesObviousWaxInsteadOfTintedWideLine() {
+        let crayon = KCStrokeRenderMath.renderProfile(brushStyle: .crayon, lineWidth: 18, pressure: 1.0)
+        let waxLayers = crayon.textureLayers.filter { $0.kind == .waxSmear }
+        let strongWaxLayers = waxLayers.filter { $0.alpha >= 0.50 && $0.widthMultiplier >= 0.82 }
+
+        // 默认蜡笔宽度下，视觉主体必须是多层不均匀蜡痕，底色只能做轻微染色。
+        XCTAssertLessThanOrEqual(crayon.metrics.alpha, 0.075)
+        XCTAssertGreaterThanOrEqual(strongWaxLayers.count, 3)
+        XCTAssertTrue(waxLayers.contains { $0.widthMultiplier >= 2.05 && $0.alpha >= 0.40 })
     }
 }

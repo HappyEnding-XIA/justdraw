@@ -14,7 +14,7 @@ final class CrayonGrainTests: XCTestCase {
     // bounds {0,0,100,50}，lineWidth 10。
     // grainBounds {-5,-5,110,60}；spacing = max(3.0, 2.4) = 3.0；
     // columnCount = ceil(110/3.0) = 37；rowCount = ceil(60/3.0) = 20；
-    // dash count = (20+1) * (37+1) = 798；dashWidth = max(1.1, 1.6) = 1.6。
+    // dash count = (20+1) * (37+1) = 798；dashWidth = max(1.4, 2.4) = 2.4。
     private static let referenceBounds = CGRect(x: 0, y: 0, width: 100, height: 50)
     private static let referenceLineWidth: CGFloat = 10
 
@@ -29,7 +29,7 @@ final class CrayonGrainTests: XCTestCase {
                                           lineWidth: CrayonGrainTests.referenceLineWidth)
         XCTAssertEqual(dashes.count, 798)
         for dash in dashes {
-            XCTAssertEqual(dash.lineWidth, 1.6, accuracy: 1e-9)
+            XCTAssertEqual(dash.lineWidth, 2.4, accuracy: 1e-9)
         }
     }
 
@@ -71,7 +71,7 @@ final class CrayonGrainTests: XCTestCase {
                                           lineWidth: 0.01)
         XCTAssertFalse(dashes.isEmpty)
         for dash in dashes {
-            XCTAssertEqual(dash.lineWidth, 1.1, accuracy: 1e-9)
+            XCTAssertEqual(dash.lineWidth, 1.4, accuracy: 1e-9)
         }
     }
 
@@ -82,8 +82,17 @@ final class CrayonGrainTests: XCTestCase {
         // 宽蜡笔需要更明显的颗粒短线，否则实际观感会退化成平滑粗笔。
         XCTAssertFalse(dashes.isEmpty)
         for dash in dashes {
-            XCTAssertEqual(dash.lineWidth, 3.84, accuracy: 1e-9)
+            XCTAssertEqual(dash.lineWidth, 5.76, accuracy: 1e-9)
         }
+    }
+
+    func testDefaultCrayonGrainIsChunkyEnoughForFingerDrawing() {
+        let dashes = KCCrayonGrain.dashes(pathBounds: CGRect(x: 0, y: 0, width: 120, height: 80),
+                                          lineWidth: 24.0)
+
+        // 默认蜡笔在手指绘制时需要肉眼可见的蜡粒，不能只留下细碎噪点。
+        XCTAssertFalse(dashes.isEmpty)
+        XCTAssertGreaterThanOrEqual(dashes[0].lineWidth, 5.2)
     }
 
     func testProductizedGrainIsDenseEnoughForVisibleCrayonTexture() {
@@ -93,7 +102,7 @@ final class CrayonGrainTests: XCTestCase {
         // 中等蜡笔线宽下，颗粒要有明显厚度，同时不能密到把纸纹空隙糊平。
         XCTAssertGreaterThanOrEqual(dashes.count, 900)
         XCTAssertLessThanOrEqual(dashes.count, 980)
-        XCTAssertGreaterThanOrEqual(dashes[0].lineWidth, 2.5)
+        XCTAssertGreaterThanOrEqual(dashes[0].lineWidth, 3.6)
     }
 
     func testMediumCrayonUsesChunkierAndDenserWaxGrain() {
@@ -103,6 +112,6 @@ final class CrayonGrainTests: XCTestCase {
         // 用户侧反馈蜡笔观感不明显后，中等线宽必须能看出蜡笔碎粒和纸纹断续感。
         XCTAssertGreaterThanOrEqual(dashes.count, 820)
         XCTAssertLessThanOrEqual(dashes.count, 980)
-        XCTAssertGreaterThanOrEqual(dashes[0].lineWidth, 2.5)
+        XCTAssertGreaterThanOrEqual(dashes[0].lineWidth, 3.6)
     }
 }

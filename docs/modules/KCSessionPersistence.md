@@ -40,6 +40,7 @@
 - `KCSessionService.artworkData(forSession:)`：用于用户点开已保存作品时按已加载的 `KCSessionMetadata` 读取原图 Data；UI 层必须在 `KCMainViewController.artworkLoadingQueue` 后台读取 Data 并调用 `displayDecodedImage(from:)`，主线程只应用已解码图片。
 - `KCSessionService.saveArtwork(pngData:thumbnailJPEGData:existingSessionId:)`：更新已有会话时必须通过 `findSession(id:)` 复用服务层 metadata cache，不再为了解析 existing session 额外读取 `sessions.json`。
 - `KCSessionService.loadDraftImage()`：仅保留为低频同步兼容入口，不作为编辑器打开草稿的主路径；`KCMainViewController.didTapDraftThumb()` 和启动期 `restoreDraftIfNeeded()` 必须在 `draftPersistenceQueue` 后台读取 `loadDraftData()` 并调用 `displayDecodedImage(from:)`。
+- `KCMainViewController.performCanvasReplacementAfterUserConfirmation(_:)`：相册导入、打开最新历史、点击历史缩略图、打开草稿和选择线稿都属于“替换当前画布”入口；若当前画布有未保存内容，必须先弹出本地化确认，并通过 `protectCurrentCanvasDraftBeforeReplacement(completion:)` 保存草稿成功后才继续替换。
 - `KCSessionService.draftThumbnailImage()`：面向历史面板的轻量入口，优先返回加锁保护的 `draftThumbnailCache`；自动保存或替换前草稿保护成功时用快照刷新缩略图缓存，历史面板不得为了显示 240×180 草稿槽位直接调用 `loadDraftImage()`。
 - `KCSessionService.hasDraft()`：用于删除按钮可用性和删除流程的轻量草稿存在性判断；当只需要知道草稿是否存在时，不得调用 `loadDraftImage()` 触发同步读盘和图片解码。
 - 正式保存流程先由 `KCMainViewController` 在主线程生成画布快照，再把 PNG/JPEG 编码和 `saveArtwork(pngData:thumbnailJPEGData:existingSessionId:)` 写盘放入 `sessionPersistenceQueue`；后台写盘前必须通过加锁 `sessionSaveGeneration` 确认任务仍有效，写盘完成后只回主线程更新 UI 和历史。App 内历史保存成功后立即展示“已保存”，系统相册导出作为 `KCPhotoLibraryServicing.export(imageData:)` 的 best-effort 后续步骤，失败时只能展示“已保存，相册未保存”，不得否定本地保存成功。
@@ -67,6 +68,7 @@
 - 禁止删除会话时先删 PNG/JPEG 再写 metadata；必须先写入不含该 session 的 `sessions.json`，成功后再尽力清理文件。
 - 禁止历史栏刷新当前页时调用会触发磁盘读取/解码的 `thumbnailImage(forSessionId:)`；该入口只留给明确需要同步取得图片的低频路径。
 - 禁止启动草稿恢复、草稿保存/保护回调和历史翻页通过默认 `refreshHistoryUI()` 回流到同步 `loadAllSessions()` 或草稿缩略图解码。
+- 禁止相册导入、打开历史、打开草稿或选择线稿绕过 `performCanvasReplacementAfterUserConfirmation(_:)` 直接替换画布；失败时只能提示保存失败，不能丢弃当前未保存内容。
 - 禁止让 `KCSessionPersistence` 感知编辑器 generation、自动保存 timer 或画布替换时机；这些属于 App 层协调职责。
 - 禁止把正式保存的 PNG/JPEG 编码或 `saveArtwork(pngData:thumbnailJPEGData:existingSessionId:)` 写盘重新塞回 `didTapSaveSession()` / `finishSavingSession()` 主线程同步路径；编码和写盘必须复用 `sessionPersistenceQueue`，并通过加锁 generation guard 控制过期任务。
 - 禁止在 `KCMainViewController` 业务路径直接调用 `sessionStore.clearDraft()`；统一走 `clearDraftAndInvalidateCurrentDraftMarker()`，保证磁盘草稿和 `activeDraftMatchesCanvas` 状态不会分叉。
