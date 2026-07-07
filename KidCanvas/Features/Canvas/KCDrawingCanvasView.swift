@@ -50,6 +50,9 @@ final class KCDrawingCanvasView: UIView, UIGestureRecognizerDelegate {
     private var activeStickerGestureCount = 0
     private var floodFillGeneration: Int = 0
     private var floodFillInProgress = false
+    private var nonStickerRasterCacheImage: UIImage?
+    private var nonStickerRasterCacheBounds: CGRect = .null
+    private var nonStickerRasterCacheScale: CGFloat = 0.0
     private weak var selectedStickerView: KDStickerView?
 
     override init(frame: CGRect) {
@@ -62,6 +65,13 @@ final class KCDrawingCanvasView: UIView, UIGestureRecognizerDelegate {
         super.init(coder: coder)
         backgroundColor = .white
         isMultipleTouchEnabled = true
+    }
+
+    override func layoutSubviews() {
+        super.layoutSubviews()
+        if nonStickerRasterCacheImage != nil && !nonStickerRasterCacheBounds.equalTo(bounds) {
+            invalidateNonStickerRasterCache()
+        }
     }
 
     override func draw(_ rect: CGRect) {
@@ -399,6 +409,7 @@ final class KCDrawingCanvasView: UIView, UIGestureRecognizerDelegate {
         }
         commitUndoStateSnapshot(pendingStrokeState)
         strokes.append(activeStroke)
+        invalidateNonStickerRasterCache()
         self.activeStroke = nil
         pendingStrokeState = nil
         activeStrokeDidMutate = false
@@ -498,6 +509,7 @@ final class KCDrawingCanvasView: UIView, UIGestureRecognizerDelegate {
         stroke.brushStyle = currentBrushStyle
         stroke.eraserShape = currentEraserShape
         strokes.append(stroke)
+        invalidateNonStickerRasterCache()
 
         setNeedsDisplayForStroke(stroke)
         notifyContentChanged()
@@ -530,6 +542,7 @@ final class KCDrawingCanvasView: UIView, UIGestureRecognizerDelegate {
         stroke.brushStyle = currentBrushStyle
         stroke.eraserShape = currentEraserShape
         strokes.append(stroke)
+        invalidateNonStickerRasterCache()
 
         setNeedsDisplayForStroke(stroke)
         notifyContentChanged()
@@ -572,8 +585,20 @@ final class KCDrawingCanvasView: UIView, UIGestureRecognizerDelegate {
     }
 
     private func rasterImageExcludingStickers() -> UIImage {
-        let renderer = UIGraphicsImageRenderer(bounds: bounds)
-        return renderer.image { _ in
+        guard bounds.width > 0.0 && bounds.height > 0.0 else { return UIImage() }
+
+        let scale = self.window?.screen.scale ?? UIScreen.main.scale
+        if let cachedImage = nonStickerRasterCacheImage,
+           nonStickerRasterCacheBounds.equalTo(bounds),
+           abs(nonStickerRasterCacheScale - scale) < 0.001 {
+            return cachedImage
+        }
+
+        let format = UIGraphicsImageRendererFormat()
+        format.scale = scale
+        format.opaque = true
+        let renderer = UIGraphicsImageRenderer(bounds: bounds, format: format)
+        let image = renderer.image { _ in
             UIColor.white.setFill()
             UIRectFill(bounds)
             drawImage(backgroundImage, aspectFitIn: bounds)
@@ -582,6 +607,8 @@ final class KCDrawingCanvasView: UIView, UIGestureRecognizerDelegate {
                 drawStroke(stroke)
             }
         }
+        cacheNonStickerRasterImage(image, scale: scale)
+        return image
     }
 
     private func drawImage(_ image: UIImage?, aspectFitIn rect: CGRect) {
@@ -708,6 +735,7 @@ final class KCDrawingCanvasView: UIView, UIGestureRecognizerDelegate {
 
     private func resetCanvasContents() {
         cancelPendingFloodFillResult()
+        invalidateNonStickerRasterCache()
         strokes.removeAll()
         for sticker in stickers {
             sticker.removeFromSuperview()
@@ -796,8 +824,10 @@ final class KCDrawingCanvasView: UIView, UIGestureRecognizerDelegate {
             return false
         }
 
-        backgroundImage = UIImage(cgImage: filledImage, scale: baseImage.scale, orientation: .up)
+        let resultImage = UIImage(cgImage: filledImage, scale: baseImage.scale, orientation: .up)
+        backgroundImage = resultImage
         strokes.removeAll()
+        cacheNonStickerRasterImage(resultImage, scale: baseImage.scale)
         setNeedsDisplay()
         notifyContentChanged()
         return true
@@ -859,10 +889,24 @@ final class KCDrawingCanvasView: UIView, UIGestureRecognizerDelegate {
         guard let filledImage else { return }
 
         commitUndoStateSnapshot(previousState)
-        backgroundImage = UIImage(cgImage: filledImage, scale: imageScale, orientation: .up)
+        let resultImage = UIImage(cgImage: filledImage, scale: imageScale, orientation: .up)
+        backgroundImage = resultImage
         strokes.removeAll()
+        cacheNonStickerRasterImage(resultImage, scale: imageScale)
         setNeedsDisplay()
         notifyContentChanged()
+    }
+
+    private func cacheNonStickerRasterImage(_ image: UIImage, scale: CGFloat) {
+        nonStickerRasterCacheImage = image
+        nonStickerRasterCacheBounds = bounds
+        nonStickerRasterCacheScale = scale
+    }
+
+    private func invalidateNonStickerRasterCache() {
+        nonStickerRasterCacheImage = nil
+        nonStickerRasterCacheBounds = .null
+        nonStickerRasterCacheScale = 0.0
     }
 
     private func fillColorAlreadyMatchesCanvas(at point: CGPoint, fillColor: UIColor) -> Bool {
