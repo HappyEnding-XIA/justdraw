@@ -123,7 +123,7 @@ public enum KCStrokeRenderMath {
             alpha = 1.0
             renderedLineWidth = lineWidth * 0.92 * min(1.08, max(0.94, pressure))
         case .crayon:
-            alpha = min(0.055, 0.014 + pressure * 0.041)
+            alpha = min(0.038, 0.010 + pressure * 0.028)
             renderedLineWidth = lineWidth * 1.44 * pressure
         }
 
@@ -170,10 +170,10 @@ public enum KCStrokeRenderMath {
                 metrics: metrics,
                 usesButtLineCap: false,
                 textureLayers: [
-                    TextureLayer(kind: .waxSmear, widthMultiplier: 2.18, alpha: 0.42, offsetX: -2.4, offsetY: 1.1, dashPatternMultipliers: [0.54, 0.38, 0.42, 0.46]),
-                    TextureLayer(kind: .waxSmear, widthMultiplier: 1.72, alpha: 0.52, offsetX: -4.2, offsetY: 2.5, dashPatternMultipliers: [0.48, 0.28, 0.34, 0.36], dashPhaseMultiplier: 0.16),
-                    TextureLayer(kind: .waxSmear, widthMultiplier: 1.34, alpha: 0.56, offsetX: 3.8, offsetY: -2.7, dashPatternMultipliers: [0.38, 0.22, 0.28, 0.30], dashPhaseMultiplier: 0.34),
-                    TextureLayer(kind: .waxSmear, widthMultiplier: 1.02, alpha: 0.54, offsetX: -2.4, offsetY: -3.6, dashPatternMultipliers: [0.30, 0.18, 0.24, 0.26], dashPhaseMultiplier: 0.54),
+                    TextureLayer(kind: .waxSmear, widthMultiplier: 2.18, alpha: 0.42, offsetX: -2.4, offsetY: 1.1, dashPatternMultipliers: [0.42, 0.58, 0.30, 0.62]),
+                    TextureLayer(kind: .waxSmear, widthMultiplier: 1.72, alpha: 0.52, offsetX: -4.2, offsetY: 2.5, dashPatternMultipliers: [0.38, 0.50, 0.28, 0.56], dashPhaseMultiplier: 0.16),
+                    TextureLayer(kind: .waxSmear, widthMultiplier: 1.34, alpha: 0.56, offsetX: 3.8, offsetY: -2.7, dashPatternMultipliers: [0.32, 0.42, 0.24, 0.48], dashPhaseMultiplier: 0.34),
+                    TextureLayer(kind: .waxSmear, widthMultiplier: 1.02, alpha: 0.54, offsetX: -2.4, offsetY: -3.6, dashPatternMultipliers: [0.26, 0.34, 0.20, 0.38], dashPhaseMultiplier: 0.54),
                     TextureLayer(kind: .waxSmear, widthMultiplier: 0.72, alpha: 0.50, offsetX: 2.8, offsetY: 3.5, dashPatternMultipliers: [0.24, 0.14, 0.18, 0.22], dashPhaseMultiplier: 0.70),
                     TextureLayer(kind: .waxSmear, widthMultiplier: 0.34, alpha: 0.42, offsetX: -4.4, offsetY: -1.0, dashPatternMultipliers: [0.18, 0.10, 0.14, 0.17], dashPhaseMultiplier: 0.86),
                     TextureLayer(kind: .waxSmear, widthMultiplier: 0.28, alpha: 0.36, offsetX: 3.2, offsetY: 1.6, dashPatternMultipliers: [0.16, 0.09, 0.12, 0.15], dashPhaseMultiplier: 0.80),

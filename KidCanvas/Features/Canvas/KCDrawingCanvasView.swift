@@ -223,29 +223,29 @@ final class KCDrawingCanvasView: UIView, UIGestureRecognizerDelegate {
 
         // 叠加浅色纸纹间隙，让蜡笔读起来像蜡痕压在纸面上，而不是平滑粗马克笔。
         context?.setBlendMode(.normal)
-        UIColor.white.withAlphaComponent(0.52).setStroke()
+        UIColor.white.withAlphaComponent(0.64).setStroke()
         let paperToothPath = crayonGrainPath(
             from: dashPoints,
-            lineWidth: max(0.9, dashWidth * 0.78),
-            pointOffset: CGPoint(x: dashWidth * 0.92, y: -dashWidth * 0.62),
+            lineWidth: max(1.0, dashWidth * 0.90),
+            pointOffset: CGPoint(x: dashWidth * 1.05, y: -dashWidth * 0.72),
             stride: 4
         )
         paperToothPath.stroke()
 
-        UIColor.white.withAlphaComponent(0.28).setStroke()
+        UIColor.white.withAlphaComponent(0.34).setStroke()
         let secondaryToothPath = crayonGrainPath(
             from: dashPoints,
-            lineWidth: max(0.7, dashWidth * 0.52),
-            pointOffset: CGPoint(x: -dashWidth * 0.70, y: dashWidth * 0.48),
+            lineWidth: max(0.8, dashWidth * 0.58),
+            pointOffset: CGPoint(x: -dashWidth * 0.82, y: dashWidth * 0.56),
             stride: 6
         )
         secondaryToothPath.stroke()
 
-        UIColor.white.withAlphaComponent(0.16).setStroke()
+        UIColor.white.withAlphaComponent(0.20).setStroke()
         let fineToothPath = crayonGrainPath(
             from: dashPoints,
-            lineWidth: max(0.6, dashWidth * 0.38),
-            pointOffset: CGPoint(x: dashWidth * 0.36, y: dashWidth * 0.94),
+            lineWidth: max(0.7, dashWidth * 0.42),
+            pointOffset: CGPoint(x: dashWidth * 0.42, y: dashWidth * 1.08),
             stride: 8
         )
         fineToothPath.stroke()

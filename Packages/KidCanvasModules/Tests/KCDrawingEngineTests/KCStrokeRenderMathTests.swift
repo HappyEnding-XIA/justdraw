@@ -40,7 +40,7 @@ final class StrokeRenderMathTests: XCTestCase {
     func testCrayonFormula() {
         let metrics = KCStrokeRenderMath.metrics(for: stroke(tool: .brush, brush: .crayon, width: 10, pressure: 1.0))
         // 蜡笔基础实线必须继续退后，主要质感交给断续蜡痕和颗粒层。
-        XCTAssertEqual(metrics.alpha, 0.055, accuracy: 1e-9)
+        XCTAssertEqual(metrics.alpha, 0.038, accuracy: 1e-9)
         XCTAssertEqual(metrics.renderedLineWidth, 14.4, accuracy: 1e-9)
     }
 
@@ -90,7 +90,7 @@ final class StrokeRenderMathTests: XCTestCase {
 
     func testRenderedMetricsCrayonPressureScales() {
         let m = KCStrokeRenderMath.renderedMetrics(brushStyle: .crayon, lineWidth: 8, pressure: 0.5)
-        XCTAssertEqual(m.alpha, 0.0345, accuracy: 1e-9)
+        XCTAssertEqual(m.alpha, 0.024, accuracy: 1e-9)
         XCTAssertEqual(m.renderedLineWidth, 5.76, accuracy: 1e-9)
     }
 
@@ -246,7 +246,7 @@ final class StrokeRenderMathTests: XCTestCase {
         let strongWaxLayers = waxLayers.filter { $0.alpha >= 0.50 && $0.widthMultiplier >= 0.82 }
 
         // 默认蜡笔宽度下，视觉主体必须是多层不均匀蜡痕，底色只能做轻微染色。
-        XCTAssertLessThanOrEqual(crayon.metrics.alpha, 0.055)
+        XCTAssertLessThanOrEqual(crayon.metrics.alpha, 0.038)
         XCTAssertGreaterThanOrEqual(strongWaxLayers.count, 3)
         XCTAssertTrue(waxLayers.contains { $0.widthMultiplier >= 2.05 && $0.alpha >= 0.40 })
     }
@@ -259,8 +259,28 @@ final class StrokeRenderMathTests: XCTestCase {
         }
 
         // 默认蜡笔要明显区别于马克笔：底色更退后，边缘由多层窄碎蜡痕和纸纹裁剪制造粗糙感。
-        XCTAssertLessThanOrEqual(crayon.metrics.alpha, 0.055)
+        XCTAssertLessThanOrEqual(crayon.metrics.alpha, 0.038)
         XCTAssertGreaterThanOrEqual(roughEdgeLayers.count, 3)
         XCTAssertGreaterThanOrEqual(crayon.grainClipWidthMultiplier, 2.35)
+    }
+
+    func testCrayonWideWaxLayersLeaveVisiblePaperGaps() {
+        let crayon = KCStrokeRenderMath.renderProfile(brushStyle: .crayon, lineWidth: 18, pressure: 1.0)
+        let wideWaxLayers = crayon.textureLayers.filter { $0.kind == .waxSmear && $0.widthMultiplier >= 1.0 }
+
+        // 宽蜡痕必须是断续蜡块：gap 长于 mark，避免叠成一条平滑宽马克笔。
+        XCTAssertGreaterThanOrEqual(wideWaxLayers.count, 4)
+        XCTAssertTrue(wideWaxLayers.allSatisfy { layer in
+            guard layer.dashPatternMultipliers.count >= 2 else { return false }
+            return layer.dashPatternMultipliers[1] >= layer.dashPatternMultipliers[0] * 1.12
+        })
+    }
+
+    func testCrayonBaseAlphaStaysFarBehindPencil() {
+        let pencil = KCStrokeRenderMath.renderProfile(brushStyle: .pencil, lineWidth: 18, pressure: 1.0)
+        let crayon = KCStrokeRenderMath.renderProfile(brushStyle: .crayon, lineWidth: 18, pressure: 1.0)
+
+        // 蜡笔不是一条半透明粗线；底色必须明显弱于铅笔，让蜡痕和颗粒负责主体。
+        XCTAssertLessThanOrEqual(crayon.metrics.alpha, pencil.metrics.alpha * 0.15)
     }
 }

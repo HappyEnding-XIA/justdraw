@@ -8,8 +8,8 @@
 
 | 编号 | 流程 | 交付标准 | 自动验证 | 人工触控 |
 |---|---|---|---|---|
-| F01 | 启动 | iPhone/iPad 模拟器可安装、启动、截图非空，并生成横屏观察图、不崩溃 | `runtime_smoke_test.sh` | 检查首屏控件无遮挡 |
-| F02 | 画笔 | 铅笔、钢笔、蜡笔可切换；宽度预览和笔触可用 | `validate_project.py` + `swift test` + `drawing-tools` | 手绘连续线条 |
+| F01 | 启动 | iPhone/iPad 模拟器可安装、启动、截图非空，并生成横屏观察图、不崩溃；首帧前不得同步读取历史 metadata / 草稿缩略图，颜色、草稿、历史、印章加载必须错峰 | `runtime_smoke_test.sh` + `validate_project.py` | 检查首屏控件无遮挡，启动后 1 秒内无明显长卡顿 |
+| F02 | 画笔 | 铅笔、钢笔、蜡笔可切换；宽度预览和笔触可用；蜡笔不能只表现为半透明粗线，必须有断续蜡痕、粗颗粒和纸纹留白 | `validate_project.py` + `swift test` + `drawing-tools` | 手绘连续线条，比较铅笔/钢笔/蜡笔同色同宽差异 |
 | F03 | 橡皮 | 橡皮可切换 circle/cloud/star；尺寸预览和擦除可用 | `validate_project.py` + `swift test` + `drawing-tools` | 擦除已有笔触 |
 | F04 | 填色 | 填色工具存在并通过 Swift flood fill 执行 | `validate_project.py` + `swift test` + `drawing-tools` | 点按封闭区域填色 |
 | F05 | 取色 | 取色器通过 Swift 采样返回颜色，并更新当前颜色 | `validate_project.py` + `swift test` + `drawing-tools` | 从画布取色后继续绘制 |
@@ -17,7 +17,7 @@
 | F07 | 颜色面板 | 24/36 色盘、最近色、当前色高亮可用 | `validate_project.py` + `swift test` + `drawing-tools` | 切换色盘并选择颜色 |
 | F08 | 自定义色 | Custom 仅保留单一入口；弹出系统取色器 | `validate_project.py` + `system-ui` | 选择自定义颜色 |
 | F09 | 保存 | 空画布不可保存；空画布保存反馈必须提示“先画再保存”；有内容后优先保存到 App 内历史；系统相册作为附加导出，失败时必须显示独立文案且不能否定本地保存成功 | `validate_project.py` + `empty-save` + `save-history-restore` + `photo-export-failure` | 空画布点保存应显示“先画再保存”；画一笔后保存应显示“已保存”并进入历史；相册导出失败时应显示“已保存，相册未保存” |
-| F10 | 历史 | 草稿、历史缩略图、打开、删除、翻页状态可用；删除按钮文案必须跟随实际删除目标显示“删除选中 / 删除当前 / 删除草稿 / 删除最近” | `validate_project.py` + `swift test` | 保存后打开/删除历史；选中非最近缩略图后确认删除按钮不再显示“删除最近” |
+| F10 | 历史 | 草稿、历史缩略图、打开、删除、翻页状态可用；删除按钮文案必须跟随实际删除目标显示“删除选中 / 删除当前 / 删除草稿 / 删除最近”；删除已保存作品不得在主线程写 metadata 或删图片文件；选中/按下已保存缩略图不得露出默认 photo 占位 | `validate_project.py` + `swift test` + `save-history-restore` | 保存后打开/删除历史；选中非最近缩略图后确认删除按钮不再显示“删除最近”；连续点按历史缩略图检查无占位闪现 |
 | F11 | 相册导入 | 可从相册导入图片，并重置为干净画布会话；权限说明中英文资源齐全 | `validate_project.py` + `system-ui` | 首次进入相册确认权限弹窗为中文；选择一张照片导入后继续绘制 |
 | F12 | 线稿 | 线稿入口、弹窗、模板加载可用 | `validate_project.py` + `swift test` + `drawing-tools` | 打开线稿并进入绘制 |
 

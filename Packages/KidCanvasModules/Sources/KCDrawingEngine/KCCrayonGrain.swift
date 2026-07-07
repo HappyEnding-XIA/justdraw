@@ -16,7 +16,7 @@ public struct KCCrayonGrainDash {
     public let start: CGPoint
     public let end: CGPoint
     /// 对于给定线宽，所有短线的该值恒定：
-    /// `max(1.4, lineWidth * 0.24)`。
+    /// `max(1.6, lineWidth * 0.28)`。
     public let lineWidth: CGFloat
 
     public init(start: CGPoint, end: CGPoint, lineWidth: CGFloat) {
@@ -29,7 +29,7 @@ public struct KCCrayonGrainDash {
 /// 确定性的蜡笔颗粒生成。
 ///
 /// 整数种子运算保证对于任意给定的（`pathBounds`，`lineWidth`）生成稳定短线点；
-/// 常量已按产品反馈调成更密、更粗的蜡笔颗粒，避免蜡笔退化成平滑粗线。
+/// 常量已按产品反馈调成更粗、更留白的蜡笔颗粒，避免蜡笔退化成平滑粗线。
 public enum KCCrayonGrain {
 
     /// 返回构成蜡笔颗粒纹理的抖动短线段集合，对应的笔画路径包围盒为 `bounds`，
@@ -40,10 +40,10 @@ public enum KCCrayonGrain {
         // grainBounds = bounds 在四周各向外扩展 lineWidth/2。
         let grainBounds = bounds.insetBy(dx: -lineWidth * 0.5, dy: -lineWidth * 0.5)
 
-        let spacing = max(3.0, lineWidth * 0.20)
+        let spacing = max(3.4, lineWidth * 0.25)
         let columnCount = min(220, max(1, Int(ceil(grainBounds.width / spacing))))
         let rowCount = min(180, max(1, Int(ceil(grainBounds.height / spacing))))
-        let dashWidth = max(1.4, lineWidth * 0.24)
+        let dashWidth = max(1.6, lineWidth * 0.28)
 
         var dashes: [KCCrayonGrainDash] = []
         dashes.reserveCapacity((rowCount + 1) * (columnCount + 1))
@@ -51,12 +51,12 @@ public enum KCCrayonGrain {
         for row in 0...rowCount {
             for column in 0...columnCount {
                 let seed = row * 37 + column * 17
-                let jitterX = CGFloat((seed % 7) - 3) * 0.46
-                let jitterY = CGFloat(((seed / 3) % 7) - 3) * 0.38
+                let jitterX = CGFloat((seed % 7) - 3) * 0.58
+                let jitterY = CGFloat(((seed / 3) % 7) - 3) * 0.50
                 let x = grainBounds.minX + CGFloat(column) * spacing + jitterX
                 let y = grainBounds.minY + CGFloat(row) * spacing + jitterY
-                let dashLength = max(1.8, lineWidth * (0.18 + CGFloat(seed % 5) * 0.035))
-                let yOffsetMagnitude = max(0.95, lineWidth * 0.070)
+                let dashLength = max(2.8, lineWidth * (0.28 + CGFloat(seed % 5) * 0.055))
+                let yOffsetMagnitude = max(1.2, lineWidth * 0.10)
                 let yOffset: CGFloat = (seed % 2 == 0) ? yOffsetMagnitude : -yOffsetMagnitude
                 dashes.append(KCCrayonGrainDash(
                     start: CGPoint(x: x - dashLength * 0.5, y: y),

@@ -12,10 +12,10 @@ import KCDomain
 import KCContentCatalog
 
 private enum KCStartupDeferredDelay {
-    static let colorControls: TimeInterval = 0.16
-    static let restoreDraft: TimeInterval = 0.08
-    static let historySessions: TimeInterval = 0.32
-    static let stickerButtons: TimeInterval = 0.48
+    static let restoreDraft: TimeInterval = 0.30
+    static let colorControls: TimeInterval = 0.50
+    static let historySessions: TimeInterval = 0.80
+    static let stickerButtons: TimeInterval = 1.10
 }
 
 // MARK: - KCMainViewController
@@ -135,6 +135,7 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
         .disabled.union(.focused),
         .highlighted.union(.selected).union(.focused)
     ]
+    private static let historyPlaceholderViewTag = 2_026_070_801
     private let sessionSaveGenerationLock = NSLock()
     private var sessionSaveGeneration: Int = 0
     private var artworkLoadGeneration: Int = 0
@@ -1228,6 +1229,11 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
         self.sessions.insert(session, at: 0)
     }
 
+    private func removeLoadedHistorySession(withId sessionId: String) {
+        self.historySessionRefreshGeneration += 1
+        self.sessions.removeAll { $0.identifier == sessionId }
+    }
+
     private func preloadVisibleHistoryThumbnailsIfNeeded(_ sessionIds: [String]) {
         let uniqueSessionIds = Array(Set(sessionIds))
         guard !uniqueSessionIds.isEmpty else { return }
@@ -1301,12 +1307,51 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
     }
 
     private static func setHistoryButtonPlaceholderVisible(_ visible: Bool, on button: UIButton) {
-        for state in Self.historyThumbnailImageStates {
-            button.setImage(visible ? Self.historySlotPlaceholderImage() : nil, for: state)
+        clearHistoryButtonForegroundImages(button)
+        guard visible else {
+            if let placeholderView = button.viewWithTag(Self.historyPlaceholderViewTag) as? UIImageView {
+                placeholderView.alpha = 0.0
+                placeholderView.isHidden = true
+            }
+            return
         }
+
+        let placeholderView = historyPlaceholderImageView(on: button)
+        placeholderView.alpha = 1.0
+        placeholderView.isHidden = false
+    }
+
+    private static func clearHistoryButtonForegroundImages(_ button: UIButton) {
+        for state in Self.historyThumbnailImageStates {
+            button.setImage(nil, for: state)
+        }
+        button.setImage(nil, for: .normal)
         button.imageView?.contentMode = .center
-        button.imageView?.alpha = visible ? 1.0 : 0.0
-        button.imageView?.isHidden = !visible
+        button.imageView?.alpha = 0.0
+        button.imageView?.isHidden = true
+    }
+
+    private static func historyPlaceholderImageView(on button: UIButton) -> UIImageView {
+        if let imageView = button.viewWithTag(Self.historyPlaceholderViewTag) as? UIImageView {
+            imageView.image = Self.historySlotPlaceholderImage()
+            return imageView
+        }
+
+        let imageView = UIImageView(image: Self.historySlotPlaceholderImage())
+        imageView.translatesAutoresizingMaskIntoConstraints = false
+        imageView.tag = Self.historyPlaceholderViewTag
+        imageView.contentMode = .center
+        imageView.isUserInteractionEnabled = false
+        imageView.alpha = 0.0
+        imageView.isHidden = true
+        button.addSubview(imageView)
+        NSLayoutConstraint.activate([
+            imageView.centerXAnchor.constraint(equalTo: button.centerXAnchor),
+            imageView.centerYAnchor.constraint(equalTo: button.centerYAnchor),
+            imageView.widthAnchor.constraint(equalToConstant: 30.0),
+            imageView.heightAnchor.constraint(equalToConstant: 30.0)
+        ])
+        return imageView
     }
 
     private static func historySlotPlaceholderImage() -> UIImage? {
@@ -1627,21 +1672,9 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
                     self.clearDraftAndInvalidateCurrentDraftMarker()
                 }
             } else {
-                let deletingActiveSession = self.activeSession?.identifier == session?.identifier
-                self.sessionStore.deleteSession(withId: session!.identifier)
-                if deletingActiveSession {
-                    self.activeSession = nil
-                    self.selectedHistorySession = nil
-                    self.activeSessionHasUnsavedChanges = false
-                    self.invalidateArtworkLoadWork()
-                    self.invalidateDraftSaveTimer()
-                    self.suppressNextDraftSave = true
-                    self.canvasView.startBlankCanvas()
-                    self.clearDraftAndInvalidateCurrentDraftMarker()
-                }
-                if self.selectedHistorySession?.identifier == session?.identifier {
-                    self.selectedHistorySession = nil
-                }
+                guard let session else { return }
+                self.deleteSavedHistorySession(session)
+                return
             }
             if shouldDeleteDraft {
                 self.activeSession = nil
@@ -1652,6 +1685,31 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
             self.refreshActionButtons()
         }))
         self.present(alert, animated: true, completion: nil)
+    }
+
+    private func deleteSavedHistorySession(_ session: KCSessionMetadata) {
+        let deletingActiveSession = self.activeSession?.identifier == session.identifier
+        if deletingActiveSession {
+            self.activeSession = nil
+            self.selectedHistorySession = nil
+            self.activeSessionHasUnsavedChanges = false
+            self.invalidateArtworkLoadWork()
+            self.invalidateDraftSaveTimer()
+            self.suppressNextDraftSave = true
+            self.canvasView.startBlankCanvas()
+            self.clearDraftAndInvalidateCurrentDraftMarker()
+        } else if self.selectedHistorySession?.identifier == session.identifier {
+            self.selectedHistorySession = nil
+        }
+
+        self.removeLoadedHistorySession(withId: session.identifier)
+        self.refreshHistoryUI(loadDraftThumbnail: false, loadSessions: false)
+        self.refreshActionButtons()
+
+        let sessionId = session.identifier
+        self.sessionPersistenceQueue.async { [weak self, sessionId] in
+            self?.sessionStore.deleteSession(withId: sessionId)
+        }
     }
 
     @objc func didTapLineArtPicker() {
@@ -2466,6 +2524,13 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
         let afterOpenSelectedSessionId = self.selectedHistorySession?.identifier ?? ""
         let afterOpenCanUndo = self.canvasView.canUndo()
         let afterOpenCanRedo = self.canvasView.canRedo()
+        if let savedSession {
+            self.deleteSavedHistorySession(savedSession)
+        }
+        let afterDeleteHistoryCount = self.sessions.count
+        let afterDeleteVisible = self.canvasFeature.hasVisibleContent(self.canvasView)
+        let afterDeleteActiveSessionId = self.activeSession?.identifier ?? ""
+        let afterDeleteSelectedSessionId = self.selectedHistorySession?.identifier ?? ""
 
         let result: [String: Any] = [
             "probe": "save-history-restore",
@@ -2488,7 +2553,11 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
                 && afterOpenActiveSessionId == savedSession?.identifier
                 && afterOpenSelectedSessionId == savedSession?.identifier
                 && !afterOpenCanUndo
-                && !afterOpenCanRedo,
+                && !afterOpenCanRedo
+                && afterDeleteHistoryCount == initialHistoryCount
+                && !afterDeleteVisible
+                && afterDeleteActiveSessionId.isEmpty
+                && afterDeleteSelectedSessionId.isEmpty,
             "initialHistoryCount": initialHistoryCount,
             "initialVisible": initialVisible,
             "initialCanUndo": initialCanUndo,
@@ -2509,6 +2578,10 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
             "afterOpenSelectedSessionId": afterOpenSelectedSessionId,
             "afterOpenCanUndo": afterOpenCanUndo,
             "afterOpenCanRedo": afterOpenCanRedo,
+            "afterDeleteHistoryCount": afterDeleteHistoryCount,
+            "afterDeleteVisible": afterDeleteVisible,
+            "afterDeleteActiveSessionId": afterDeleteActiveSessionId,
+            "afterDeleteSelectedSessionId": afterDeleteSelectedSessionId,
             "openSucceeded": openSucceeded,
             "expectedToast": KCL10n.saveSuccessToastTitle
         ]
