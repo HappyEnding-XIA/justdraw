@@ -1,6 +1,6 @@
 # KCDrawingCanvasView
 
-App 层 UIKit/Core Graphics 画布视图：承接触摸绘制、画布状态快照、撤销/重做、印章视图手势接入和画布内容渲染。位于 `KidCanvas/KCDrawingCanvasView.swift`，不是独立 SPM target。
+App 层 UIKit/Core Graphics 画布视图：承接触摸绘制、画布状态快照、撤销/重做、印章视图手势接入和画布内容渲染。位于 `KidCanvas/Features/Canvas/KCDrawingCanvasView.swift`，不是独立 SPM target。
 
 ## 1. 职责
 

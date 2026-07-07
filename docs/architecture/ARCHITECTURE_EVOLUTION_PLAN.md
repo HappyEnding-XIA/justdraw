@@ -44,7 +44,7 @@ Packages/KidCanvasModules
 - 当前 App target 已无业务 Objective-C `.m` 源码。
 - 当前工程已无 `KidCanvas-Bridging-Header.h`。
 - 当前 SPM 落地形态是 1 个本地 package、5 个基础 library target。
-- App Feature 暂在 App target 内渐进拆分。
+- App target 已按 App / Features / Infrastructure / DesignSystem / Localization / Resources 分层；App Feature 仍在 App target 内，边界稳定后再评估下沉 SPM target。
 - 继续支持 iPhone + iPad，横屏优先。
 - 禁止一个模块一个 package。
 - 禁止把画布核心重写为纯 SwiftUI Canvas。

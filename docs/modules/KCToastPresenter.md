@@ -1,6 +1,6 @@
 # KCToastPresenter
 
-App 层保存反馈 Toast 展示器：承接保存成功 / 失败提示的 UIKit 视图创建、位置约束、图标和动画。位于 `KidCanvas/KCToastPresenter.swift`，不是独立 SPM target。
+App 层保存反馈 Toast 展示器：承接保存成功 / 失败提示的 UIKit 视图创建、位置约束、图标和动画。位于 `KidCanvas/DesignSystem/KCToastPresenter.swift`，不是独立 SPM target。
 
 ## 1. 职责
 

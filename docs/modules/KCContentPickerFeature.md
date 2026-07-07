@@ -1,6 +1,6 @@
 # KCContentPickerFeature
 
-App 层内容选择 Feature：集中持有色盘、最近色和贴纸分类的状态与决策。位于 `KidCanvas/KCContentPickerFeature.swift`，不是独立 SPM target。
+App 层内容选择 Feature：集中持有色盘、最近色和贴纸分类的状态与决策。位于 `KidCanvas/Features/ContentPicker/KCContentPickerFeature.swift`，不是独立 SPM target。
 
 ## 1. 职责
 

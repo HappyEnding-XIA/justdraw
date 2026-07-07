@@ -1,6 +1,6 @@
 # KCBrushStickerPanelView
 
-App 层画笔 / 印章 / 橡皮编辑面板组装器：承接尺寸 slider、尺寸预览容器、印章分类、印章列表、橡皮形状按钮和印章编辑按钮的 UIKit 创建与约束。位于 `KidCanvas/KCBrushStickerPanelView.swift`，不是独立 SPM target。
+App 层画笔 / 印章 / 橡皮编辑面板组装器：承接尺寸 slider、尺寸预览容器、印章分类、印章列表、橡皮形状按钮和印章编辑按钮的 UIKit 创建与约束。位于 `KidCanvas/Features/Tools/KCBrushStickerPanelView.swift`，不是独立 SPM target。
 
 > 文件名与内部 API 暂保留 `Sticker`，对应现有 `KDToolMode.sticker`、`KCSticker*` 与内容目录 schema；用户可见文案统一展示为“印章 / Stamp”。
 

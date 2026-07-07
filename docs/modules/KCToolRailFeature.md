@@ -1,6 +1,6 @@
 # KCToolRailFeature
 
-App 层左侧工具栏 Feature：集中左侧工具项配置、取色器强调色和按钮选中态样式。位于 `KidCanvas/KCToolRailFeature.swift`，不是独立 SPM target。
+App 层左侧工具栏 Feature：集中左侧工具项配置、取色器强调色和按钮选中态样式。位于 `KidCanvas/Features/Tools/KCToolRailFeature.swift`，不是独立 SPM target。
 
 > 产品侧工具名称为“印章 / Stamp”；内部仍沿用 `sticker` id 与 `KDToolMode.sticker` 稳定模型，避免为文案调整引入数据迁移。
 

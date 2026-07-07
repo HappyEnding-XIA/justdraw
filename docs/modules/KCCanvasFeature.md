@@ -1,6 +1,6 @@
 # KCCanvasFeature
 
-App 层主画布 Feature：集中画布视图创建、画布动作状态和 undo / redo / save 动作按钮外观。位于 `KidCanvas/KCCanvasFeature.swift`，不是独立 SPM target。
+App 层主画布 Feature：集中画布视图创建、画布动作状态和 undo / redo / save 动作按钮外观。位于 `KidCanvas/Features/Canvas/KCCanvasFeature.swift`，不是独立 SPM target。
 
 ## 1. 职责
 

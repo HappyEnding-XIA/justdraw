@@ -1,6 +1,6 @@
 # KCEditorPanelsFeature
 
-App 层编辑器面板 Feature：集中浮动工具面板收起/展开状态和折叠态工具芯片色块决策。位于 `KidCanvas/KCEditorPanelsFeature.swift`，不是独立 SPM target。
+App 层编辑器面板 Feature：集中浮动工具面板收起/展开状态和折叠态工具芯片色块决策。位于 `KidCanvas/Features/Editor/KCEditorPanelsFeature.swift`，不是独立 SPM target。
 
 ## 1. 职责
 

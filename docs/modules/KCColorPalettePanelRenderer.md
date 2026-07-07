@@ -1,6 +1,6 @@
 # KCColorPalettePanelRenderer
 
-App 层颜色面板 UIKit 渲染器：承接颜色面板的视图创建、色盘网格、最近色横向行、24/36 分段样式和当前色高亮。位于 `KidCanvas/KCColorPalettePanelRenderer.swift`，不是独立 SPM target。
+App 层颜色面板 UIKit 渲染器：承接颜色面板的视图创建、色盘网格、最近色横向行、24/36 分段样式和当前色高亮。位于 `KidCanvas/Features/ContentPicker/KCColorPalettePanelRenderer.swift`，不是独立 SPM target。
 
 ## 1. 职责
 

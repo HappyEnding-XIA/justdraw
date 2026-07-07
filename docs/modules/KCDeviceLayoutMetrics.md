@@ -1,6 +1,6 @@
 # KCDeviceLayoutMetrics
 
-App 层设备布局指标：集中 iPhone 与 iPad 的尺寸决策。位于 `KidCanvas/KCDeviceLayoutMetrics.swift`，不是独立 SPM target。
+App 层设备布局指标：集中 iPhone 与 iPad 的尺寸决策。位于 `KidCanvas/Features/Editor/KCDeviceLayoutMetrics.swift`，不是独立 SPM target。
 
 ## 1. 职责
 

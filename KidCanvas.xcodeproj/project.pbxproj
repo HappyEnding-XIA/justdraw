@@ -102,36 +102,132 @@
 		A10000310000000000000002 /* KidCanvas */ = {
 			isa = PBXGroup;
 			children = (
+				A1FB310000000000D0A10001 /* App */,
+				A1FB310000000000D0A10002 /* Features */,
+				A1FB310000000000D0A10009 /* Infrastructure */,
+				A1FB310000000000D0A1000A /* DesignSystem */,
+				A1FB310000000000D0A1000B /* Localization */,
+				A1FB310000000000D0A1000C /* Resources */,
+			);
+			path = KidCanvas;
+			sourceTree = "<group>";
+		};
+		A1FB310000000000D0A10001 /* App */ = {
+			isa = PBXGroup;
+			children = (
 				A10000110000000000000016 /* AppDelegate.swift */,
 				A10000110000000000000017 /* SceneDelegate.swift */,
-				A10000110000000000000019 /* LegacyArchiveMigrator.swift */,
-				A1000011000000000000001B /* KCMainViewController.swift */,
 				A1000011000000000000001C /* KCAppCompositionRoot.swift */,
-				A1000011000000000000001A /* KCDrawingCanvasView.swift */,
-				A10000110000000000000010 /* Assets.xcassets */,
-				A10000110000000000000012 /* KCDrawingEngineAdapter.swift */,
-				A10000110000000000000014 /* KCSessionService.swift */,
-				A1000011000000000000001D /* KCContentPickerFeature.swift */,
+			);
+			path = App;
+			sourceTree = "<group>";
+		};
+		A1FB310000000000D0A10002 /* Features */ = {
+			isa = PBXGroup;
+			children = (
+				A1FB310000000000D0A10003 /* Editor */,
+				A1FB310000000000D0A10004 /* Canvas */,
+				A1FB310000000000D0A10005 /* Tools */,
+				A1FB310000000000D0A10006 /* ContentPicker */,
+				A1FB310000000000D0A10007 /* LineArt */,
+				A1FB310000000000D0A10008 /* History */,
+			);
+			path = Features;
+			sourceTree = "<group>";
+		};
+		A1FB310000000000D0A10003 /* Editor */ = {
+			isa = PBXGroup;
+			children = (
+				A1000011000000000000001B /* KCMainViewController.swift */,
 				A1000011000000000000001E /* KCEditorPanelsFeature.swift */,
-				A1000011000000000000001F /* KCHistoryFeature.swift */,
-				A1FA110000000000C0A10006 /* KCCanvasFeature.swift */,
-				A1FA110000000000C0A10007 /* KCLineArtFeature.swift */,
 				A1FA110000000000C0A10008 /* KCDeviceLayoutMetrics.swift */,
-				A1FA110000000000C0A10009 /* KCEditorUIFactory.swift */,
+			);
+			path = Editor;
+			sourceTree = "<group>";
+		};
+		A1FB310000000000D0A10004 /* Canvas */ = {
+			isa = PBXGroup;
+			children = (
+				A1FA110000000000C0A10006 /* KCCanvasFeature.swift */,
+				A1000011000000000000001A /* KCDrawingCanvasView.swift */,
+			);
+			path = Canvas;
+			sourceTree = "<group>";
+		};
+		A1FB310000000000D0A10005 /* Tools */ = {
+			isa = PBXGroup;
+			children = (
+				A1FA110000000000C0A10012 /* KCToolRailFeature.swift */,
 				A1FA110000000000C0A10010 /* KCBrushDockFeature.swift */,
 				A1FA110000000000C0A10011 /* KCEraserControlsFeature.swift */,
-				A1FA110000000000C0A10012 /* KCToolRailFeature.swift */,
+				A1FA110000000000C0A10017 /* KCBrushStickerPanelView.swift */,
+			);
+			path = Tools;
+			sourceTree = "<group>";
+		};
+		A1FB310000000000D0A10006 /* ContentPicker */ = {
+			isa = PBXGroup;
+			children = (
+				A1000011000000000000001D /* KCContentPickerFeature.swift */,
+				A1FA110000000000C0A10016 /* KCColorPalettePanelRenderer.swift */,
+			);
+			path = ContentPicker;
+			sourceTree = "<group>";
+		};
+		A1FB310000000000D0A10007 /* LineArt */ = {
+			isa = PBXGroup;
+			children = (
+				A1FA110000000000C0A10007 /* KCLineArtFeature.swift */,
 				A1FA110000000000C0A10013 /* KCLineArtPickerViewController.swift */,
+			);
+			path = LineArt;
+			sourceTree = "<group>";
+		};
+		A1FB310000000000D0A10008 /* History */ = {
+			isa = PBXGroup;
+			children = (
+				A1000011000000000000001F /* KCHistoryFeature.swift */,
+			);
+			path = History;
+			sourceTree = "<group>";
+		};
+		A1FB310000000000D0A10009 /* Infrastructure */ = {
+			isa = PBXGroup;
+			children = (
+				A10000110000000000000012 /* KCDrawingEngineAdapter.swift */,
+				A10000110000000000000014 /* KCSessionService.swift */,
+				A10000110000000000000019 /* LegacyArchiveMigrator.swift */,
+			);
+			path = Infrastructure;
+			sourceTree = "<group>";
+		};
+		A1FB310000000000D0A1000A /* DesignSystem */ = {
+			isa = PBXGroup;
+			children = (
+				A1FA110000000000C0A10009 /* KCEditorUIFactory.swift */,
 				A1FA110000000000C0A10014 /* KCPressFeedbackController.swift */,
 				A1FA110000000000C0A10015 /* KCToastPresenter.swift */,
-				A1FA110000000000C0A10016 /* KCColorPalettePanelRenderer.swift */,
-				A1FA110000000000C0A10017 /* KCBrushStickerPanelView.swift */,
+			);
+			path = DesignSystem;
+			sourceTree = "<group>";
+		};
+		A1FB310000000000D0A1000B /* Localization */ = {
+			isa = PBXGroup;
+			children = (
 				A1FA110000000000C0A10005 /* KCLocalizedStrings.swift */,
 				A1FA210000000000C0A10001 /* Localizable.strings */,
 				A1FA210000000000C0A10002 /* InfoPlist.strings */,
+			);
+			path = Localization;
+			sourceTree = "<group>";
+		};
+		A1FB310000000000D0A1000C /* Resources */ = {
+			isa = PBXGroup;
+			children = (
+				A10000110000000000000010 /* Assets.xcassets */,
 				A1000011000000000000000A /* Info.plist */,
 			);
-			path = KidCanvas;
+			path = Resources;
 			sourceTree = "<group>";
 		};
 		A10000310000000000000003 /* Products */ = {
@@ -333,7 +429,7 @@
 				DEVELOPMENT_TEAM = "";
 				"DEVELOPMENT_TEAM[sdk=iphoneos*]" = 72QTRY43RT;
 				GENERATE_INFOPLIST_FILE = NO;
-				INFOPLIST_FILE = KidCanvas/Info.plist;
+				INFOPLIST_FILE = KidCanvas/Resources/Info.plist;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -367,7 +463,7 @@
 				DEVELOPMENT_TEAM = "";
 				"DEVELOPMENT_TEAM[sdk=iphoneos*]" = 72QTRY43RT;
 				GENERATE_INFOPLIST_FILE = NO;
-				INFOPLIST_FILE = KidCanvas/Info.plist;
+				INFOPLIST_FILE = KidCanvas/Resources/Info.plist;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",

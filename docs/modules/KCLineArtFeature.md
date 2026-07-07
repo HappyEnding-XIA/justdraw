@@ -1,6 +1,6 @@
 # KCLineArtFeature
 
-App 层线稿 Feature：承接线稿列表组装、缩略图渲染和画布线稿图片渲染。位于 `KidCanvas/KCLineArtFeature.swift`，不是独立 SPM target。
+App 层线稿 Feature：承接线稿列表组装、缩略图渲染和画布线稿图片渲染。位于 `KidCanvas/Features/LineArt/KCLineArtFeature.swift`，不是独立 SPM target。
 
 ## 1. 职责
 

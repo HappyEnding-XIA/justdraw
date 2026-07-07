@@ -1,6 +1,6 @@
 # KCHistoryFeature
 
-App 层历史 Feature：集中历史缩略图槽位状态推导、边框色映射和删除按钮可用性判定。位于 `KidCanvas/KCHistoryFeature.swift`，不是独立 SPM target。
+App 层历史 Feature：集中历史缩略图槽位状态推导、边框色映射和删除按钮可用性判定。位于 `KidCanvas/Features/History/KCHistoryFeature.swift`，不是独立 SPM target。
 
 ## 1. 职责
 

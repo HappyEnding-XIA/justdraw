@@ -1,6 +1,6 @@
 # KCEditorUIFactory
 
-App 层编辑器 UI 工厂：集中浮动面板、图标按钮、分段按钮、小工具按钮、历史缩略图按钮、画笔卡片等通用 UIKit 控件的样式创建。位于 `KidCanvas/KCEditorUIFactory.swift`，不是独立 SPM target。
+App 层编辑器 UI 工厂：集中浮动面板、图标按钮、分段按钮、小工具按钮、历史缩略图按钮、画笔卡片等通用 UIKit 控件的样式创建。位于 `KidCanvas/DesignSystem/KCEditorUIFactory.swift`，不是独立 SPM target。
 
 ## 1. 职责
 

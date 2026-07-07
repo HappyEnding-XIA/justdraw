@@ -17,7 +17,7 @@ Swift app shell
 
 1. 新架构全部采用 Swift 编写。
 2. 当前 SPM 落地形态是 1 个本地 package、5 个基础 library target。
-3. App Feature 暂在 App target 内渐进拆分，边界稳定后再评估下沉 SPM target。
+3. App target 已按 App / Features / Infrastructure / DesignSystem / Localization / Resources 分层；App Feature 仍在 App target 内，边界稳定后再评估下沉 SPM target。
 4. 继续支持 iPhone + iPad，横屏优先。
 5. 禁止一个模块一个 package，禁止把画布核心重写为纯 SwiftUI Canvas。
 6. 画布核心保持 Swift 编写的 `UIView`/Core Graphics 模块。
@@ -121,9 +121,9 @@ flowchart TD
 
 当前文件：
 
-- `KidCanvas/AppDelegate.swift`
-- `KidCanvas/SceneDelegate.swift`
-- `KidCanvas/KCAppCompositionRoot.swift`
+- `KidCanvas/App/AppDelegate.swift`
+- `KidCanvas/App/SceneDelegate.swift`
+- `KidCanvas/App/KCAppCompositionRoot.swift`
 
 职责：
 
@@ -142,13 +142,13 @@ flowchart TD
 
 当前核心文件：
 
-- `KidCanvas/KCMainViewController.swift`
-- `KidCanvas/KCContentPickerFeature.swift`
-- `KidCanvas/KCEditorPanelsFeature.swift`
-- `KidCanvas/KCHistoryFeature.swift`
-- `KidCanvas/KCLineArtFeature.swift`
-- `KidCanvas/KCColorPalettePanelRenderer.swift`
-- `KidCanvas/KCBrushStickerPanelView.swift`
+- `KidCanvas/Features/Editor/KCMainViewController.swift`
+- `KidCanvas/Features/ContentPicker/KCContentPickerFeature.swift`
+- `KidCanvas/Features/Editor/KCEditorPanelsFeature.swift`
+- `KidCanvas/Features/History/KCHistoryFeature.swift`
+- `KidCanvas/Features/LineArt/KCLineArtFeature.swift`
+- `KidCanvas/Features/ContentPicker/KCColorPalettePanelRenderer.swift`
+- `KidCanvas/Features/Tools/KCBrushStickerPanelView.swift`
 
 职责：
 
@@ -162,7 +162,7 @@ flowchart TD
 当前问题：
 
 - 主控制器职责已经通过多组 App Feature 收敛，但仍承担保存、草稿、历史删除、相册导入导出等高风险流程协调。
-- App 层文件仍主要扁平放在 `KidCanvas/` 目录，后续需要继续分组或下沉稳定 Feature target。
+- App 层文件已按职责目录分组，后续重点是继续拆薄 `KCMainViewController`，再评估稳定 Feature 是否下沉为 SPM target。
 
 建议拆分：
 
@@ -197,8 +197,8 @@ SwiftUI 可作为后续候选承接：
 
 当前核心文件：
 
-- `KidCanvas/KCDrawingCanvasView.swift`
-- `KidCanvas/KCDrawingEngineAdapter.swift`
+- `KidCanvas/Features/Canvas/KCDrawingCanvasView.swift`
+- `KidCanvas/Infrastructure/KCDrawingEngineAdapter.swift`
 - `Packages/KidCanvasModules/Sources/KCDrawingEngine/`
 - `Packages/KidCanvasModules/Sources/KCDomain/`
 
@@ -314,7 +314,7 @@ Resources/
 
 - `Packages/KidCanvasModules/Sources/KCSessionPersistence/KCSessionStore.swift`
 - `Packages/KidCanvasModules/Sources/KCDomain/KCArtworkSession.swift`
-- `KidCanvas/KCSessionService.swift`
+- `KidCanvas/Infrastructure/KCSessionService.swift`
 
 当前结构：
 

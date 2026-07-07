@@ -1,6 +1,6 @@
 # KCEraserControlsFeature
 
-App 层橡皮擦控件 Feature：集中橡皮擦尺寸预览路径和 circle/cloud/star 形状按钮选中态样式。位于 `KidCanvas/KCEraserControlsFeature.swift`，不是独立 SPM target。
+App 层橡皮擦控件 Feature：集中橡皮擦尺寸预览路径和 circle/cloud/star 形状按钮选中态样式。位于 `KidCanvas/Features/Tools/KCEraserControlsFeature.swift`，不是独立 SPM target。
 
 ## 1. 职责
 

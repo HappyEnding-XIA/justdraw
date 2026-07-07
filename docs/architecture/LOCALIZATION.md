@@ -16,14 +16,14 @@ App target（`KidCanvas/`）内以 `.lproj` 变体组承载本地化资源：
 
 | 文件 | zh-Hans | en | 说明 |
 |------|---------|----|----|
-| `Localizable.strings` | `KidCanvas/zh-Hans.lproj/Localizable.strings` | `KidCanvas/en.lproj/Localizable.strings` | App 用户可见文案（工具菜单、面板标题、画笔名、无障碍标签等） |
-| `InfoPlist.strings` | `KidCanvas/zh-Hans.lproj/InfoPlist.strings` | `KidCanvas/en.lproj/InfoPlist.strings` | `Info.plist` key 覆盖（相册权限文案） |
+| `Localizable.strings` | `KidCanvas/Localization/zh-Hans.lproj/Localizable.strings` | `KidCanvas/Localization/en.lproj/Localizable.strings` | App 用户可见文案（工具菜单、面板标题、画笔名、无障碍标签等） |
+| `InfoPlist.strings` | `KidCanvas/Localization/zh-Hans.lproj/InfoPlist.strings` | `KidCanvas/Localization/en.lproj/InfoPlist.strings` | `Info.plist` key 覆盖（相册权限文案） |
 
 `Info.plist` 的 base 值用中文（与默认语言一致）；`en.lproj/InfoPlist.strings` 覆盖为英文。
 
 ## 文案入口（App 层）
 
-`KidCanvas/KCLocalizedStrings.swift` 中的 `KCL10n`：
+`KidCanvas/Localization/KCLocalizedStrings.swift` 中的 `KCL10n`：
 
 - `KCL10n.tr(_ key:)`：`NSLocalizedString(key, comment:)` 的薄封装，缺失回退到 key 本身。
 - `KCL10n.tr(_ key:, _ args:)`：带位置参数（`%d` / `%@`）。

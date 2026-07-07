@@ -1,6 +1,6 @@
 # KCLineArtPickerViewController
 
-App 层线稿选择弹窗 ViewController：承接线稿弹窗的 UIKit 网格、滚动容器、缩略图按钮和选择回调。位于 `KidCanvas/KCLineArtPickerViewController.swift`，不是独立 SPM target。
+App 层线稿选择弹窗 ViewController：承接线稿弹窗的 UIKit 网格、滚动容器、缩略图按钮和选择回调。位于 `KidCanvas/Features/LineArt/KCLineArtPickerViewController.swift`，不是独立 SPM target。
 
 ## 1. 职责
 

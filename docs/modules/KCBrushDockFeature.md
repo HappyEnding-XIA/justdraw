@@ -1,6 +1,6 @@
 # KCBrushDockFeature
 
-App 层画笔 Dock Feature：集中底部画笔项配置，包括画笔 id、`KDBrushStyle`、`KDToolMode`、SF Symbol、强调色和本地化标题。位于 `KidCanvas/KCBrushDockFeature.swift`，不是独立 SPM target。
+App 层画笔 Dock Feature：集中底部画笔项配置，包括画笔 id、`KDBrushStyle`、`KDToolMode`、SF Symbol、强调色和本地化标题。位于 `KidCanvas/Features/Tools/KCBrushDockFeature.swift`，不是独立 SPM target。
 
 ## 1. 职责
 

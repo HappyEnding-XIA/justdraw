@@ -1,6 +1,6 @@
 # KCPressFeedbackController
 
-App 层通用按压反馈控制器：承接按钮按下、拖入、释放、取消时的缩放与透明度动画。位于 `KidCanvas/KCPressFeedbackController.swift`，不是独立 SPM target。
+App 层通用按压反馈控制器：承接按钮按下、拖入、释放、取消时的缩放与透明度动画。位于 `KidCanvas/DesignSystem/KCPressFeedbackController.swift`，不是独立 SPM target。
 
 ## 1. 职责
 

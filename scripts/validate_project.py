@@ -8,6 +8,35 @@ import xml.etree.ElementTree as ET
 
 
 ROOT = Path(__file__).resolve().parents[1]
+APP_ROOT = ROOT / "KidCanvas"
+APP_FILE_PATHS = {
+    "AppDelegate.swift": APP_ROOT / "App" / "AppDelegate.swift",
+    "SceneDelegate.swift": APP_ROOT / "App" / "SceneDelegate.swift",
+    "KCAppCompositionRoot.swift": APP_ROOT / "App" / "KCAppCompositionRoot.swift",
+    "KCMainViewController.swift": APP_ROOT / "Features" / "Editor" / "KCMainViewController.swift",
+    "KCEditorPanelsFeature.swift": APP_ROOT / "Features" / "Editor" / "KCEditorPanelsFeature.swift",
+    "KCDeviceLayoutMetrics.swift": APP_ROOT / "Features" / "Editor" / "KCDeviceLayoutMetrics.swift",
+    "KCCanvasFeature.swift": APP_ROOT / "Features" / "Canvas" / "KCCanvasFeature.swift",
+    "KCDrawingCanvasView.swift": APP_ROOT / "Features" / "Canvas" / "KCDrawingCanvasView.swift",
+    "KCToolRailFeature.swift": APP_ROOT / "Features" / "Tools" / "KCToolRailFeature.swift",
+    "KCBrushDockFeature.swift": APP_ROOT / "Features" / "Tools" / "KCBrushDockFeature.swift",
+    "KCEraserControlsFeature.swift": APP_ROOT / "Features" / "Tools" / "KCEraserControlsFeature.swift",
+    "KCBrushStickerPanelView.swift": APP_ROOT / "Features" / "Tools" / "KCBrushStickerPanelView.swift",
+    "KCContentPickerFeature.swift": APP_ROOT / "Features" / "ContentPicker" / "KCContentPickerFeature.swift",
+    "KCColorPalettePanelRenderer.swift": APP_ROOT / "Features" / "ContentPicker" / "KCColorPalettePanelRenderer.swift",
+    "KCLineArtFeature.swift": APP_ROOT / "Features" / "LineArt" / "KCLineArtFeature.swift",
+    "KCLineArtPickerViewController.swift": APP_ROOT / "Features" / "LineArt" / "KCLineArtPickerViewController.swift",
+    "KCHistoryFeature.swift": APP_ROOT / "Features" / "History" / "KCHistoryFeature.swift",
+    "KCDrawingEngineAdapter.swift": APP_ROOT / "Infrastructure" / "KCDrawingEngineAdapter.swift",
+    "KCSessionService.swift": APP_ROOT / "Infrastructure" / "KCSessionService.swift",
+    "LegacyArchiveMigrator.swift": APP_ROOT / "Infrastructure" / "LegacyArchiveMigrator.swift",
+    "KCEditorUIFactory.swift": APP_ROOT / "DesignSystem" / "KCEditorUIFactory.swift",
+    "KCPressFeedbackController.swift": APP_ROOT / "DesignSystem" / "KCPressFeedbackController.swift",
+    "KCToastPresenter.swift": APP_ROOT / "DesignSystem" / "KCToastPresenter.swift",
+    "KCLocalizedStrings.swift": APP_ROOT / "Localization" / "KCLocalizedStrings.swift",
+    "Assets.xcassets": APP_ROOT / "Resources" / "Assets.xcassets",
+    "Info.plist": APP_ROOT / "Resources" / "Info.plist",
+}
 
 
 def fail(message):
@@ -463,6 +492,38 @@ def apple_double_checks():
     return checks
 
 
+def app_structure_checks():
+    checks = []
+    expected_directories = [
+        APP_ROOT / "App",
+        APP_ROOT / "Features" / "Editor",
+        APP_ROOT / "Features" / "Canvas",
+        APP_ROOT / "Features" / "Tools",
+        APP_ROOT / "Features" / "ContentPicker",
+        APP_ROOT / "Features" / "LineArt",
+        APP_ROOT / "Features" / "History",
+        APP_ROOT / "Infrastructure",
+        APP_ROOT / "DesignSystem",
+        APP_ROOT / "Localization",
+        APP_ROOT / "Resources",
+    ]
+    for directory in expected_directories:
+        checks.append(ok(f"App structure directory exists: {directory.relative_to(ROOT)}")
+                      if directory.is_dir()
+                      else fail(f"Missing App structure directory: {directory.relative_to(ROOT)}"))
+
+    root_swift_files = sorted(path.name for path in APP_ROOT.glob("*.swift") if not path.name.startswith("._"))
+    checks.append(ok("KidCanvas root no longer contains App Swift files")
+                  if not root_swift_files
+                  else fail("KidCanvas root still contains App Swift files: " + ", ".join(root_swift_files)))
+
+    for file_name, path in APP_FILE_PATHS.items():
+        checks.append(ok(f"App file exists at layered path: {path.relative_to(ROOT)}")
+                      if path.exists()
+                      else fail(f"Missing App file at layered path: {file_name} -> {path.relative_to(ROOT)}"))
+    return checks
+
+
 def architecture_reality_checks():
     checks = []
     docs = {
@@ -476,7 +537,7 @@ def architecture_reality_checks():
         "当前 App target 已无业务 Objective-C `.m` 源码",
         "当前工程已无 `KidCanvas-Bridging-Header.h`",
         "当前 SPM 落地形态是 1 个本地 package、5 个基础 library target",
-        "App Feature 暂在 App target 内渐进拆分",
+        "App target 已按 App / Features / Infrastructure / DesignSystem / Localization / Resources 分层",
         "继续支持 iPhone + iPad，横屏优先",
         "禁止一个模块一个 package",
         "禁止把画布核心重写为纯 SwiftUI Canvas",
@@ -503,6 +564,8 @@ def project_file_references_exist(pbx_text):
         if display_name.endswith(".app"):
             continue
         expected_path = ROOT / "KidCanvas" / path_value
+        if not expected_path.exists() and display_name in APP_FILE_PATHS:
+            expected_path = APP_FILE_PATHS[display_name]
         if not expected_path.exists():
             missing.append(path_value)
     if missing:
@@ -516,7 +579,7 @@ def source_files_in_build_phase(pbx_text):
         return fail("Sources build phase not found")
     sources_section = sources_match.group("section")
     built_sources = set(re.findall(r"/\* ([^*]+\.m) in Sources \*/", sources_section))
-    source_files = {path.name for path in (ROOT / "KidCanvas").glob("*.m")}
+    source_files = {path.name for path in APP_ROOT.rglob("*.m")}
     missing = sorted(source_files - built_sources)
     if missing:
         return fail("Objective-C source files missing from build phase: " + ", ".join(missing))
@@ -692,7 +755,7 @@ def app_feature_checks(
     checks.append(ok("ARC is enabled") if "CLANG_ENABLE_OBJC_ARC = YES" in pbx_text else fail("ARC is not enabled"))
     checks.append(ok("Deployment target is iOS 16") if "IPHONEOS_DEPLOYMENT_TARGET = 16.0" in pbx_text else fail("Deployment target is not iOS 16"))
     checks.append(require_text(pbx_text, 'SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";', "Debug Swift compilation conditions keep DEBUG-only probes available"))
-    checks.append(ok("Manual Info.plist is configured") if "GENERATE_INFOPLIST_FILE = NO" in pbx_text and "INFOPLIST_FILE = KidCanvas/Info.plist" in pbx_text else fail("Manual Info.plist build settings are not configured"))
+    checks.append(ok("Manual Info.plist is configured") if "GENERATE_INFOPLIST_FILE = NO" in pbx_text and "INFOPLIST_FILE = KidCanvas/Resources/Info.plist" in pbx_text else fail("Manual Info.plist build settings are not configured"))
     bundle_ids = re.findall(r"PRODUCT_BUNDLE_IDENTIFIER = ([^;]+);", pbx_text)
     checks.append(ok("Bundle identifier is configured") if bundle_ids else fail("Bundle identifier is missing"))
     checks.append(ok("Bundle identifier is not the example placeholder") if bundle_ids and all("example" not in bundle_id for bundle_id in bundle_ids) else fail("Bundle identifier still uses the example placeholder"))
@@ -1252,7 +1315,7 @@ def main():
     plist = {}
 
     try:
-        with (ROOT / "KidCanvas" / "Info.plist").open("rb") as plist_file:
+        with APP_FILE_PATHS["Info.plist"].open("rb") as plist_file:
             plist = plistlib.load(plist_file)
         checks.append(ok("Info.plist parses"))
         iphone_orientations = plist.get("UISupportedInterfaceOrientations", [])
@@ -1264,8 +1327,8 @@ def main():
         checks.append(fail(f"Info.plist parse failed: {exc}"))
 
     for asset_json in [
-        ROOT / "KidCanvas" / "Assets.xcassets" / "Contents.json",
-        ROOT / "KidCanvas" / "Assets.xcassets" / "AppIcon.appiconset" / "Contents.json",
+        APP_FILE_PATHS["Assets.xcassets"] / "Contents.json",
+        APP_FILE_PATHS["Assets.xcassets"] / "AppIcon.appiconset" / "Contents.json",
     ]:
         try:
             json.loads(asset_json.read_text(encoding="utf-8"))
@@ -1280,7 +1343,7 @@ def main():
     checks.append(ok("Assets.xcassets is referenced by project") if "Assets.xcassets in Resources" in pbx_text else fail("Assets.xcassets is not in Resources"))
     checks.append(ok("AppIcon build setting is enabled") if "ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon" in pbx_text else fail("AppIcon build setting is missing"))
     checks.append(require_text(pbx_text, 'SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";', "Debug Swift compilation conditions define DEBUG"))
-    checks.extend(app_icon_assets_exist(ROOT / "KidCanvas" / "Assets.xcassets" / "AppIcon.appiconset" / "Contents.json"))
+    checks.extend(app_icon_assets_exist(APP_FILE_PATHS["Assets.xcassets"] / "AppIcon.appiconset" / "Contents.json"))
     checks.append(project_file_references_exist(pbx_text))
     checks.append(source_files_in_build_phase(pbx_text))
     checks.append(resources_in_build_phase(pbx_text))
@@ -1291,7 +1354,7 @@ def main():
     # step 2; canvas/controller migrated to Swift in step 3-4).
     oc_whitelist = set()
     removed_legacy_objc = {"KDSessionStore.m", "KDArtworkSession.m", "KDMainViewController.m", "KDDrawingCanvasView.m"}
-    remaining_objc = {p.name for p in (ROOT / "KidCanvas").glob("*.m") if not p.name.startswith("._")}
+    remaining_objc = {p.name for p in APP_ROOT.rglob("*.m") if not p.name.startswith("._")}
     unexpected_objc = remaining_objc - oc_whitelist
     still_present_legacy = removed_legacy_objc & remaining_objc
     checks.append(ok(f"App target has no Objective-C .m sources ({sorted(remaining_objc) or 'none'})")
@@ -1301,14 +1364,14 @@ def main():
                   if not still_present_legacy
                   else fail("Legacy OC files still present: " + ", ".join(sorted(still_present_legacy))))
     # T015: bridging header removed entirely (app target fully Swift, no OC↔Swift boundary).
-    _bridging_header = ROOT / "KidCanvas" / "KidCanvas-Bridging-Header.h"
+    _bridging_header = APP_ROOT / "KidCanvas-Bridging-Header.h"
     checks.append(ok("Bridging header removed (app target fully Swift)")
                   if not _bridging_header.exists()
                   else fail("Bridging header still present: " + _bridging_header.name))
 
     objc_files = [
-        ROOT / "KidCanvas" / "KCMainViewController.swift",
-        ROOT / "KidCanvas" / "KCDrawingCanvasView.swift",
+        APP_FILE_PATHS["KCMainViewController.swift"],
+        APP_FILE_PATHS["KCDrawingCanvasView.swift"],
     ]
     for path in objc_files:
         if path.exists():
@@ -1316,14 +1379,14 @@ def main():
         else:
             checks.append(fail(f"{path.relative_to(ROOT)} is missing"))
 
-    main_text = (ROOT / "KidCanvas" / "KCMainViewController.swift").read_text(encoding="utf-8")
-    canvas_text = (ROOT / "KidCanvas" / "KCDrawingCanvasView.swift").read_text(encoding="utf-8")
-    session_store_bridge_text = (ROOT / "KidCanvas" / "KCSessionService.swift").read_text(encoding="utf-8")
+    main_text = APP_FILE_PATHS["KCMainViewController.swift"].read_text(encoding="utf-8")
+    canvas_text = APP_FILE_PATHS["KCDrawingCanvasView.swift"].read_text(encoding="utf-8")
+    session_store_bridge_text = APP_FILE_PATHS["KCSessionService.swift"].read_text(encoding="utf-8")
     kc_session_store_text = (ROOT / "Packages" / "KidCanvasModules" / "Sources" / "KCSessionPersistence" / "KCSessionStore.swift").read_text(encoding="utf-8")
     kc_artwork_session_text = (ROOT / "Packages" / "KidCanvasModules" / "Sources" / "KCDomain" / "KCArtworkSession.swift").read_text(encoding="utf-8")
-    scene_text = (ROOT / "KidCanvas" / "SceneDelegate.swift").read_text(encoding="utf-8")
-    header_text = (ROOT / "KidCanvas" / "KCDrawingCanvasView.swift").read_text(encoding="utf-8")
-    drawing_bridge_text = (ROOT / "KidCanvas" / "KCDrawingEngineAdapter.swift").read_text(encoding="utf-8")
+    scene_text = APP_FILE_PATHS["SceneDelegate.swift"].read_text(encoding="utf-8")
+    header_text = APP_FILE_PATHS["KCDrawingCanvasView.swift"].read_text(encoding="utf-8")
+    drawing_bridge_text = APP_FILE_PATHS["KCDrawingEngineAdapter.swift"].read_text(encoding="utf-8")
     bitmap_buffer_text = (ROOT / "Packages" / "KidCanvasModules" / "Sources" / "KCDrawingEngine" / "KCBitmapBuffer.swift").read_text(encoding="utf-8")
     flood_fill_text = (ROOT / "Packages" / "KidCanvasModules" / "Sources" / "KCDrawingEngine" / "KCFloodFillEngine.swift").read_text(encoding="utf-8")
     color_sampler_text = (ROOT / "Packages" / "KidCanvasModules" / "Sources" / "KCDrawingEngine" / "KCColorSampler.swift").read_text(encoding="utf-8")
@@ -1332,36 +1395,37 @@ def main():
     sticker_constraints_text = (ROOT / "Packages" / "KidCanvasModules" / "Sources" / "KCDomain" / "KCStickerConstraints.swift").read_text(encoding="utf-8")
     history_paging_text = (ROOT / "Packages" / "KidCanvasModules" / "Sources" / "KCDomain" / "KCHistoryPaging.swift").read_text(encoding="utf-8")
     line_art_drawing_text = (ROOT / "Packages" / "KidCanvasModules" / "Sources" / "KCDrawingEngine" / "KCLineArtDrawing.swift").read_text(encoding="utf-8")
-    composition_root_text = (ROOT / "KidCanvas" / "KCAppCompositionRoot.swift").read_text(encoding="utf-8")
+    composition_root_text = APP_FILE_PATHS["KCAppCompositionRoot.swift"].read_text(encoding="utf-8")
     catalog_text = (ROOT / "Packages" / "KidCanvasModules" / "Sources" / "KCContentCatalog" / "Resources" / "content.json").read_text(encoding="utf-8")
-    content_picker_feature_text = (ROOT / "KidCanvas" / "KCContentPickerFeature.swift").read_text(encoding="utf-8")
-    canvas_feature_text = (ROOT / "KidCanvas" / "KCCanvasFeature.swift").read_text(encoding="utf-8")
-    line_art_feature_text = (ROOT / "KidCanvas" / "KCLineArtFeature.swift").read_text(encoding="utf-8")
-    line_art_picker_path = ROOT / "KidCanvas" / "KCLineArtPickerViewController.swift"
+    content_picker_feature_text = APP_FILE_PATHS["KCContentPickerFeature.swift"].read_text(encoding="utf-8")
+    canvas_feature_text = APP_FILE_PATHS["KCCanvasFeature.swift"].read_text(encoding="utf-8")
+    line_art_feature_text = APP_FILE_PATHS["KCLineArtFeature.swift"].read_text(encoding="utf-8")
+    line_art_picker_path = APP_FILE_PATHS["KCLineArtPickerViewController.swift"]
     line_art_picker_text = line_art_picker_path.read_text(encoding="utf-8") if line_art_picker_path.exists() else ""
-    device_layout_metrics_text = (ROOT / "KidCanvas" / "KCDeviceLayoutMetrics.swift").read_text(encoding="utf-8")
-    editor_ui_factory_text = (ROOT / "KidCanvas" / "KCEditorUIFactory.swift").read_text(encoding="utf-8")
-    press_feedback_path = ROOT / "KidCanvas" / "KCPressFeedbackController.swift"
+    device_layout_metrics_text = APP_FILE_PATHS["KCDeviceLayoutMetrics.swift"].read_text(encoding="utf-8")
+    editor_ui_factory_text = APP_FILE_PATHS["KCEditorUIFactory.swift"].read_text(encoding="utf-8")
+    press_feedback_path = APP_FILE_PATHS["KCPressFeedbackController.swift"]
     press_feedback_text = press_feedback_path.read_text(encoding="utf-8") if press_feedback_path.exists() else ""
-    toast_presenter_path = ROOT / "KidCanvas" / "KCToastPresenter.swift"
+    toast_presenter_path = APP_FILE_PATHS["KCToastPresenter.swift"]
     toast_presenter_text = toast_presenter_path.read_text(encoding="utf-8") if toast_presenter_path.exists() else ""
-    color_palette_renderer_path = ROOT / "KidCanvas" / "KCColorPalettePanelRenderer.swift"
+    color_palette_renderer_path = APP_FILE_PATHS["KCColorPalettePanelRenderer.swift"]
     color_palette_renderer_text = color_palette_renderer_path.read_text(encoding="utf-8") if color_palette_renderer_path.exists() else ""
-    brush_sticker_panel_path = ROOT / "KidCanvas" / "KCBrushStickerPanelView.swift"
+    brush_sticker_panel_path = APP_FILE_PATHS["KCBrushStickerPanelView.swift"]
     brush_sticker_panel_text = brush_sticker_panel_path.read_text(encoding="utf-8") if brush_sticker_panel_path.exists() else ""
-    brush_dock_feature_text = (ROOT / "KidCanvas" / "KCBrushDockFeature.swift").read_text(encoding="utf-8")
-    eraser_controls_feature_text = (ROOT / "KidCanvas" / "KCEraserControlsFeature.swift").read_text(encoding="utf-8")
-    tool_rail_feature_path = ROOT / "KidCanvas" / "KCToolRailFeature.swift"
+    brush_dock_feature_text = APP_FILE_PATHS["KCBrushDockFeature.swift"].read_text(encoding="utf-8")
+    eraser_controls_feature_text = APP_FILE_PATHS["KCEraserControlsFeature.swift"].read_text(encoding="utf-8")
+    tool_rail_feature_path = APP_FILE_PATHS["KCToolRailFeature.swift"]
     tool_rail_feature_text = tool_rail_feature_path.read_text(encoding="utf-8") if tool_rail_feature_path.exists() else ""
     kc_content_picker_layout_text = (ROOT / "Packages" / "KidCanvasModules" / "Sources" / "KCDomain" / "KCContentPickerLayout.swift").read_text(encoding="utf-8")
     kc_recent_color_queue_text = (ROOT / "Packages" / "KidCanvasModules" / "Sources" / "KCDomain" / "KCRecentColorQueue.swift").read_text(encoding="utf-8")
     kc_sticker_category_mapping_text = (ROOT / "Packages" / "KidCanvasModules" / "Sources" / "KCDomain" / "KCStickerCategoryMapping.swift").read_text(encoding="utf-8")
-    editor_panels_feature_text = (ROOT / "KidCanvas" / "KCEditorPanelsFeature.swift").read_text(encoding="utf-8")
+    editor_panels_feature_text = APP_FILE_PATHS["KCEditorPanelsFeature.swift"].read_text(encoding="utf-8")
     kc_editor_panels_collapse_state_text = (ROOT / "Packages" / "KidCanvasModules" / "Sources" / "KCDomain" / "KCEditorPanelsCollapseState.swift").read_text(encoding="utf-8")
-    history_feature_text = (ROOT / "KidCanvas" / "KCHistoryFeature.swift").read_text(encoding="utf-8")
+    history_feature_text = APP_FILE_PATHS["KCHistoryFeature.swift"].read_text(encoding="utf-8")
     kc_history_thumb_status_text = (ROOT / "Packages" / "KidCanvasModules" / "Sources" / "KCDomain" / "KCHistoryThumbStatus.swift").read_text(encoding="utf-8")
     preview_text = (ROOT / "docs" / "product" / "mockups" / "ui-preview.html").read_text(encoding="utf-8")
     checks.extend(spm_module_governance_checks())
+    checks.extend(app_structure_checks())
     checks.extend(apple_double_checks())
     checks.extend(architecture_reality_checks())
     checks.extend(module_documentation_checks())
@@ -1412,11 +1476,11 @@ def main():
     checks.extend(preview_checks(preview_text))
 
     checks.extend(localization_checks(
-        ROOT / "KidCanvas" / "zh-Hans.lproj" / "Localizable.strings",
-        ROOT / "KidCanvas" / "en.lproj" / "Localizable.strings",
-        ROOT / "KidCanvas" / "zh-Hans.lproj" / "InfoPlist.strings",
-        ROOT / "KidCanvas" / "en.lproj" / "InfoPlist.strings",
-        ROOT / "KidCanvas" / "KCLocalizedStrings.swift",
+        APP_ROOT / "Localization" / "zh-Hans.lproj" / "Localizable.strings",
+        APP_ROOT / "Localization" / "en.lproj" / "Localizable.strings",
+        APP_ROOT / "Localization" / "zh-Hans.lproj" / "InfoPlist.strings",
+        APP_ROOT / "Localization" / "en.lproj" / "InfoPlist.strings",
+        APP_FILE_PATHS["KCLocalizedStrings.swift"],
         pbx_text,
     ))
 

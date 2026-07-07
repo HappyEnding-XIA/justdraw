@@ -39,7 +39,7 @@ App 壳工程 + 本地 SPM 聚合包 + 多 target 模块 + 分层依赖约束
 
 当前 App target 已无业务 Objective-C `.m` 源码，当前工程已无 `KidCanvas-Bridging-Header.h`，历史 bridge 方案只作为迁移记录保留，不再作为当前实现路径。
 
-当前 SPM 落地形态是 1 个本地 package、5 个基础 library target：`KCCommon`、`KCDomain`、`KCDrawingEngine`、`KCContentCatalog`、`KCSessionPersistence`。App Feature 暂在 App target 内渐进拆分，待边界稳定后再评估下沉到 `Packages/KidCanvasModules` 的独立 target。
+当前 SPM 落地形态是 1 个本地 package、5 个基础 library target：`KCCommon`、`KCDomain`、`KCDrawingEngine`、`KCContentCatalog`、`KCSessionPersistence`。App target 已按 App / Features / Infrastructure / DesignSystem / Localization / Resources 分层；App Feature 仍在 App target 内，待边界稳定后再评估下沉到 `Packages/KidCanvasModules` 的独立 target。
 
 产品继续支持 iPhone + iPad，横屏优先。架构治理上禁止一个模块一个 package，禁止把画布核心重写为纯 SwiftUI Canvas；画布仍以 Swift UIKit/Core Graphics 为主，外围面板可在边界稳定后按需 SwiftUI 化。
 
@@ -52,7 +52,7 @@ App 壳工程 + 本地 SPM 聚合包 + 多 target 模块 + 分层依赖约束
 - 当前已有 1 个 App target。
 - 当前已有 `Packages/KidCanvasModules` 单一本地 SPM package。
 - 当前已有 5 个基础 library target。
-- App 层 Feature 仍以 App target 内的 Swift 类型承载，后续按稳定边界继续下沉。
+- App 层 Feature 仍以 App target 内的 Swift 类型承载，并已按职责目录分组；后续按稳定边界继续下沉。
 
 ### 3.2 App 目录仍需继续分层
 
