@@ -16,6 +16,8 @@ APP_FILE_PATHS = {
     "KCMainViewController.swift": APP_ROOT / "Features" / "Editor" / "KCMainViewController.swift",
     "KCEditorPanelsFeature.swift": APP_ROOT / "Features" / "Editor" / "KCEditorPanelsFeature.swift",
     "KCDeviceLayoutMetrics.swift": APP_ROOT / "Features" / "Editor" / "KCDeviceLayoutMetrics.swift",
+    "KCEditorToolControls.swift": APP_ROOT / "Features" / "Editor" / "KCEditorToolControls.swift",
+    "KCEditorColorBridge.swift": APP_ROOT / "Features" / "Editor" / "KCEditorColorBridge.swift",
     "KCCanvasFeature.swift": APP_ROOT / "Features" / "Canvas" / "KCCanvasFeature.swift",
     "KCDrawingCanvasView.swift": APP_ROOT / "Features" / "Canvas" / "KCDrawingCanvasView.swift",
     "KCToolRailFeature.swift": APP_ROOT / "Features" / "Tools" / "KCToolRailFeature.swift",
