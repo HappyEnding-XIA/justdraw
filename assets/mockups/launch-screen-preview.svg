@@ -1,0 +1,39 @@
+<svg width="1600" height="1000" viewBox="0 0 1600 1000" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="800" y1="0" x2="800" y2="1000" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#D4E4EE"/>
+      <stop offset="1" stop-color="#C6DAE9"/>
+    </linearGradient>
+    <radialGradient id="glowLeft" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(228 170) rotate(45) scale(320 260)">
+      <stop stop-color="white" stop-opacity="0.58"/>
+      <stop offset="1" stop-color="white" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="glowRight" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(1328 858) rotate(45) scale(360 280)">
+      <stop stop-color="#FFF7DF" stop-opacity="0.88"/>
+      <stop offset="1" stop-color="#FFF7DF" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="160%" height="180%">
+      <feDropShadow dx="0" dy="20" stdDeviation="24" flood-color="#28435B" flood-opacity="0.18"/>
+    </filter>
+    <filter id="soft" x="-20%" y="-20%" width="160%" height="180%">
+      <feDropShadow dx="0" dy="14" stdDeviation="14" flood-color="#28435B" flood-opacity="0.14"/>
+    </filter>
+  </defs>
+
+  <rect width="1600" height="1000" fill="url(#bg)"/>
+  <ellipse cx="228" cy="170" rx="320" ry="260" fill="url(#glowLeft)"/>
+  <ellipse cx="1328" cy="858" rx="360" ry="280" fill="url(#glowRight)"/>
+
+  <g filter="url(#shadow)">
+    <rect x="432" y="204" width="736" height="458" rx="36" fill="#FFFDF9" stroke="#2E3E56" stroke-width="26"/>
+  </g>
+
+  <circle cx="630" cy="420" r="44" fill="#F06971"/>
+  <circle cx="800" cy="420" r="44" fill="#F4CB64"/>
+  <circle cx="970" cy="420" r="44" fill="#98D9A5"/>
+
+  <g filter="url(#soft)">
+    <path d="M574 690L938 486C964 472 996 481 1011 506L1034 544C1049 569 1040 601 1015 616L651 820C614 841 569 828 546 791C522 753 537 711 574 690Z" fill="#F39D62"/>
+    <path d="M970 520L1090 444L1034 660L924 546L970 520Z" fill="#394A63"/>
+  </g>
+</svg>

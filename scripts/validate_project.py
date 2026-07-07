@@ -191,7 +191,7 @@ def localization_checks(zh_localizable, en_localizable, zh_info_plist, en_info_p
 
     # Project wiring: development region is Chinese (default language), both locales are known,
     # and the string catalogs are wired into the Resources build phase as variant groups.
-    checks.append(require_text(pbx_text, "developmentRegion = zh-Hans", "Project development region is zh-Hans (Chinese is the default language)"))
+    checks.append(require_regex(pbx_text, r"developmentRegion = \"?zh-Hans\"?;", "Project development region is zh-Hans (Chinese is the default language)"))
     checks.append(require_text(pbx_text, "PBXVariantGroup", "Localization resources use variant groups"))
     checks.append(require_text(pbx_text, "Localizable.strings in Resources", "Localizable.strings is in the Resources build phase"))
     checks.append(require_text(pbx_text, "InfoPlist.strings in Resources", "InfoPlist.strings is in the Resources build phase"))
@@ -668,6 +668,39 @@ def app_icon_assets_exist(contents_path):
     return checks
 
 
+def launch_artwork_assets_exist(contents_path):
+    try:
+        contents = json.loads(contents_path.read_text(encoding="utf-8"))
+    except Exception as exc:
+        return [fail(f"{contents_path.relative_to(ROOT)} parse failed: {exc}")]
+
+    checks = []
+    expected = {
+        ("universal", "1x"): "LaunchArtwork@1x.png",
+        ("universal", "2x"): "LaunchArtwork@2x.png",
+        ("universal", "3x"): "LaunchArtwork@3x.png",
+    }
+    images = {
+        (item.get("idiom"), item.get("scale")): item.get("filename")
+        for item in contents.get("images", [])
+    }
+
+    for key, expected_filename in expected.items():
+        actual_filename = images.get(key)
+        checks.append(
+            ok(f"Launch artwork entry exists for {key[0]} {key[1]}")
+            if actual_filename == expected_filename
+            else fail(f"Launch artwork entry is missing or incorrect for {key[0]} {key[1]}")
+        )
+        image_path = contents_path.parent / expected_filename
+        checks.append(
+            ok(f"Launch artwork file exists: {expected_filename}")
+            if image_path.exists()
+            else fail(f"Launch artwork file is missing: {expected_filename}")
+        )
+    return checks
+
+
 def png_size(path):
     with path.open("rb") as handle:
         header = handle.read(24)
@@ -803,6 +836,11 @@ def app_feature_checks(
     checks.append(ok("Bundle identifier is not the example placeholder") if bundle_ids and all("example" not in bundle_id for bundle_id in bundle_ids) else fail("Bundle identifier still uses the example placeholder"))
     checks.append(ok("Photo import permission exists") if plist.get("NSPhotoLibraryUsageDescription") else fail("Photo import permission is missing"))
     checks.append(ok("Photo save permission exists") if plist.get("NSPhotoLibraryAddUsageDescription") else fail("Photo save permission is missing"))
+    launch_screen = plist.get("UILaunchScreen", {})
+    checks.append(ok("Info.plist configures UILaunchScreen as a dictionary") if isinstance(launch_screen, dict) else fail("UILaunchScreen is not configured as a dictionary"))
+    if isinstance(launch_screen, dict):
+        checks.append(ok("Launch screen background color asset is configured") if launch_screen.get("UIColorName") == "LaunchBackground" else fail("Launch screen UIColorName is not LaunchBackground"))
+        checks.append(ok("Launch screen artwork asset is configured") if launch_screen.get("UIImageName") == "LaunchArtwork" else fail("Launch screen UIImageName is not LaunchArtwork"))
     checks.append(ok("App locks to light appearance in Info.plist") if plist.get("UIUserInterfaceStyle") == "Light" else fail("UIUserInterfaceStyle is not locked to Light"))
     checks.append(require_text(scene_text, "window.overrideUserInterfaceStyle = .light", "Window locks to light appearance"))
     checks.append(require_text(scene_text, "mainViewController.overrideUserInterfaceStyle = .light", "Root view controller locks to light appearance"))
@@ -1557,6 +1595,8 @@ def main():
     for asset_json in [
         APP_FILE_PATHS["Assets.xcassets"] / "Contents.json",
         APP_FILE_PATHS["Assets.xcassets"] / "AppIcon.appiconset" / "Contents.json",
+        APP_FILE_PATHS["Assets.xcassets"] / "LaunchBackground.colorset" / "Contents.json",
+        APP_FILE_PATHS["Assets.xcassets"] / "LaunchArtwork.imageset" / "Contents.json",
     ]:
         try:
             json.loads(asset_json.read_text(encoding="utf-8"))
@@ -1572,6 +1612,7 @@ def main():
     checks.append(ok("AppIcon build setting is enabled") if "ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon" in pbx_text else fail("AppIcon build setting is missing"))
     checks.append(require_text(pbx_text, 'SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";', "Debug Swift compilation conditions define DEBUG"))
     checks.extend(app_icon_assets_exist(APP_FILE_PATHS["Assets.xcassets"] / "AppIcon.appiconset" / "Contents.json"))
+    checks.extend(launch_artwork_assets_exist(APP_FILE_PATHS["Assets.xcassets"] / "LaunchArtwork.imageset" / "Contents.json"))
     checks.append(project_file_references_exist(pbx_text))
     checks.append(source_files_in_build_phase(pbx_text))
     checks.append(resources_in_build_phase(pbx_text))
