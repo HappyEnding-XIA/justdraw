@@ -927,7 +927,9 @@ final class KCDrawingCanvasView: UIView, UIGestureRecognizerDelegate {
             drawImage(backgroundImage, aspectFitIn: bounds)
 
             for stroke in strokes {
-                drawStroke(stroke)
+                if strokeRenderBounds(stroke).contains(point) {
+                    drawStroke(stroke)
+                }
             }
         }
     }
@@ -935,6 +937,10 @@ final class KCDrawingCanvasView: UIView, UIGestureRecognizerDelegate {
     private func pixelImage(at point: CGPoint) -> UIImage {
         if point.x < 0.0 || point.y < 0.0 || point.x >= bounds.width || point.y >= bounds.height {
             return UIImage()
+        }
+
+        if sticker(at: point) == nil {
+            return pixelImageExcludingStickers(at: point)
         }
 
         let selectedSticker = self.selectedStickerView
@@ -1088,15 +1094,22 @@ final class KCDrawingCanvasView: UIView, UIGestureRecognizerDelegate {
     }
 
     private func hitTestSticker(at point: CGPoint) -> Bool {
-        for sticker in stickers.reversed() {
-            let localPoint = convert(point, to: sticker)
-            if sticker.point(inside: localPoint, with: nil) {
-                selectStickerView(sticker)
-                return true
-            }
+        if let sticker = sticker(at: point) {
+            selectStickerView(sticker)
+            return true
         }
         deselectSticker()
         return false
+    }
+
+    private func sticker(at point: CGPoint) -> KDStickerView? {
+        for sticker in stickers.reversed() {
+            let localPoint = convert(point, to: sticker)
+            if sticker.point(inside: localPoint, with: nil) {
+                return sticker
+            }
+        }
+        return nil
     }
 
     private func selectStickerView(_ sticker: KDStickerView) {

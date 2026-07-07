@@ -37,7 +37,7 @@ T038 后，内置线稿的程序化几何不再放在 `KCMainViewController`。
 
 - `KCColorSampler` 只负责已经存在的 `KCBitmapBuffer` 内部采样，适合泛洪填充等已经持有完整缓冲区的算法。
 - `KCImagePixelSampler` 负责从 `CGImage` 裁剪并渲染目标 1×1 像素，供 `KCDrawingEngineAdapter.sampleColorFromImage(...)` 使用。
-- `KCDrawingCanvasView` 的取色路径必须先通过 `pixelImage(at:)` 渲染目标点的 1 像素画布图片，再交给 `KCDrawingEngineProviding.sampleColorFromImage(...)`；不得为了单点取色调用整画布 `snapshotImage()`。
+- `KCDrawingCanvasView` 的取色路径必须先通过 `pixelImage(at:)` 渲染目标点的 1 像素画布图片，再交给 `KCDrawingEngineProviding.sampleColorFromImage(...)`；不得为了单点取色调用整画布 `snapshotImage()`。采样点未命中印章时应复用 `pixelImageExcludingStickers(at:)`，并按 `strokeRenderBounds(_:)` 跳过未覆盖采样点的历史笔画，避免长画作下单点取色仍重绘所有 stroke。
 - `KCDrawingCanvasView` 继续只依赖 `KCDrawingEngineProviding.sampleColorFromImage(...)` 做最终像素解析，不直接接触具体采样实现。
 - 如果后续要优化为异步取色或批量取色，应在 adapter 协议下新增能力，不把 UIKit 取色细节回流到画布视图。
 
@@ -54,6 +54,6 @@ T038 后，内置线稿的程序化几何不再放在 `KCMainViewController`。
 - `KCLineArtDrawingTests` 覆盖支持 id 顺序、每个模板的 stroke 数量、路径非空与未知 id 返回 nil。
 - `KCImagePixelSamplerTests` 覆盖 `CGImage` 单点采样与越界保护，防止取色器退回整图解码路径。
 - `KCFloodFillEngineTests.testReturnsZeroWhenSeedEqualsFill` 覆盖同色填充返回 0 的行为，validator 额外守住短路位置。
-- `scripts/validate_project.py` 额外守住 App 层填色同色预检：必须使用 `pixelImageExcludingStickers(at:)`，且短路发生在 `canvasStateSnapshot()` / `rasterImageExcludingStickers()` 前。
+- `scripts/validate_project.py` 额外守住 App 层填色同色预检：必须使用 `pixelImageExcludingStickers(at:)`，且短路发生在 `canvasStateSnapshot()` / `rasterImageExcludingStickers()` 前；同时守住单点非印章采样按采样点过滤笔画、取色未命中印章时复用非印章轻量路径。
 - 双端验收仍以 iPhone + iPad 构建、validator 和 runtime smoke 为准。
 - 如后续调整线稿视觉，需要补截图、像素对比或明确的人工视觉验收记录。
