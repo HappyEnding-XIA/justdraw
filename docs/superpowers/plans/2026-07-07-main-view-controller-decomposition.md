@@ -90,11 +90,11 @@ Expected: all commands exit 0.
 - Modify: `KidCanvas/Features/Editor/KCMainViewController.swift`
 - Modify: `KidCanvas.xcodeproj/project.pbxproj`
 
-- [ ] **Step 1: Move collapse controls section**
+- [x] **Step 1: Move collapse controls section**
 
 Move `buildCollapseControls()`, `togglePanelsCollapsed(_:)`, `applyPanelsCollapsedAnimated(_:)`, and `refreshToolStateChip()` into the extension.
 
-- [ ] **Step 2: Verify behavior remains wired**
+- [x] **Step 2: Verify behavior remains wired**
 
 Run:
 
