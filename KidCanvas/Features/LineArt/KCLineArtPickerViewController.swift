@@ -117,7 +117,7 @@ final class KCLineArtPickerViewController: UIViewController {
         button.layer.shadowOffset = CGSize(width: 0, height: 6)
         button.tag = index
         var configuration = UIButton.Configuration.plain()
-        configuration.image = self.lineArtFeature.thumbnailImage(for: item)
+        configuration.image = self.lineArtFeature.cachedThumbnailImage(for: item)
         configuration.contentInsets = NSDirectionalEdgeInsets(top: 14.0, leading: 18.0, bottom: 14.0, trailing: 18.0)
         button.configuration = configuration
         button.imageView?.contentMode = .scaleAspectFit
@@ -125,7 +125,23 @@ final class KCLineArtPickerViewController: UIViewController {
         button.accessibilityIdentifier = "line-art.\(item.title.lowercased())"
         button.addTarget(self, action: #selector(didTapLineArtPreviewButton(_:)), for: .touchUpInside)
         self.registerPressFeedback?(button)
+        if configuration.image == nil {
+            self.loadLineArtThumbnail(for: item, index: index, button: button)
+        }
         return button
+    }
+
+    private func loadLineArtThumbnail(for item: KCLineArtItem, index: Int, button: UIButton) {
+        self.lineArtFeature.prepareThumbnailImage(for: item) { [weak self, weak button] loadedItem, image in
+            guard let self, let button else { return }
+            guard index < self.items.count else { return }
+            guard button.tag == index, self.items[index].id == loadedItem.id else { return }
+
+            var configuration = button.configuration ?? UIButton.Configuration.plain()
+            configuration.image = image
+            button.configuration = configuration
+            button.imageView?.contentMode = .scaleAspectFit
+        }
     }
 
     @objc private func didTapLineArtPreviewButton(_ button: UIButton) {

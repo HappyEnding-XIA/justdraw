@@ -18,6 +18,7 @@ final class KCLineArtFeature {
         cache.countLimit = 32
         return cache
     }()
+    private let thumbnailRenderingQueue = DispatchQueue(label: "com.kidcanvas.line-art.thumbnail-rendering", qos: .userInitiated)
 
     init(contentCatalog: KCBundledContentCatalog, drawingEngine: KCDrawingEngineProviding) {
         self.contentCatalog = contentCatalog
@@ -40,6 +41,27 @@ final class KCLineArtFeature {
         let image = self.renderThumbnailImage(for: item)
         self.thumbnailCache.setObject(image, forKey: cacheKey)
         return image
+    }
+
+    func cachedThumbnailImage(for item: KCLineArtItem) -> UIImage? {
+        self.thumbnailCache.object(forKey: item.id as NSString)
+    }
+
+    func prepareThumbnailImage(for item: KCLineArtItem, completion: @escaping (KCLineArtItem, UIImage) -> Void) {
+        if let cachedImage = cachedThumbnailImage(for: item) {
+            DispatchQueue.main.async {
+                completion(item, cachedImage)
+            }
+            return
+        }
+
+        self.thumbnailRenderingQueue.async { [weak self, item] in
+            guard let self else { return }
+            let image = self.thumbnailImage(for: item)
+            DispatchQueue.main.async {
+                completion(item, image)
+            }
+        }
     }
 
     private func renderThumbnailImage(for item: KCLineArtItem) -> UIImage {
