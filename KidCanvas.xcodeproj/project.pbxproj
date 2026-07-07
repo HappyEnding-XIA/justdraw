@@ -46,6 +46,7 @@
 		A1FB010000000000D0A10105 /* KCMainViewController+ToolSelection.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1FB110000000000D0A10105 /* KCMainViewController+ToolSelection.swift */; };
 		A1FB010000000000D0A10106 /* KCDrawingCanvasModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1FB110000000000D0A10106 /* KCDrawingCanvasModels.swift */; };
 		A1FB010000000000D0A10107 /* KCCanvasHistoryStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1FB110000000000D0A10107 /* KCCanvasHistoryStore.swift */; };
+		A1FB010000000000D0A10108 /* KCStickerViewPresenter.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1FB110000000000D0A10108 /* KCStickerViewPresenter.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -87,6 +88,7 @@
 		A1FB110000000000D0A10105 /* KCMainViewController+ToolSelection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "KCMainViewController+ToolSelection.swift"; sourceTree = "<group>"; };
 		A1FB110000000000D0A10106 /* KCDrawingCanvasModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KCDrawingCanvasModels.swift; sourceTree = "<group>"; };
 		A1FB110000000000D0A10107 /* KCCanvasHistoryStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KCCanvasHistoryStore.swift; sourceTree = "<group>"; };
+		A1FB110000000000D0A10108 /* KCStickerViewPresenter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KCStickerViewPresenter.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -170,6 +172,7 @@
 				A1FA110000000000C0A10006 /* KCCanvasFeature.swift */,
 				A1FB110000000000D0A10106 /* KCDrawingCanvasModels.swift */,
 				A1FB110000000000D0A10107 /* KCCanvasHistoryStore.swift */,
+				A1FB110000000000D0A10108 /* KCStickerViewPresenter.swift */,
 				A1000011000000000000001A /* KCDrawingCanvasView.swift */,
 			);
 			path = Canvas;
@@ -371,6 +374,7 @@
 				A1FB010000000000D0A10105 /* KCMainViewController+ToolSelection.swift in Sources */,
 				A1FB010000000000D0A10106 /* KCDrawingCanvasModels.swift in Sources */,
 				A1FB010000000000D0A10107 /* KCCanvasHistoryStore.swift in Sources */,
+				A1FB010000000000D0A10108 /* KCStickerViewPresenter.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

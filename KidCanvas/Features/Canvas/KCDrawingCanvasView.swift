@@ -38,6 +38,7 @@ final class KCDrawingCanvasView: UIView, UIGestureRecognizerDelegate {
     private var strokes: [KDStroke] = []
     private var stickers: [KDStickerView] = []
     private let historyStore = KCCanvasHistoryStore()
+    private let stickerPresenter = KCStickerViewPresenter()
     private var activeStroke: KDStroke?
     private var backgroundImage: UIImage?
     private var pendingStrokeState: KDCanvasState?
@@ -46,10 +47,6 @@ final class KCDrawingCanvasView: UIView, UIGestureRecognizerDelegate {
     private var stickerTransformDidMutate = false
     private var activeStickerGestureCount = 0
     private weak var selectedStickerView: KDStickerView?
-
-    private static let stickerCornerRadius: CGFloat = 18.0
-    private static let stickerIdleShadowOpacity: Float = 0.16
-    private static let stickerSelectedShadowOpacity: Float = 0.26
 
     override init(frame: CGRect) {
         super.init(frame: frame)
@@ -676,14 +673,7 @@ final class KCDrawingCanvasView: UIView, UIGestureRecognizerDelegate {
     // MARK: - 贴纸视图
 
     private func makeStickerView(withSymbol symbol: String, color: UIColor) -> KDStickerView {
-        let metrics = KCStickerSymbolDisplayMetrics.metrics(forSymbol: symbol)
-        let sticker = KDStickerView(image: stickerImage(forSymbol: symbol, color: color, metrics: metrics))
-        sticker.symbolName = symbol
-        sticker.symbolColor = color
-        sticker.isUserInteractionEnabled = true
-        sticker.bounds = CGRect(x: 0, y: 0, width: metrics.canvasSide, height: metrics.canvasSide)
-        sticker.contentMode = .scaleAspectFit
-        applyStickerIdleAppearance(to: sticker)
+        let sticker = stickerPresenter.makeStickerView(withSymbol: symbol, color: color)
 
         let pan = UIPanGestureRecognizer(target: self, action: #selector(handleStickerPan(_:)))
         pan.delegate = self
@@ -824,38 +814,16 @@ final class KCDrawingCanvasView: UIView, UIGestureRecognizerDelegate {
     private func selectStickerView(_ sticker: KDStickerView) {
         deselectSticker()
         selectedStickerView = sticker
-        applyStickerSelectedAppearance(to: sticker)
+        stickerPresenter.applySelectedAppearance(to: sticker)
         notifySelectionChanged()
     }
 
     private func deselectSticker() {
         if let selectedStickerView {
-            applyStickerIdleAppearance(to: selectedStickerView)
+            stickerPresenter.applyIdleAppearance(to: selectedStickerView)
         }
         selectedStickerView = nil
         notifySelectionChanged()
-    }
-
-    private func applyStickerIdleAppearance(to sticker: KDStickerView) {
-        sticker.layer.cornerRadius = Self.stickerCornerRadius
-        sticker.layer.cornerCurve = .continuous
-        sticker.layer.borderWidth = 0.0
-        sticker.layer.borderColor = UIColor.clear.cgColor
-        sticker.layer.shadowColor = KCEditorVisualStyle.shadowColor
-        sticker.layer.shadowOpacity = Self.stickerIdleShadowOpacity
-        sticker.layer.shadowRadius = 8.0
-        sticker.layer.shadowOffset = CGSize(width: 0.0, height: 4.0)
-    }
-
-    private func applyStickerSelectedAppearance(to sticker: KDStickerView) {
-        sticker.layer.cornerRadius = Self.stickerCornerRadius
-        sticker.layer.cornerCurve = .continuous
-        sticker.layer.borderWidth = 3.0
-        sticker.layer.borderColor = KCEditorVisualStyle.saveActionColor.withAlphaComponent(0.88).cgColor
-        sticker.layer.shadowColor = KCEditorVisualStyle.saveActionColor.cgColor
-        sticker.layer.shadowOpacity = Self.stickerSelectedShadowOpacity
-        sticker.layer.shadowRadius = 12.0
-        sticker.layer.shadowOffset = CGSize(width: 0.0, height: 5.0)
     }
 
     private func notifySelectionChanged() {
@@ -900,50 +868,6 @@ final class KCDrawingCanvasView: UIView, UIGestureRecognizerDelegate {
 
     private func notifyContentChanged() {
         delegate?.drawingCanvasViewContentDidChange?(self)
-    }
-
-    private func stickerImage(
-        forSymbol symbol: String,
-        color: UIColor,
-        metrics: KCStickerSymbolDisplayMetrics
-    ) -> UIImage {
-        let imageSize = CGSize(width: metrics.canvasSide, height: metrics.canvasSide)
-        let contentRect = CGRect(origin: .zero, size: imageSize).insetBy(
-            dx: metrics.contentInset,
-            dy: metrics.contentInset
-        )
-        let renderer = UIGraphicsImageRenderer(size: imageSize)
-        return renderer.image { _ in
-            let resolvedSymbol = UIImage(systemName: symbol) != nil ? symbol : "star.fill"
-            let outlineConfiguration = UIImage.SymbolConfiguration(pointSize: metrics.outlinePointSize, weight: .bold)
-            if let outlineImage = UIImage(systemName: resolvedSymbol, withConfiguration: outlineConfiguration)?
-                .withTintColor(.white, renderingMode: .alwaysOriginal) {
-                let outlineRect = aspectFitRect(for: outlineImage.size, in: contentRect)
-                outlineImage.draw(in: outlineRect)
-            }
-
-            let configuration = UIImage.SymbolConfiguration(pointSize: metrics.symbolPointSize, weight: .semibold)
-            if let symbolImage = UIImage(systemName: resolvedSymbol, withConfiguration: configuration)?
-                .withTintColor(color, renderingMode: .alwaysOriginal) {
-                let symbolRect = aspectFitRect(for: symbolImage.size, in: contentRect)
-                symbolImage.draw(in: symbolRect)
-            }
-        }
-    }
-
-    private func aspectFitRect(for imageSize: CGSize, in bounds: CGRect) -> CGRect {
-        guard imageSize.width > 0.0, imageSize.height > 0.0, bounds.width > 0.0, bounds.height > 0.0 else {
-            return bounds
-        }
-
-        let scale = min(bounds.width / imageSize.width, bounds.height / imageSize.height)
-        let fittedSize = CGSize(width: imageSize.width * scale, height: imageSize.height * scale)
-        return CGRect(
-            x: bounds.midX - fittedSize.width / 2.0,
-            y: bounds.midY - fittedSize.height / 2.0,
-            width: fittedSize.width,
-            height: fittedSize.height
-        )
     }
 
     @objc(eraserShapePathForShape:center:size:)

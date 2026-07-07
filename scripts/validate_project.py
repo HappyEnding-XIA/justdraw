@@ -24,6 +24,7 @@ APP_FILE_PATHS = {
     "KCCanvasFeature.swift": APP_ROOT / "Features" / "Canvas" / "KCCanvasFeature.swift",
     "KCDrawingCanvasModels.swift": APP_ROOT / "Features" / "Canvas" / "KCDrawingCanvasModels.swift",
     "KCCanvasHistoryStore.swift": APP_ROOT / "Features" / "Canvas" / "KCCanvasHistoryStore.swift",
+    "KCStickerViewPresenter.swift": APP_ROOT / "Features" / "Canvas" / "KCStickerViewPresenter.swift",
     "KCDrawingCanvasView.swift": APP_ROOT / "Features" / "Canvas" / "KCDrawingCanvasView.swift",
     "KCToolRailFeature.swift": APP_ROOT / "Features" / "Tools" / "KCToolRailFeature.swift",
     "KCBrushDockFeature.swift": APP_ROOT / "Features" / "Tools" / "KCBrushDockFeature.swift",
@@ -707,6 +708,7 @@ def app_feature_checks(
     canvas_text,
     canvas_models_text,
     canvas_history_store_text,
+    sticker_view_presenter_text,
     session_store_bridge_text,
     kc_session_store_text,
     kc_artwork_session_text,
@@ -1320,10 +1322,15 @@ def app_feature_checks(
     checks.append(require_text(canvas_text, "func constrainStickerView", "Sticker views are constrained after insert/restore"))
     checks.append(require_text(canvas_text, "func constrainStickerCenter", "Sticker centers are constrained to the canvas"))
     checks.append(require_regex(canvas_text, r"func handleStickerPinch[\s\S]*constrainStickerScale[\s\S]*constrainStickerCenter", "Sticker pinch keeps scale and position bounded"))
-    checks.append(require_text(canvas_text, "func applyStickerSelectedAppearance", "Sticker selected-state feedback is centralized in the canvas view"))
-    checks.append(require_text(canvas_text, "KCEditorVisualStyle.saveActionColor", "Sticker selected-state border reuses shared editor accent token"))
-    checks.append(require_regex(canvas_text, r"func selectStickerView[\s\S]*applyStickerSelectedAppearance", "Selecting a sticker applies visible selected-state feedback"))
-    checks.append(require_regex(canvas_text, r"func deselectSticker[\s\S]*applyStickerIdleAppearance", "Deselecting a sticker restores idle feedback"))
+    checks.append(require_text(sticker_view_presenter_text, "final class KCStickerViewPresenter", "Sticker view presentation is extracted from the canvas view"))
+    checks.append(require_text(sticker_view_presenter_text, "func makeStickerView", "Sticker presenter creates configured sticker views"))
+    checks.append(require_text(sticker_view_presenter_text, "func applySelectedAppearance", "Sticker selected-state feedback is centralized in the presenter"))
+    checks.append(require_text(sticker_view_presenter_text, "KCEditorVisualStyle.saveActionColor", "Sticker selected-state border reuses shared editor accent token"))
+    checks.append(require_text(canvas_text, "private let stickerPresenter = KCStickerViewPresenter()", "Canvas view delegates sticker presentation to KCStickerViewPresenter"))
+    checks.append(require_regex(canvas_text, r"func selectStickerView[\s\S]*stickerPresenter\.applySelectedAppearance", "Selecting a sticker applies visible selected-state feedback"))
+    checks.append(require_regex(canvas_text, r"func deselectSticker[\s\S]*stickerPresenter\.applyIdleAppearance", "Deselecting a sticker restores idle feedback"))
+    checks.append(forbid_text(canvas_text, "private func stickerImage", "Canvas view no longer owns sticker image rendering"))
+    checks.append(forbid_text(canvas_text, "private func aspectFitRect", "Canvas view no longer owns sticker image aspect-fit math"))
     checks.append(require_text(history_paging_text, "public struct KCHistoryPaging", "History paging Feature model is implemented in Swift"))
     checks.append(require_text(history_paging_text, "public var maxPageIndex: Int", "History paging computes the max page index"))
     checks.append(require_text(history_paging_text, "public func sessionIndex(forThumb thumbIndex: Int) -> Int", "History paging maps a thumbnail to a session index"))
@@ -1414,6 +1421,7 @@ def main():
     canvas_text = APP_FILE_PATHS["KCDrawingCanvasView.swift"].read_text(encoding="utf-8")
     canvas_models_text = APP_FILE_PATHS["KCDrawingCanvasModels.swift"].read_text(encoding="utf-8")
     canvas_history_store_text = APP_FILE_PATHS["KCCanvasHistoryStore.swift"].read_text(encoding="utf-8")
+    sticker_view_presenter_text = APP_FILE_PATHS["KCStickerViewPresenter.swift"].read_text(encoding="utf-8")
     session_store_bridge_text = APP_FILE_PATHS["KCSessionService.swift"].read_text(encoding="utf-8")
     kc_session_store_text = (ROOT / "Packages" / "KidCanvasModules" / "Sources" / "KCSessionPersistence" / "KCSessionStore.swift").read_text(encoding="utf-8")
     kc_artwork_session_text = (ROOT / "Packages" / "KidCanvasModules" / "Sources" / "KCDomain" / "KCArtworkSession.swift").read_text(encoding="utf-8")
@@ -1470,6 +1478,7 @@ def main():
         canvas_text,
         canvas_models_text,
         canvas_history_store_text,
+        sticker_view_presenter_text,
         session_store_bridge_text,
         kc_session_store_text,
         kc_artwork_session_text,
