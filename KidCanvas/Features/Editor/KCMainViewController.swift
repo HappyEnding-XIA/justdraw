@@ -104,13 +104,14 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
     var toolStateLabel: UILabel!
     var historyPageIndex: Int = 0
     var draftSaveTimer: Timer?
-    private let sessionEncodingQueue = DispatchQueue(label: "com.kidcanvas.editor.session-encoding", qos: .userInitiated)
+    private let sessionPersistenceQueue = DispatchQueue(label: "com.kidcanvas.editor.session-persistence", qos: .userInitiated)
     private let artworkLoadingQueue = DispatchQueue(label: "com.kidcanvas.editor.artwork-loading", qos: .userInitiated)
     private let imageImportProcessingQueue = DispatchQueue(label: "com.kidcanvas.editor.image-import-processing", qos: .userInitiated)
     private let draftPersistenceQueue = DispatchQueue(label: "com.kidcanvas.editor.draft-persistence", qos: .utility)
     private let lineArtRenderingQueue = DispatchQueue(label: "com.kidcanvas.editor.line-art-rendering", qos: .userInitiated)
     private let draftGenerationLock = NSLock()
     private static let historyThumbnailImageStates: [UIControl.State] = [.normal, .highlighted, .selected, .disabled]
+    private let sessionSaveGenerationLock = NSLock()
     private var sessionSaveGeneration: Int = 0
     private var artworkLoadGeneration: Int = 0
     private var imageImportGeneration: Int = 0
@@ -1328,24 +1329,27 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
 
         let snapshot = self.canvasView.snapshotImage()
         let existingSessionId = self.activeSession?.identifier
-        let generation = self.sessionSaveGeneration + 1
-        self.sessionSaveGeneration = generation
-        self.sessionEncodingQueue.async { [weak self, snapshot, existingSessionId] in
+        let generation = self.nextSessionSaveGeneration()
+        self.sessionPersistenceQueue.async { [weak self, snapshot, existingSessionId] in
             guard let self else { return }
-            let encodedData = self.sessionStore.encodedArtworkData(from: snapshot)
-
+            guard let encodedData = self.sessionStore.encodedArtworkData(from: snapshot) else {
+                self.finishFailedSessionSaveIfCurrent(generation)
+                return
+            }
+            guard self.isSessionSaveGenerationCurrent(generation) else { return }
+            guard let savedSession = self.sessionStore.saveArtwork(
+                pngData: encodedData.pngData,
+                thumbnailJPEGData: encodedData.thumbnailJPEGData,
+                existingSessionId: existingSessionId
+            ) else {
+                self.finishFailedSessionSaveIfCurrent(generation)
+                return
+            }
             DispatchQueue.main.async { [weak self] in
                 guard let self else { return }
-                guard self.sessionSaveGeneration == generation else { return }
-                guard let encodedData else {
-                    self.showSaveToastWithSuccess(false)
-                    return
-                }
                 self.finishSavingSession(
                     snapshot: snapshot,
-                    pngData: encodedData.pngData,
-                    thumbnailJPEGData: encodedData.thumbnailJPEGData,
-                    existingSessionId: existingSessionId,
+                    savedSession: savedSession,
                     generation: generation
                 )
             }
@@ -1354,30 +1358,30 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
 
     private func finishSavingSession(
         snapshot: UIImage,
-        pngData: Data,
-        thumbnailJPEGData: Data,
-        existingSessionId: String?,
+        savedSession: KCSessionMetadata,
         generation: Int
     ) {
-        guard self.sessionSaveGeneration == generation else { return }
-        guard let savedSession = self.sessionStore.saveArtwork(
-            pngData: pngData,
-            thumbnailJPEGData: thumbnailJPEGData,
-            existingSessionId: existingSessionId
-        ) else {
-            self.showSaveToastWithSuccess(false)
-            return
-        }
+        let saveStillMatchesVisibleCanvas = self.isSessionSaveGenerationCurrent(generation)
 
         self.activeSession = savedSession
         self.selectedHistorySession = savedSession
-        self.activeSessionHasUnsavedChanges = false
-        self.invalidateDraftSaveTimer()
-        self.clearDraftAndInvalidateCurrentDraftMarker()
+        self.activeSessionHasUnsavedChanges = !saveStillMatchesVisibleCanvas
+        if saveStillMatchesVisibleCanvas {
+            self.invalidateDraftSaveTimer()
+            self.clearDraftAndInvalidateCurrentDraftMarker()
+        }
         self.historyPageIndex = 0
         self.refreshHistoryUI()
         self.refreshActionButtons()
         UIImageWriteToSavedPhotosAlbum(snapshot, self, #selector(image(_:didFinishSavingWithError:contextInfo:)), nil)
+    }
+
+    private func finishFailedSessionSaveIfCurrent(_ generation: Int) {
+        DispatchQueue.main.async { [weak self] in
+            guard let self else { return }
+            guard self.isSessionSaveGenerationCurrent(generation) else { return }
+            self.showSaveToastWithSuccess(false)
+        }
     }
 
     @objc func image(_ image: UIImage, didFinishSavingWithError error: Error?, contextInfo: UnsafeMutableRawPointer?) {
@@ -2770,7 +2774,23 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
     }
 
     func invalidateSessionSaveWork() {
+        self.sessionSaveGenerationLock.lock()
+        defer { self.sessionSaveGenerationLock.unlock() }
         self.sessionSaveGeneration += 1
+    }
+
+    @discardableResult
+    private func nextSessionSaveGeneration() -> Int {
+        self.sessionSaveGenerationLock.lock()
+        defer { self.sessionSaveGenerationLock.unlock() }
+        self.sessionSaveGeneration += 1
+        return self.sessionSaveGeneration
+    }
+
+    private func isSessionSaveGenerationCurrent(_ generation: Int) -> Bool {
+        self.sessionSaveGenerationLock.lock()
+        defer { self.sessionSaveGenerationLock.unlock() }
+        return self.sessionSaveGeneration == generation
     }
 
     func invalidateArtworkLoadWork() {

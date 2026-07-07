@@ -49,7 +49,7 @@ KidCanvas 不是常规表单或内容流 App，而是低延迟绘画工具。核
 - `KCSessionStore`：作品、缩略图、草稿和 metadata 本地存储。
 - `KCAppCompositionRoot`：App 层统一装配会话服务、内容目录和绘制能力。
 - `scripts/validate_project.py`：工程结构和功能覆盖校验。
-- 正式保存和相册导入仍由 `KCMainViewController` 协调，但重 CPU 的 PNG/JPEG 编码与导入图片归一化已放入专用后台队列，并通过 generation guard 回主线程提交。
+- 正式保存、相册导入仍由 `KCMainViewController` 协调，但正式保存的 PNG/JPEG 编码与本地会话写盘、导入图片归一化都已放入专用后台队列，并通过 generation guard 回主线程提交 UI 收口。
 
 这说明我们不是从零开始设计，而是在演进一个已有产品原型。风险不在于“能不能写出来”，而在于后续拆分过程中如何保住现有行为：
 
@@ -408,13 +408,15 @@ sequenceDiagram
     User->>Main: tap Save
     Main->>Canvas: hasVisibleContent
     Main->>Canvas: snapshotImage
-    Main->>Main: encode PNG/JPEG on sessionEncodingQueue
-    Main->>Store: saveArtwork(existingSession, encoded data)
+    Main->>Main: dispatch to sessionPersistenceQueue
+    Main->>Main: encode PNG/JPEG off main thread
+    Main->>Store: saveArtwork(existingSession, encoded data) off main thread
     Store->>Store: backup old PNG/JPG as rollback files
     Store->>Store: write PNG
     Store->>Store: write thumbnail JPG
     Store->>Store: update metadata
     Store->>Store: cleanup rollback files
+    Store-->>Main: saved metadata
     Main->>Store: clearDraftImage
     Main->>Photos: UIImageWriteToSavedPhotosAlbum
     Main->>User: toast result
