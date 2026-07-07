@@ -18,7 +18,6 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
     var canvasContainerView: UIView!
     var canvasView: KCDrawingCanvasView!
     var sizeSlider: UISlider!
-    var lineArtItems: [KCLineArtItem]!
     var colorButtons: [UIButton] = []
     var recentColorButtons: [UIButton] = []
     var toolButtons: [KDToolButton] = []
@@ -95,6 +94,7 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
     var selectedHistorySession: KCSessionMetadata?
     private var draftThumbImageIdentity: String?
     private var historyThumbImageIdentities: [String?] = []
+    private var cachedLineArtItems: [KCLineArtItem]?
     private var historyThumbnailRefreshGeneration: Int = 0
     var collapsiblePanels: [UIView] = []
     var collapseToggleButton: UIButton!
@@ -150,7 +150,6 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
         self.view.backgroundColor = UIColor(red: 0.97, green: 0.94, blue: 0.89, alpha: 1.0)
         // 内容选择 Feature 在构造时从 contentCatalog 建好色盘与贴纸分组；这里载入最近色。
         self.contentPicker.loadRecentColors()
-        self.lineArtItems = self.lineArtFeature.makeLineArtItems()
         self.colorButtons = []
         self.recentColorButtons = []
         self.toolButtons = []
@@ -158,7 +157,6 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
         self.historyThumbButtons = []
         self.stickerButtons = []
         self.stickerCategoryButtons = []
-        self.sessions = self.sessionStore.loadAllSessions()
         self.loadBrushWidthPreferences()
 
         NotificationCenter.default.addObserver(self, selector: #selector(sceneWillResignActiveNotification(_:)), name: UIScene.willDeactivateNotification, object: nil)
@@ -1400,7 +1398,7 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
 
     @objc func didTapLineArtPicker() {
         let picker = KCLineArtPickerViewController(
-            items: self.lineArtItems,
+            items: self.currentLineArtItems(),
             lineArtFeature: self.lineArtFeature,
             registerPressFeedback: { [weak self] control in
                 self?.registerPressFeedbackForControl(control)
@@ -1418,6 +1416,16 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
         popover?.sourceRect = CGRect(x: self.view.bounds.midX, y: 104.0, width: 1.0, height: 1.0)
         popover?.permittedArrowDirections = .up
         self.present(picker, animated: true, completion: nil)
+    }
+
+    func currentLineArtItems() -> [KCLineArtItem] {
+        if let cachedLineArtItems {
+            return cachedLineArtItems
+        }
+
+        let items = self.lineArtFeature.makeLineArtItems()
+        self.cachedLineArtItems = items
+        return items
     }
 
     func loadLineArtItem(_ item: KCLineArtItem, completion: ((Bool) -> Void)? = nil) {
@@ -2137,7 +2145,7 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
         let afterEraserCanUndo = self.canvasView.canUndo()
         let eraserChangedCanvas = self.runtimeAcceptanceSnapshotData() != afterBrushSnapshot
 
-        let lineArtItem = self.lineArtFeature.makeLineArtItems().first
+        let lineArtItem = self.currentLineArtItems().first
         let finishProbe: (KCLineArtItem?, Bool) -> Void = { [weak self] lineArtItem, lineArtLoaded in
             guard let self else { return }
             self.view.layoutIfNeeded()

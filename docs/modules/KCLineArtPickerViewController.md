@@ -20,7 +20,7 @@ App 层线稿选择弹窗 ViewController：承接线稿弹窗的 UIKit 网格、
 ## 3. 当前接入
 
 - `KCMainViewController.didTapLineArtPicker()` 创建 `KCLineArtPickerViewController`。
-- 主控制器把 `lineArtItems`、`lineArtFeature`、按压反馈注册闭包和选择回调传入 picker。
+- 主控制器通过 `currentLineArtItems()` 按需取得线稿列表，再把 `items`、`lineArtFeature`、按压反馈注册闭包和选择回调传入 picker。
 - picker 点击线稿后触发 `SelectionHandler`；主控制器 dismiss 弹窗后继续调用 `loadLineArtItem(_:)`，保留原有草稿/会话处理顺序。
 - `scripts/validate_project.py` 校验 picker 已进入 App target Sources，并防止线稿弹窗 UI 回流 `KCMainViewController`。
 
