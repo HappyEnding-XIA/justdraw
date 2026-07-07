@@ -39,6 +39,7 @@ final class KCDrawingCanvasView: UIView, UIGestureRecognizerDelegate {
     private var stickers: [KDStickerView] = []
     private let historyStore = KCCanvasHistoryStore()
     private let stickerPresenter = KCStickerViewPresenter()
+    private let floodFillQueue = DispatchQueue(label: "com.kidcanvas.canvas.flood-fill", qos: .userInitiated)
     private var activeStroke: KDStroke?
     private var backgroundImage: UIImage?
     private var pendingStrokeState: KDCanvasState?
@@ -46,6 +47,8 @@ final class KCDrawingCanvasView: UIView, UIGestureRecognizerDelegate {
     private var activeStrokeDidMutate = false
     private var stickerTransformDidMutate = false
     private var activeStickerGestureCount = 0
+    private var floodFillGeneration: Int = 0
+    private var floodFillInProgress = false
     private weak var selectedStickerView: KDStickerView?
 
     override init(frame: CGRect) {
@@ -179,10 +182,7 @@ final class KCDrawingCanvasView: UIView, UIGestureRecognizerDelegate {
         }
 
         if currentToolMode == .fill {
-            let previousState = canvasStateSnapshot()
-            if performFloodFill(at: point, color: currentColor) {
-                commitUndoStateSnapshot(previousState)
-            }
+            beginFloodFill(at: point, color: currentColor)
             return
         }
 
@@ -563,6 +563,7 @@ final class KCDrawingCanvasView: UIView, UIGestureRecognizerDelegate {
     }
 
     private func resetCanvasContents() {
+        cancelPendingFloodFillResult()
         strokes.removeAll()
         for sticker in stickers {
             sticker.removeFromSuperview()
@@ -576,6 +577,11 @@ final class KCDrawingCanvasView: UIView, UIGestureRecognizerDelegate {
         stickerTransformDidMutate = false
         activeStickerGestureCount = 0
         deselectSticker()
+    }
+
+    private func cancelPendingFloodFillResult() {
+        floodFillGeneration += 1
+        floodFillInProgress = false
     }
 
     private func copyOfStroke(_ stroke: KDStroke) -> KDStroke {
@@ -648,6 +654,64 @@ final class KCDrawingCanvasView: UIView, UIGestureRecognizerDelegate {
         setNeedsDisplay()
         notifyContentChanged()
         return true
+    }
+
+    private func beginFloodFill(at point: CGPoint, color fillColor: UIColor) {
+        guard !floodFillInProgress else { return }
+
+        let previousState = canvasStateSnapshot()
+        let baseImage = rasterImageExcludingStickers()
+        guard let sourceImageRef = baseImage.cgImage else { return }
+
+        let width = sourceImageRef.width
+        let height = sourceImageRef.height
+        if width == 0 || height == 0 {
+            return
+        }
+
+        let startX = Int(min(max(point.x * baseImage.scale, 0), CGFloat(width - 1)))
+        let startY = Int(min(max(point.y * baseImage.scale, 0), CGFloat(height - 1)))
+        let tolerance = fillTolerance
+        let generation = floodFillGeneration + 1
+        floodFillGeneration = generation
+        floodFillInProgress = true
+
+        floodFillQueue.async { [weak self] in
+            guard let self else { return }
+            let filledImage = self.drawingEngine.floodFillImage(
+                sourceImageRef,
+                startX: startX,
+                startY: startY,
+                fillColor: fillColor,
+                tolerance: tolerance
+            )
+
+            DispatchQueue.main.async { [weak self] in
+                self?.applyFloodFillResult(
+                    filledImage,
+                    imageScale: baseImage.scale,
+                    previousState: previousState,
+                    generation: generation
+                )
+            }
+        }
+    }
+
+    private func applyFloodFillResult(
+        _ filledImage: CGImage?,
+        imageScale: CGFloat,
+        previousState: KDCanvasState,
+        generation: Int
+    ) {
+        floodFillInProgress = false
+        guard generation == floodFillGeneration else { return }
+        guard let filledImage else { return }
+
+        commitUndoStateSnapshot(previousState)
+        backgroundImage = UIImage(cgImage: filledImage, scale: imageScale, orientation: .up)
+        strokes.removeAll()
+        setNeedsDisplay()
+        notifyContentChanged()
     }
 
     private func colorAtPoint(_ point: CGPoint) -> UIColor? {
