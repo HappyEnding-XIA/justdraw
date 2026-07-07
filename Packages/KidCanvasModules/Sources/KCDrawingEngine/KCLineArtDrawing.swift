@@ -26,6 +26,11 @@ public enum KCLineArtDrawing {
     ]
 
     public static func strokes(forTemplateId templateId: String, in rect: CGRect) -> [KCLineArtStroke]? {
+        guard let strokes = rawStrokes(forTemplateId: templateId, in: rect) else { return nil }
+        return centered(strokes, in: rect)
+    }
+
+    private static func rawStrokes(forTemplateId templateId: String, in rect: CGRect) -> [KCLineArtStroke]? {
         switch templateId {
         case "bunny": return bunny(in: rect)
         case "car": return car(in: rect)
@@ -37,6 +42,30 @@ public enum KCLineArtDrawing {
         case "dino": return dino(in: rect)
         default: return nil
         }
+    }
+
+    private static func centered(_ strokes: [KCLineArtStroke], in rect: CGRect) -> [KCLineArtStroke] {
+        guard let artworkBounds = unionBounds(for: strokes) else { return strokes }
+        let translation = CGAffineTransform(
+            translationX: rect.midX - artworkBounds.midX,
+            y: rect.midY - artworkBounds.midY
+        )
+
+        return strokes.map { stroke in
+            var transform = translation
+            guard let path = stroke.path.copy(using: &transform) else { return stroke }
+            return KCLineArtStroke(path: path, lineWidth: stroke.lineWidth)
+        }
+    }
+
+    private static func unionBounds(for strokes: [KCLineArtStroke]) -> CGRect? {
+        strokes
+            .map(\.path.boundingBoxOfPath)
+            .filter { !$0.isEmpty }
+            .reduce(nil) { partialResult, bounds in
+                guard let partialResult else { return bounds }
+                return partialResult.union(bounds)
+            }
     }
 
     private static func bunny(in rect: CGRect) -> [KCLineArtStroke] {

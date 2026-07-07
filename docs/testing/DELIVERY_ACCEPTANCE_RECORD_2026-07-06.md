@@ -19,7 +19,7 @@
 |---|---|---|
 | 清理 AppleDouble 文件 | 通过 | 已排除 `.git`、`.build`、`ai-docs` |
 | `python3 scripts/validate_project.py` | 通过 | 覆盖工程配置、Swift-first、模块治理、本地化、保存/相册结构检查 |
-| `swift test` | 通过 | 156 tests, 0 failures |
+| `swift test` | 通过 | 157 tests, 0 failures |
 | iPhone 17 Pro 构建 | 通过 | `xcodebuild -project KidCanvas.xcodeproj -scheme KidCanvas -destination 'platform=iOS Simulator,name=iPhone 17 Pro' build -quiet` |
 | iPad Pro 11 M4 构建 | 通过 | `xcodebuild -project KidCanvas.xcodeproj -scheme KidCanvas -destination 'platform=iOS Simulator,name=iPad Pro 11 M4' build -quiet` |
 | iPhone 17 Pro runtime smoke | 通过 | 启动成功、进程存活、截图非空；原始截图为竖屏 framebuffer，脚本已生成横屏观察图 `/tmp/kc_smoke_iPhone_17_Pro_landscape.png` |
@@ -37,6 +37,8 @@
 | iPad Pro 11 M4 runtime drawing-tools acceptance | 通过 | 绘画工具链路 Debug 探针：`passed=true`，覆盖 24/36 色盘切换、选色高亮、画笔内容、橡皮擦除、线稿加载、填色、取色和最近色写入 |
 | iPhone 17 Pro runtime system-ui acceptance | 通过 | 系统 UI Debug 探针：`passed=true`，验证 Custom 系统取色器可呈现并回填颜色，相册选择器可呈现并导入合成图片 |
 | iPad Pro 11 M4 runtime system-ui acceptance | 通过 | 系统 UI Debug 探针：`passed=true`，验证 Custom 系统取色器可呈现并回填颜色，相册选择器可呈现并导入合成图片 |
+| T077 交付前自动预验收 | 通过 | 2026-07-06 23:03-23:10 重跑 `validate_project.py`、`swift test`、双端 smoke、双端 `drawing-tools`、双端 `system-ui`、`git diff --check`；最新横屏截图人工查看未见明显遮挡 |
+| T077 人工验收环境准备 | 完成 | iPhone/iPad 模拟器已加入 `AppIcon-1024.png` 相册测试图，已 reset Photos 权限，已启动 App；Codex 当前无 macOS 辅助功能权限，无法代替人工点击 Simulator |
 | `git diff --check` | 通过 | 无空白错误 |
 
 ## 3. F01-F12 验收状态
@@ -75,6 +77,7 @@
 - T074：补齐交付前人工验收执行表，覆盖 iPhone/iPad 双端 F01-F12、Photos 权限/导入/保存、系统取色器、印章真实捏合/旋转和缺陷记录模板；人工结果仍待执行后填写。
 - T075：运行时烟测脚本默认 DerivedData 路径改为按设备名区分，保留 `DERIVED_DATA` 手动覆盖；双端 smoke 并行执行已通过，避免共用 `/tmp/kc-dd` 导致 Xcode build.db 锁误报失败。
 - T076：新增系统 UI 呈现与回调运行时验收探针；`scripts/runtime_acceptance_test.sh "iPhone 17 Pro" system-ui` 与 `scripts/runtime_acceptance_test.sh "iPad Pro 11 M4" system-ui` 均通过，可自动检查 Custom 系统取色器呈现与颜色回填、相册选择器呈现与合成图片导入；探针结束后会清理回空白会话，避免污染后续 smoke 截图；真实选色/选图/权限弹窗仍保留人工点验。
+- T077：交付前自动预验收与人工点验准备已完成；执行表已记录 `main` / `origin/main` 最新提交、双端模拟器 UDID、自动验收结果、相册测试图注入和 Photos 权限 reset 状态；因当前 Codex 无 macOS 辅助功能权限，F01-F12 真实点击结果仍需人工填写。
 
 ## 5. 当前风险
 
@@ -84,7 +87,8 @@
 | 非阻塞 | 系统 Photos 选择器、权限弹窗和保存到系统相册无法由 runtime smoke 证明 | 需要在 iPhone/iPad 模拟器或真机手动完成 |
 | 非阻塞 | 系统自定义取色器弹窗无法由 Debug 探针替代真实手动选择 | 已自动验证选色/取色/最近色链路；仍需人工打开系统取色器点选一次 |
 | 非阻塞 | `simctl io screenshot` 在当前 Simulator 上输出竖屏 framebuffer | 已由 smoke 脚本生成 `_landscape.png` 横屏观察图；最终仍以人工在模拟器窗口/真机横屏点验为准 |
+| 非阻塞 | 当前 Codex 进程未获 macOS 辅助功能权限，无法代替人工点击 Simulator | 已准备模拟器、测试图和权限状态；由人工继续点验并回填执行表 |
 
 ## 6. 阶段结论
 
-当前代码已达到“自动验收通过、可进入人工完整点验”的状态；还不能直接宣称“完全可交付给用户试用”，原因是 T064 要求的 iPhone/iPad 手工触控和 T063 的系统相册弹窗/选图/写入尚未完成。
+当前代码已达到“自动验收通过、人工验收环境已准备好”的状态；还不能直接宣称“完全可交付给用户试用”，原因是 T064 要求的 iPhone/iPad 手工触控和 T063 的系统相册弹窗/选图/写入尚未由真人完成并回填。

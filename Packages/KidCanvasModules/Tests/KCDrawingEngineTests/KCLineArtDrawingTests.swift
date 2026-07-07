@@ -53,7 +53,29 @@ final class KCLineArtDrawingTests: XCTestCase {
         }
     }
 
+    func testGeneratedArtworkBoundsStayCenteredInDrawingRect() throws {
+        let rect = CGRect(x: 10, y: 20, width: 520, height: 420)
+
+        for templateId in KCLineArtDrawing.supportedTemplateIds {
+            let strokes = try XCTUnwrap(KCLineArtDrawing.strokes(forTemplateId: templateId, in: rect))
+            let artworkBounds = try XCTUnwrap(Self.unionBounds(for: strokes), templateId)
+
+            XCTAssertEqual(artworkBounds.midX, rect.midX, accuracy: 1.0, templateId)
+            XCTAssertEqual(artworkBounds.midY, rect.midY, accuracy: 1.0, templateId)
+        }
+    }
+
     func testUnknownTemplateReturnsNil() {
         XCTAssertNil(KCLineArtDrawing.strokes(forTemplateId: "unknown", in: .zero))
+    }
+
+    private static func unionBounds(for strokes: [KCLineArtStroke]) -> CGRect? {
+        strokes
+            .map(\.path.boundingBoxOfPath)
+            .filter { !$0.isEmpty }
+            .reduce(nil) { partialResult, bounds in
+                guard let partialResult else { return bounds }
+                return partialResult.union(bounds)
+            }
     }
 }
