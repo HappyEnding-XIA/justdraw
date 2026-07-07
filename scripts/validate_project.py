@@ -829,6 +829,13 @@ def app_feature_checks(
         if refresh_history_start >= 0 and refresh_history_end > refresh_history_start
         else ""
     )
+    view_did_load_start = main_text.find("override func viewDidLoad()")
+    view_did_load_end = main_text.find("override var supportedInterfaceOrientations", view_did_load_start)
+    view_did_load_text = (
+        main_text[view_did_load_start:view_did_load_end]
+        if view_did_load_start >= 0 and view_did_load_end > view_did_load_start
+        else ""
+    )
     stroke_render_math_tests_text = (
         ROOT / "Packages" / "KidCanvasModules" / "Tests" / "KCDrawingEngineTests" / "KCStrokeRenderMathTests.swift"
     ).read_text(encoding="utf-8")
@@ -1029,8 +1036,13 @@ def app_feature_checks(
     checks.append(require_text(brush_sticker_panel_text, "func applyStickerSymbolSelection", "Sticker symbol selected-state styling lives in KCBrushStickerPanelView"))
     checks.append(require_text(brush_sticker_panel_text, "func applyStickerEditButtonsEnabled", "Sticker edit button enabled styling lives in KCBrushStickerPanelView"))
     checks.append(require_text(main_text, "private(set) lazy var brushStickerPanelView: KCBrushStickerPanelView", "Main view controller owns a brush/sticker panel view instance"))
+    checks.append(require_text(main_text, "private var didLoadStickerButtons = false", "Sticker button row has a first-load guard for startup deferral"))
     checks.append(require_text(main_text, "self.brushStickerPanelView.renderPanel", "Main view controller delegates brush/sticker panel assembly"))
     checks.append(require_text(main_text, "self.brushStickerPanelView.reloadStickerButtons", "Main view controller delegates sticker list rendering"))
+    checks.append(forbid_text(view_did_load_text, "self.reloadStickerButtons()", "Startup viewDidLoad does not build sticker buttons before the first frame"))
+    checks.append(require_regex(view_did_load_text, r"self\.selectStickerSymbol\(self\.currentStickerSymbols\(\)\.first!\)[\s\S]*self\.refreshStickerCategoryButtons\(\)", "Startup keeps the default stamp symbol and category highlight without building stamp buttons"))
+    checks.append(require_regex(main_text, r"func loadStickerButtonsAfterStartupIfNeeded\(\)[\s\S]*guard !self\.didLoadStickerButtons else \{ return \}[\s\S]*self\.reloadStickerButtons\(\)", "Sticker buttons load through a guarded startup-deferred entry point"))
+    checks.append(require_regex(main_text, r"func reloadStickerButtons\(\)[\s\S]*guard let stickerRowStack = self\.stickerRowStack else \{ return \}[\s\S]*self\.didLoadStickerButtons = true[\s\S]*self\.brushStickerPanelView\.reloadStickerButtons", "Sticker button reload records first-load state and uses the rendered row reference"))
     checks.append(require_text(main_text, "self.brushStickerPanelView.applyStickerCategorySelection", "Main view controller delegates sticker category selected-state styling"))
     checks.append(require_text(main_text, "self.brushStickerPanelView.applyStickerSymbolSelection", "Main view controller delegates sticker symbol selected-state styling"))
     checks.append(require_text(main_text, "self.brushStickerPanelView.applyStickerEditButtonsEnabled", "Main view controller delegates sticker edit button styling"))
@@ -1629,6 +1641,7 @@ def app_feature_checks(
     checks.append(require_regex(main_text, r"func refreshHistoryUI\(loadDraftThumbnail: Bool = true, preloadThumbnails: Bool = true, loadSessions: Bool = true\)[\s\S]*if loadSessions[\s\S]*historySessionRefreshGeneration \+= 1[\s\S]*self\.sessionStore\.loadAllSessions\(\)", "Explicit history metadata reloads invalidate stale async metadata results"))
     checks.append(require_regex(main_text, r"func refreshHistorySessionsAsync\(loadDraftThumbnail: Bool = true, preloadThumbnails: Bool = true\)[\s\S]*historySessionRefreshGeneration[\s\S]*loadAllSessionsAsync \{ \[weak self\] sessions[\s\S]*self\.sessions = sessions[\s\S]*refreshHistoryUI\([\s\S]*loadSessions: false", "Startup history metadata loads off the main thread and refreshes UI without rereading metadata"))
     checks.append(require_regex(main_text, r"func scheduleStartupDeferredWorkIfNeeded\(\)[\s\S]*didScheduleStartupDeferredWork[\s\S]*DispatchQueue\.main\.async[\s\S]*self\.refreshHistorySessionsAsync\(loadDraftThumbnail: false\)[\s\S]*self\.restoreDraftIfNeeded\(\)", "Startup draft restore and metadata/thumbnails are deferred until after first appearance"))
+    checks.append(require_regex(main_text, r"func scheduleStartupDeferredWorkIfNeeded\(\)[\s\S]*self\.restoreDraftIfNeeded\(\)[\s\S]*DispatchQueue\.main\.async \{ \[weak self\] in[\s\S]*self\?\.loadStickerButtonsAfterStartupIfNeeded\(\)", "Startup sticker button row is deferred until after the first post-appearance pass"))
     checks.append(require_text(main_text, "self.refreshHistorySessionsAsync(loadDraftThumbnail: false)", "Startup history refresh does not synchronously decode draft thumbnails"))
     checks.append(require_regex(main_text, r"func restoreDraftIfNeeded\(\)[\s\S]*let generation = self\.nextArtworkLoadGeneration\(\)[\s\S]*self\.draftPersistenceQueue\.async[\s\S]*loadDraftData\(\)[\s\S]*displayDecodedImage\(from: data\)[\s\S]*DispatchQueue\.main\.async[\s\S]*guard self\.artworkLoadGeneration == generation", "Startup draft restore display-decodes draft off the main thread and skips stale results"))
     checks.append(forbid_regex(main_text, r"func restoreDraftIfNeeded\(\)[\s\S]*UIImage\(data:", "Startup draft restore does not leave UIImage lazy decode in the controller"))

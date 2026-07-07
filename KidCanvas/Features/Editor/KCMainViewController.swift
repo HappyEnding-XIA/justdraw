@@ -121,6 +121,7 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
     private var lineArtLoadGeneration: Int = 0
     private var appliedCanvasActionState: KCCanvasFeature.ActionState?
     private var didScheduleStartupDeferredWork = false
+    private var didLoadStickerButtons = false
     private var activeDraftMatchesCanvas: Bool = false
     private var brushWidthPreferenceSaveTimer: Timer?
     var suppressNextDraftSave: Bool = false
@@ -174,12 +175,12 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
         self.buildInterface()
         self.updatePaletteButtons()
         self.reloadPaletteGrid()
-        self.reloadStickerButtons()
         self.selectToolMode(.brush)
         self.selectBrushStyle(.pencil)
         self.selectColor(self.contentPicker.palette24.first!, sender: nil)
         self.selectStickerSymbol(self.currentStickerSymbols().first!)
         self.refreshEraserShapeButtons()
+        self.refreshStickerCategoryButtons()
         self.refreshStickerEditButtons()
         self.refreshHistoryUI(loadDraftThumbnail: false, preloadThumbnails: false, loadSessions: false)
         self.refreshActionButtons()
@@ -901,8 +902,10 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
     }
 
     func reloadStickerButtons() {
+        guard let stickerRowStack = self.stickerRowStack else { return }
+        self.didLoadStickerButtons = true
         self.stickerButtons = self.brushStickerPanelView.reloadStickerButtons(
-            in: self.stickerRowStack,
+            in: stickerRowStack,
             symbols: self.currentStickerSymbols(),
             target: self,
             action: #selector(didTapStickerButton(_:)),
@@ -923,6 +926,11 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
             availableSymbols: self.currentStickerSymbols()
         )
         self.selectStickerSymbol(selectedSymbol)
+    }
+
+    func loadStickerButtonsAfterStartupIfNeeded() {
+        guard !self.didLoadStickerButtons else { return }
+        self.reloadStickerButtons()
     }
 
     func refreshStickerCategoryButtons() {
@@ -2721,6 +2729,9 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
             guard let self else { return }
             self.refreshHistorySessionsAsync(loadDraftThumbnail: false)
             self.restoreDraftIfNeeded()
+            DispatchQueue.main.async { [weak self] in
+                self?.loadStickerButtonsAfterStartupIfNeeded()
+            }
         }
     }
 
