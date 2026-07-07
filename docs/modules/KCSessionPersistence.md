@@ -16,6 +16,7 @@
 - 不负责相册导入导出，不处理权限。
 - 不负责缩略图绘制尺寸决策；App 层服务生成缩略图数据后交给 repository。
 - 不知道 `KCMainViewController`、画布视图、历史按钮或草稿提示 UI。
+- App 层 `KCSessionService` 可缓存已解码的历史缩略图 `UIImage`，但缓存只属于服务适配层；底层 `KCSessionPersistence` 仍只暴露稳定的 PNG/JPEG `Data` 读写能力。
 
 ## 3. 对外 API / 接入路径
 
@@ -27,6 +28,7 @@
 - `delete(_:)`：删除会话及其关联文件。
 - `saveDraft(pngData:)` / `loadDraft()` / `clearDraft()`：草稿生命周期。
 - App 接入路径：`KCAppCompositionRoot` 构造 `KCSessionService`，再由 `KCMainViewController` 调用服务层方法。
+- `KCSessionService.thumbnailImage(forSessionId:)`：面向 UIKit 历史栏的便捷入口，会优先返回内存缓存；`saveArtwork` 成功后刷新对应缩略图缓存，`deleteSession` 成功路径会移除对应缓存。
 
 ## 4. 禁止回流规则
 

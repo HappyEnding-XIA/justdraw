@@ -54,6 +54,7 @@ final class KCSessionMetadata: NSObject {
 @objc(KCSessionService)
 final class KCSessionService: NSObject {
     private let store = KCSessionStore(legacyMigrator: LegacyArchiveMigrator())
+    private let thumbnailImageCache = NSCache<NSString, UIImage>()
     private static let thumbnailSize = CGSize(width: 240, height: 180)
 
     // MARK: - 会话查询
@@ -101,6 +102,11 @@ final class KCSessionService: NSObject {
             thumbnailJPEGData: thumbnailJPEGData,
             existing: existing
         ) else { return nil }
+        if let cachedThumbnail = UIImage(data: thumbnailJPEGData) {
+            thumbnailImageCache.setObject(cachedThumbnail, forKey: session.id as NSString)
+        } else {
+            thumbnailImageCache.removeObject(forKey: session.id as NSString)
+        }
         return KCSessionMetadata(session)
     }
 
@@ -118,8 +124,13 @@ final class KCSessionService: NSObject {
 
     /// 返回缩略图 UIImage。
     @objc func thumbnailImage(forSessionId sessionId: String) -> UIImage? {
+        if let cachedThumbnail = thumbnailImageCache.object(forKey: sessionId as NSString) {
+            return cachedThumbnail
+        }
         guard let data = thumbnailData(forSessionId: sessionId) else { return nil }
-        return UIImage(data: data)
+        guard let image = UIImage(data: data) else { return nil }
+        thumbnailImageCache.setObject(image, forKey: sessionId as NSString)
+        return image
     }
 
     /// 返回指定会话的缩略图 JPEG 数据。
@@ -134,6 +145,7 @@ final class KCSessionService: NSObject {
     @objc func deleteSession(withId sessionId: String) {
         guard let session = findSession(id: sessionId) else { return }
         try? store.delete(session)
+        thumbnailImageCache.removeObject(forKey: sessionId as NSString)
     }
 
     // MARK: - 草稿自动保存
