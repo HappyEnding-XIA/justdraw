@@ -903,6 +903,29 @@ def app_feature_checks(
     stroke_render_math_tests_text = (
         ROOT / "Packages" / "KidCanvasModules" / "Tests" / "KCDrawingEngineTests" / "KCStrokeRenderMathTests.swift"
     ).read_text(encoding="utf-8")
+    dab_generator_text = (
+        ROOT / "Packages" / "KidCanvasModules" / "Sources" / "KCDrawingEngine" / "KCBrushDabGenerator.swift"
+    ).read_text(encoding="utf-8")
+    dab_preset_text = (
+        ROOT / "Packages" / "KidCanvasModules" / "Sources" / "KCDrawingEngine" / "KCBrushPreset.swift"
+    ).read_text(encoding="utf-8")
+    dab_hashing_text = (
+        ROOT / "Packages" / "KidCanvasModules" / "Sources" / "KCDrawingEngine" / "KCBrushDabHashing.swift"
+    ).read_text(encoding="utf-8")
+    dab_tests_text = (
+        ROOT / "Packages" / "KidCanvasModules" / "Tests" / "KCDrawingEngineTests" / "KCBrushDabGeneratorTests.swift"
+    ).read_text(encoding="utf-8")
+    dab_engine_sources = dab_generator_text + dab_preset_text + dab_hashing_text
+    checks.append(require_text(dab_generator_text, "public struct KCBrushDabGenerator", "T093 dab engine entry point exists in KCDrawingEngine"))
+    checks.append(require_text(dab_generator_text, "func dabs(for samples: [KCBrushInputSample]) -> [KCBrushDab]", "Dab engine consumes per-sample inputs instead of a whole-stroke average pressure"))
+    checks.append(require_text(dab_generator_text, "guard sample.isPencil else { return (1.0, 0.0) }", "Non-Pencil (finger) samples fall back to a vertical, round dab with no tilt shaping"))
+    checks.append(require_text(dab_preset_text, "public static func preset(for style: KCBrushStyle) -> KCBrushPreset", "Brush presets are produced from KCBrushStyle"))
+    checks.append(require_text(dab_preset_text, "case .pencil:", "Pencil dab preset is defined"))
+    checks.append(require_text(dab_preset_text, "case .pen:", "Pen dab preset is defined"))
+    checks.append(require_text(dab_preset_text, "case .crayon:", "Crayon dab preset is defined"))
+    checks.append(forbid_regex(dab_engine_sources, r"Hasher\(\)|SystemRandomNumberGenerator|Date\(\)|\.random\(", "Dab engine stays deterministic (no Swift Hasher/Date/random) so undo/redo replays identical texture"))
+    checks.append(require_text(dab_tests_text, "final class KCBrushDabGeneratorTests", "Dab engine has a dedicated test suite"))
+    checks.append(require_text(dab_tests_text, "func testIdenticalInputsProduceIdenticalDabs()", "Dab engine determinism is locked by a regression test"))
     expected_bundle_keys = {
         "CFBundleDevelopmentRegion": "$(DEVELOPMENT_LANGUAGE)",
         "CFBundleDisplayName": "KidCanvas",

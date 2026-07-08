@@ -32,7 +32,23 @@ T038 后，内置线稿的程序化几何不再放在 `KCMainViewController`。
 - 蜡笔颗粒间距必须以 `KCCrayonGrain` 的 `max(3.4, lineWidth * 0.25)` 为单一口径，颗粒短线宽度必须以 `max(1.6, lineWidth * 0.28)` 为单一口径；App adapter 的 `crayonGrainDashWidth(lineWidth:)` 不得使用更细的旧公式，否则真实画布会比引擎测试更平滑。宽蜡痕 dash 的 gap 应长于 mark，避免多层叠加后变成平滑马克笔。
 - 橡皮擦使用独立配置宽度，不能套用铅笔/钢笔/蜡笔质感公式；同一橡皮宽度在三种当前画笔状态下必须得到一致渲染结果。
 
-## 4. 取色器采样边界
+## 4. 画笔 dab 引擎（T093）
+
+T093 引入纯 Swift、UIKit-free 的画笔采样与 dab 引擎，作为专业画笔质感的基础；UIKit/CoreGraphics 光栅化接入在 T094，本节类型不接触 UIKit。
+
+- `KCBrushInputSample`：单次高保真输入采样（`point`、`timestamp`、`pressure`、`velocity`、`altitude`、`azimuth`、`isPencil`）；`pressure` 已由 `KCPressureModel.normalized(...)` 上游归一化。
+- `KCBrushPreset`：按 `KCBrushStyle` 描述间距、半径曲线、不透明度、流量、硬度、抖动、纸纹强度、纹理种子、倾角行为与速度影响；`KCBrushPreset.preset(for:)` 提供铅笔/钢笔/蜡笔三种产品化预设。
+- `KCBrushDab`：单个绘制单元输出（中心、半径、alpha、flow、旋转、纵横比、硬度、纸纹强度、确定性 `seed`）。
+- `KCBrushDabGenerator`：把连续采样变成稳定 dab 序列——逐采样压力按曲线算半径（不再是整条 `averagePressure`），速度参与间距与流量，Pencil 倾角参与椭圆侧锋，手指输入回退为垂直正圆。
+
+确定性约束（T094 undo/redo 重绘不闪烁的前提）：
+
+- dab 的抖动与纹理种子由 `KCBrushDabHashing` 的纯 `UInt64` splitmix 混合生成；**禁止** `Swift.Hasher`/`Date()`/`random()`（`Hasher` 每进程随机种子会破坏跨运行一致性）。`scripts/validate_project.py` 守住这一约束。
+- 同一 `(preset.textureSeed, samples)` 必须产出逐 dab 完全一致的序列，`KCBrushDabGeneratorTests.testIdenticalInputsProduceIdenticalDabs` 锁定该行为。
+
+与 `KCStrokeRenderMath`（texture-layer 整条 stroke 模型）并存：T093 不删旧模型与 `KCStrokeRenderMathTests`，待 T094 接入 dab 渲染后再决定替代关系。`KCStroke` 在 T093 不新增 sample/dab 字段，保持保存 schema 兼容；运行时 samples/dabs 的接入是 T094。
+
+## 5. 取色器采样边界
 
 取色器属于高频交互路径，App 层不得为了单点取色把整张 `CGImage` 解码为 `KCBitmapBuffer`。
 
@@ -42,14 +58,14 @@ T038 后，内置线稿的程序化几何不再放在 `KCMainViewController`。
 - `KCDrawingCanvasView` 继续只依赖 `KCDrawingEngineProviding.sampleColorFromImage(...)` 做最终像素解析，不直接接触具体采样实现。
 - 如果后续要优化为异步取色或批量取色，应在 adapter 协议下新增能力，不把 UIKit 取色细节回流到画布视图。
 
-## 5. 填色性能边界
+## 6. 填色性能边界
 
 - `KCFloodFillEngine.fill(...)` 必须先校验尺寸乘法溢出，再计算 `pixelCount`。
 - 当种子色已经等于目标填充色时，必须在分配 `visited` 和 `queue` 前直接返回，避免无效填色触发整图 BFS。
 - App 层 `KCDrawingCanvasView.beginFloodFill(at:color:)` 还必须在生成 undo 快照和整画布 raster 前做 1 像素非印章画布预检；seed 已经等于目标色时不进入引擎层。
 - App 层仍负责把 UIKit 画布渲染为 `CGImage`，引擎层只处理 `KCBitmapBuffer` 内的纯算法。
 
-## 6. 测试与验收
+## 7. 测试与验收
 
 - `KCStrokeRenderMathTests` 覆盖铅笔、钢笔、蜡笔基础度量、纹理强度、宽蜡痕留白和用户可见笔触签名，避免三种画笔退化为“只差粗细”；`KCCrayonGrainTests` 同时约束蜡笔颗粒密度、纸纹空隙和宽线颗粒线宽，防止蜡笔退回平滑粗线或糊成马克笔；validator 额外守住 App adapter 使用同一颗粒宽度公式。
 - `KCLineArtDrawingTests` 覆盖支持 id 顺序、每个模板的 stroke 数量、路径非空与未知 id 返回 nil。
