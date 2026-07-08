@@ -106,6 +106,7 @@ final class KCBrushStickerPanelView {
         dots.axis = .horizontal
         dots.distribution = .equalSpacing
         dots.alignment = .bottom
+        dots.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
         shell.addSubview(dots)
 
         for size in [8.0, 14.0, 20.0, 28.0] as [CGFloat] {
@@ -113,8 +114,11 @@ final class KCBrushStickerPanelView {
             dot.translatesAutoresizingMaskIntoConstraints = false
             dot.backgroundColor = UIColor(red: 0.91, green: 0.64, blue: 0.42, alpha: 1.0)
             dot.layer.cornerRadius = size / 2.0
-            dot.widthAnchor.constraint(equalToConstant: size).isActive = true
-            dot.heightAnchor.constraint(equalToConstant: size).isActive = true
+            let widthConstraint = dot.widthAnchor.constraint(equalToConstant: size)
+            let heightConstraint = dot.heightAnchor.constraint(equalToConstant: size)
+            widthConstraint.priority = .defaultHigh
+            heightConstraint.priority = .defaultHigh
+            NSLayoutConstraint.activate([widthConstraint, heightConstraint])
             dots.addArrangedSubview(dot)
         }
 
@@ -158,6 +162,7 @@ final class KCBrushStickerPanelView {
         stickerRow.translatesAutoresizingMaskIntoConstraints = false
         stickerRow.axis = .horizontal
         stickerRow.spacing = 10.0
+        stickerRow.alignment = .center
         stickerRow.distribution = .fill
         stickerScrollView.addSubview(stickerRow)
 
@@ -249,7 +254,7 @@ final class KCBrushStickerPanelView {
             stickerRow.trailingAnchor.constraint(equalTo: stickerScrollView.contentLayoutGuide.trailingAnchor),
             stickerRow.topAnchor.constraint(equalTo: stickerScrollView.contentLayoutGuide.topAnchor),
             stickerRow.bottomAnchor.constraint(equalTo: stickerScrollView.contentLayoutGuide.bottomAnchor),
-            stickerRow.heightAnchor.constraint(equalTo: stickerScrollView.frameLayoutGuide.heightAnchor),
+            stickerRow.heightAnchor.constraint(greaterThanOrEqualTo: stickerScrollView.frameLayoutGuide.heightAnchor),
 
             eraserTitle.leadingAnchor.constraint(equalTo: panel.leadingAnchor, constant: 18.0),
             eraserTitle.topAnchor.constraint(equalTo: stickerScrollView.bottomAnchor, constant: 14.0),
@@ -305,6 +310,7 @@ final class KCBrushStickerPanelView {
             applyStampButtonAppearance(to: button, active: false, enabled: true)
             button.widthAnchor.constraint(equalToConstant: 44.0).isActive = true
             button.heightAnchor.constraint(equalToConstant: 44.0).isActive = true
+            button.setContentCompressionResistancePriority(.defaultLow, for: .vertical)
             button.accessibilityIdentifier = symbol
             button.accessibilityLabel = accessibilityLabelProvider(symbol)
             button.addTarget(target, action: action, for: .touchUpInside)

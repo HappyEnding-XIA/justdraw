@@ -458,6 +458,7 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
         let stack = UIStackView()
         stack.translatesAutoresizingMaskIntoConstraints = false
         stack.axis = .vertical
+        stack.alignment = .center
         stack.spacing = self.leftRailStackSpacing()
         toolScrollView.addSubview(stack)
 
@@ -471,7 +472,7 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
             stack.trailingAnchor.constraint(equalTo: toolScrollView.contentLayoutGuide.trailingAnchor),
             stack.topAnchor.constraint(equalTo: toolScrollView.contentLayoutGuide.topAnchor),
             stack.bottomAnchor.constraint(equalTo: toolScrollView.contentLayoutGuide.bottomAnchor),
-            stack.widthAnchor.constraint(equalTo: toolScrollView.frameLayoutGuide.widthAnchor)
+            stack.widthAnchor.constraint(greaterThanOrEqualTo: toolScrollView.frameLayoutGuide.widthAnchor)
         ])
 
         let items = self.toolRailFeature.toolItems()
@@ -735,6 +736,7 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
         let stack = UIStackView()
         stack.translatesAutoresizingMaskIntoConstraints = false
         stack.axis = .horizontal
+        stack.alignment = .center
         stack.spacing = self.bottomDockStackSpacing()
         scrollView.addSubview(stack)
 
@@ -752,7 +754,7 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
             stack.trailingAnchor.constraint(equalTo: scrollView.contentLayoutGuide.trailingAnchor),
             stack.topAnchor.constraint(equalTo: scrollView.contentLayoutGuide.topAnchor),
             stack.bottomAnchor.constraint(equalTo: scrollView.contentLayoutGuide.bottomAnchor),
-            stack.heightAnchor.constraint(equalTo: scrollView.frameLayoutGuide.heightAnchor)
+            stack.heightAnchor.constraint(greaterThanOrEqualTo: scrollView.frameLayoutGuide.heightAnchor)
         ])
 
         let brushItems = self.brushDockFeature.brushItems()
