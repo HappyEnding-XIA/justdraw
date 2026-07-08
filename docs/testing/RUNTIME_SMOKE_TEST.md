@@ -2,7 +2,7 @@
 
 > 静态验收（`swift test` + `validate_project.py` + `xcodebuild build`）通过后，用 `scripts/runtime_smoke_test.sh` 验证 app 能真正在模拟器里启动并稳定运行。静态验收只能证明"能编译"，运行时烟测证明"能启动、不崩溃、UI 能渲染"。
 >
-> 交互和布局类回归可使用 `scripts/runtime_acceptance_test.sh`。该脚本通过 Debug-only launch argument 触发 App 内部验收探针，并从模拟器沙盒读取 JSON 结果；当前覆盖空画布保存反馈、首屏 safe area 布局、印章删除/撤销/重做链路、绘制内容保存与历史恢复链路、相册导出失败语义、绘画工具链路，以及系统 UI 呈现探针。
+> 交互和布局类回归可使用 `scripts/runtime_acceptance_test.sh`。该脚本通过 Debug-only launch argument 触发 App 内部验收探针，并从模拟器沙盒读取 JSON 结果；当前覆盖空画布保存反馈、首屏 safe area 布局、印章删除/撤销/重做链路、绘制内容保存与历史恢复链路、相册导出失败语义、绘画工具链路、系统 UI 呈现探针，以及画笔视觉样张（`brush-samples`）与画笔 dab 性能基线（`brush-perf`）。
 
 ## 何时必须跑
 
@@ -46,6 +46,14 @@ scripts/runtime_acceptance_test.sh "iPad Pro 11 M4" drawing-tools
 # 系统取色器与相册选择器入口验收
 scripts/runtime_acceptance_test.sh "iPhone 17 Pro" system-ui
 scripts/runtime_acceptance_test.sh "iPad Pro 11 M4" system-ui
+
+# 画笔视觉样张验收（铅笔/钢笔/蜡笔 × 横线/曲线/快线/压力渐变 → Documents PNG，供人工对比）
+scripts/runtime_acceptance_test.sh "iPhone 17 Pro" brush-samples
+scripts/runtime_acceptance_test.sh "iPad Pro 11 M4" brush-samples
+
+# 画笔 dab 生成性能基线（100/300 条 stroke 计时，防止画笔引擎拖慢触摸）
+scripts/runtime_acceptance_test.sh "iPhone 17 Pro" brush-perf
+scripts/runtime_acceptance_test.sh "iPad Pro 11 M4" brush-perf
 ```
 
 脚本流程：清理 `._*` → 按设备名解析 UDID → 启动设备 → Debug 构建 → 安装 → 启动 → 轮询进程存活 → 等待 UI 渲染 → 重试截图直到文件大小达到阈值 → 必要时生成横屏观察图 → 截图到 `/tmp/kc_smoke_<device>.png`。

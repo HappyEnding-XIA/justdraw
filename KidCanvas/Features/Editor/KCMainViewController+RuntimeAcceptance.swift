@@ -6,6 +6,7 @@
 //
 
 import UIKit
+import KCDrawingEngine
 
 #if DEBUG
 
@@ -25,19 +26,27 @@ extension KCMainViewController {
         let shouldRunPhotoExportFailureProbe = arguments.contains("--kc-runtime-photo-export-failure-check")
         let shouldRunDrawingToolsProbe = arguments.contains("--kc-runtime-drawing-tools-check")
         let shouldRunSystemUIProbe = arguments.contains("--kc-runtime-system-ui-check")
+        let shouldRunBrushSamplesProbe = arguments.contains("--kc-runtime-brush-samples-check")
+        let shouldRunBrushPerfProbe = arguments.contains("--kc-runtime-brush-perf-check")
         guard shouldRunEmptySaveProbe
                 || shouldRunLayoutProbe
                 || shouldRunStickerProbe
                 || shouldRunSaveHistoryProbe
                 || shouldRunPhotoExportFailureProbe
                 || shouldRunDrawingToolsProbe
-                || shouldRunSystemUIProbe else {
+                || shouldRunSystemUIProbe
+                || shouldRunBrushSamplesProbe
+                || shouldRunBrushPerfProbe else {
             return
         }
         self.runtimeAcceptanceProbeDidRun = true
 
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { [weak self] in
-            if shouldRunLayoutProbe {
+            if shouldRunBrushSamplesProbe {
+                self?.runBrushSamplesAcceptanceProbe()
+            } else if shouldRunBrushPerfProbe {
+                self?.runBrushPerfAcceptanceProbe()
+            } else if shouldRunLayoutProbe {
                 self?.runLayoutAcceptanceProbe()
             } else if shouldRunStickerProbe {
                 self?.runStickerUndoRedoAcceptanceProbe()
@@ -879,6 +888,58 @@ extension KCMainViewController {
         case .bottom:
             return "bottom"
         }
+    }
+
+    // MARK: - 画笔样张 / 性能基线探针（T095）
+
+    private func runBrushSamplesAcceptanceProbe() {
+        let image = self.canvasView.renderBrushSampleSheet()
+        var result: [String: Any] = [
+            "probe": "brush-samples",
+            "passed": image != nil
+        ]
+        if let image, let png = image.pngData(),
+           let documentsURL = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first {
+            let imageURL = documentsURL.appendingPathComponent("kc_runtime_brush_samples.png")
+            try? png.write(to: imageURL, options: [.atomic])
+            result["imageFileName"] = "kc_runtime_brush_samples.png"
+            result["imageWidth"] = image.size.width
+            result["imageHeight"] = image.size.height
+        }
+        self.writeRuntimeAcceptanceResult(result, fileName: "kc_runtime_brush_samples.json")
+    }
+
+    private func runBrushPerfAcceptanceProbe() {
+        // 用一段代表性 stroke（铅笔，dab 最密、最重）测 dab 生成耗时，建立 100/300 条 stroke 基线。
+        var samples: [KCBrushInputSample] = []
+        var time: TimeInterval = 0
+        var x: CGFloat = 0
+        while x <= 1000 {
+            samples.append(KCBrushInputSample(point: CGPoint(x: x, y: 0), timestamp: time,
+                                              pressure: 1.0, velocity: 0,
+                                              altitude: Double.pi / 2.0, azimuth: 0, isPencil: true))
+            x += 8
+            time += 0.016
+        }
+        let sampleCount = samples.count
+
+        func measureGenerate(strokeCount: Int) -> Double {
+            let start = CFAbsoluteTimeGetCurrent()
+            for _ in 0..<strokeCount {
+                _ = self.canvasView.drawingEngine.brushDabs(for: samples, canvasScale: 1.0,
+                                                            brushStyle: KDBrushStyle.pencil.rawValue)
+            }
+            return (CFAbsoluteTimeGetCurrent() - start) * 1000.0
+        }
+
+        let result: [String: Any] = [
+            "probe": "brush-perf",
+            "passed": true,
+            "sampleCount": sampleCount,
+            "generate100StrokesMs": measureGenerate(strokeCount: 100),
+            "generate300StrokesMs": measureGenerate(strokeCount: 300)
+        ]
+        self.writeRuntimeAcceptanceResult(result, fileName: "kc_runtime_brush_perf.json")
     }
 
     private func writeRuntimeAcceptanceResult(_ result: [String: Any], fileName: String) {

@@ -425,6 +425,93 @@ final class KCDrawingCanvasView: UIView, UIGestureRecognizerDelegate {
         }
     }
 
+    #if DEBUG
+    // MARK: - 画笔样张（T095，仅 Debug）
+
+    /// Debug-only：把铅笔/钢笔/蜡笔的横线、曲线、快速线、压力渐变样张渲染成一张图，
+    /// 供 runtime acceptance 落盘 PNG 做人工视觉对比。固定颜色/尺寸/seed，可复现。
+    func renderBrushSampleSheet() -> UIImage? {
+        let styles: [KDBrushStyle] = [.pencil, .pen, .crayon]
+        let rowHeight: CGFloat = 280
+        let sheetWidth: CGFloat = 1200
+        let sheetHeight = rowHeight * CGFloat(styles.count) + 60
+        let color = UIColor(red: 0.94, green: 0.43, blue: 0.45, alpha: 1.0)
+        let renderer = UIGraphicsImageRenderer(size: CGSize(width: sheetWidth, height: sheetHeight))
+        return renderer.image { rendererContext in
+            let ctx = rendererContext.cgContext
+            UIColor.white.setFill()
+            ctx.fill(CGRect(x: 0, y: 0, width: sheetWidth, height: sheetHeight))
+
+            for (index, style) in styles.enumerated() {
+                let rowTop = 30 + CGFloat(index) * rowHeight
+                let seed = dabTextureSeed(for: style)
+                let strokes: [[KCBrushInputSample]] = [
+                    Self.brushSampleLine(y: rowTop + 50, pressure: 1.0, dt: 0.016),
+                    Self.brushSampleCurve(centerY: rowTop + 110, pressure: 1.0),
+                    Self.brushSampleLine(y: rowTop + 170, pressure: 1.0, dt: 0.004),
+                    Self.brushSamplePressureGradient(y: rowTop + 230)
+                ]
+                for samples in strokes {
+                    let dabs = drawingEngine.brushDabs(for: samples, canvasScale: 1.0, brushStyle: style.rawValue)
+                    drawDabs(dabs, brushStyle: style, textureSeed: seed, color: color)
+                }
+            }
+        }
+    }
+
+    private static func brushSampleLine(y: CGFloat, pressure: Double, dt: TimeInterval,
+                                        startX: CGFloat = 80, endX: CGFloat = 1120,
+                                        step: CGFloat = 8) -> [KCBrushInputSample] {
+        var samples: [KCBrushInputSample] = []
+        var time: TimeInterval = 0
+        var x = startX
+        while x <= endX {
+            samples.append(KCBrushInputSample(point: CGPoint(x: x, y: y), timestamp: time,
+                                              pressure: pressure, velocity: 0,
+                                              altitude: Double.pi / 2.0, azimuth: 0, isPencil: true))
+            x += step
+            time += dt
+        }
+        return samples
+    }
+
+    private static func brushSampleCurve(centerY: CGFloat, pressure: Double,
+                                        startX: CGFloat = 80, endX: CGFloat = 1120,
+                                        step: CGFloat = 8, amplitude: CGFloat = 18) -> [KCBrushInputSample] {
+        var samples: [KCBrushInputSample] = []
+        var time: TimeInterval = 0
+        var x = startX
+        let span = endX - startX
+        while x <= endX {
+            let phase = (x - startX) / max(span, 1) * .pi * 2.0
+            samples.append(KCBrushInputSample(point: CGPoint(x: x, y: centerY + sin(phase) * amplitude),
+                                              timestamp: time, pressure: pressure, velocity: 0,
+                                              altitude: Double.pi / 2.0, azimuth: 0, isPencil: true))
+            x += step
+            time += 0.016
+        }
+        return samples
+    }
+
+    private static func brushSamplePressureGradient(y: CGFloat,
+                                                    startX: CGFloat = 80, endX: CGFloat = 1120,
+                                                    step: CGFloat = 8) -> [KCBrushInputSample] {
+        var samples: [KCBrushInputSample] = []
+        var time: TimeInterval = 0
+        var x = startX
+        let span = endX - startX
+        while x <= endX {
+            let pressure = 0.2 + 0.8 * min(1, max(0, (x - startX) / max(span, 1)))
+            samples.append(KCBrushInputSample(point: CGPoint(x: x, y: y), timestamp: time,
+                                              pressure: pressure, velocity: 0,
+                                              altitude: Double.pi / 2.0, azimuth: 0, isPencil: true))
+            x += step
+            time += 0.016
+        }
+        return samples
+    }
+    #endif
+
     private func strokeRenderBounds(_ stroke: KDStroke) -> CGRect {
         if let cachedRenderBounds = stroke.cachedRenderBounds {
             return cachedRenderBounds
