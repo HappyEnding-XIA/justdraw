@@ -6,6 +6,7 @@
 //
 
 import UIKit
+import KCDrawingEngine
 
 // MARK: - 工具枚举
 
@@ -48,6 +49,11 @@ final class KDStroke: NSObject {
     var toolMode: KDToolMode = .brush
     var brushStyle: KDBrushStyle = .pencil
     var eraserShape: KDEraserShape = .circle
+
+    /// T094：高保真输入采样，铅笔/蜡笔 dab 渲染用。运行时字段，不持久化（保存仍为 raster）。
+    var samples: [KCBrushInputSample] = []
+    /// 由 samples 生成的 dab 缓存，重绘 / undo redo 复用；samples 变化时置 nil。
+    var cachedDabs: [KCBrushDab]?
 
     var averagePressure: CGFloat {
         pressureSampleCount <= 0 ? 1.0 : pressureTotal / CGFloat(pressureSampleCount)

@@ -30,6 +30,13 @@ protocol KCDrawingEngineProviding: AnyObject {
         lineWidth: Double,
         averagePressure: Double
     ) -> KCStrokeRenderMath.RenderProfile?
+    /// 由连续高保真采样生成 dab 序列，供 UIKit 侧光栅化（铅笔/蜡笔）。
+    /// `brushStyle` 为 `KDBrushStyle` raw 值：0 = 铅笔、1 = 钢笔、2 = 蜡笔。
+    func brushDabs(
+        for samples: [KCBrushInputSample],
+        canvasScale: Double,
+        brushStyle: Int
+    ) -> [KCBrushDab]
     func eraserStampPath(shape: Int, center: CGPoint, size: CGFloat) -> UIBezierPath?
     func eraserStampPointsAlongPath(_ path: CGPath, lineWidth: CGFloat) -> [NSValue]
     func crayonGrainDashPoints(pathBounds: CGRect, lineWidth: CGFloat) -> [NSValue]
@@ -162,6 +169,18 @@ final class KCDrawingEngineAdapter: NSObject, KCDrawingEngineProviding {
             lineWidth: lineWidth,
             pressure: averagePressure
         )
+    }
+
+    /// 由连续采样 + 画笔预设生成稳定 dab 序列。内部用 `KCBrushPreset.preset(for:)`
+    /// 与 `KCBrushDabGenerator`，是纯引擎的薄桥接；UIKit 光栅化仍在画布视图完成。
+    func brushDabs(
+        for samples: [KCBrushInputSample],
+        canvasScale: Double,
+        brushStyle: Int
+    ) -> [KCBrushDab] {
+        guard let style = Self.brushStyleFromOC(brushStyle) else { return [] }
+        let preset = KCBrushPreset.preset(for: style)
+        return KCBrushDabGenerator(preset: preset, canvasScale: canvasScale).dabs(for: samples)
     }
 
     // MARK: - 橡皮擦印章路径

@@ -54,4 +54,19 @@ public struct KCBrushDab: Sendable, Equatable {
         self.textureStrength = textureStrength
         self.seed = seed
     }
+
+    /// 该 dab 的保守包围盒（含 `inset` 外扩）。按椭圆半轴
+    ///（局部 x = `radius * aspectRatio`、局部 y = `radius`）与 `rotation` 计算旋转后的
+    /// 轴对齐包围盒，供 UIKit 侧做 dirty rect；不考虑抖动（抖动很小，inset 覆盖）。
+    public func bounds(inset: Double = 0.0) -> CGRect {
+        let major = CGFloat(radius * aspectRatio)
+        let minor = CGFloat(radius)
+        let cosR = CGFloat(cos(rotation))
+        let sinR = CGFloat(sin(rotation))
+        let halfWidth = ((major * cosR) * (major * cosR) + (minor * sinR) * (minor * sinR)).squareRoot()
+        let halfHeight = ((major * sinR) * (major * sinR) + (minor * cosR) * (minor * cosR)).squareRoot()
+        let dx = halfWidth + CGFloat(inset)
+        let dy = halfHeight + CGFloat(inset)
+        return CGRect(x: center.x - dx, y: center.y - dy, width: dx * 2.0, height: dy * 2.0)
+    }
 }

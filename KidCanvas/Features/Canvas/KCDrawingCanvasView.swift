@@ -95,6 +95,12 @@ final class KCDrawingCanvasView: UIView, UIGestureRecognizerDelegate {
     }
 
     private func drawStroke(_ stroke: KDStroke) {
+        if stroke.toolMode == .brush,
+           stroke.brushStyle == .pencil || stroke.brushStyle == .crayon,
+           !stroke.samples.isEmpty {
+            drawDabStroke(stroke)
+            return
+        }
         let strokeColor: UIColor = stroke.toolMode == .eraser ? .white : stroke.color
         let pressure: CGFloat = stroke.toolMode == .eraser ? 1.0 : stroke.averagePressure
         let renderedLineWidth: CGFloat
@@ -293,21 +299,164 @@ final class KCDrawingCanvasView: UIView, UIGestureRecognizerDelegate {
         return dashPoints
     }
 
+    // MARK: - Dab 渲染（T094：铅笔/蜡笔专业质感）
+
+    private lazy var brushTipCache: NSCache<NSString, UIImage> = {
+        let cache = NSCache<NSString, UIImage>()
+        cache.countLimit = 64
+        return cache
+    }()
+
+    private func dabTextureSeed(for style: KDBrushStyle) -> UInt64 {
+        switch style {
+        case .pencil: return KCBrushPreset.preset(for: .pencil).textureSeed
+        case .pen: return KCBrushPreset.preset(for: .pen).textureSeed
+        case .crayon: return KCBrushPreset.preset(for: .crayon).textureSeed
+        }
+    }
+
+    private func resolvedDabs(for stroke: KDStroke) -> [KCBrushDab] {
+        if let cached = stroke.cachedDabs { return cached }
+        let dabs = self.drawingEngine.brushDabs(
+            for: stroke.samples,
+            canvasScale: 1.0,
+            brushStyle: stroke.brushStyle.rawValue
+        )
+        stroke.cachedDabs = dabs
+        return dabs
+    }
+
+    private func drawDabStroke(_ stroke: KDStroke) {
+        let dabs = resolvedDabs(for: stroke)
+        guard !dabs.isEmpty else { return }
+        drawDabs(dabs,
+                 brushStyle: stroke.brushStyle,
+                 textureSeed: dabTextureSeed(for: stroke.brushStyle),
+                 color: stroke.color)
+    }
+
+    /// 生成（或从缓存取）着色软边纹理 stamp：径向衰减盘 + 确定性颗粒。
+    /// 缓存键为 (brushStyle, textureSeed, 颜色 RGBA)，命中即返回，避免每 dab 分配。
+    private func brushTipImage(brushStyle: KDBrushStyle, textureSeed: UInt64, color: UIColor) -> UIImage {
+        var cr: CGFloat = 0, cg: CGFloat = 0, cb: CGFloat = 0, ca: CGFloat = 0
+        color.getRed(&cr, green: &cg, blue: &cb, alpha: &ca)
+        let cacheKey = "\(brushStyle.rawValue)|\(textureSeed)|\(cr)|\(cg)|\(cb)|\(ca)" as NSString
+        if let cached = brushTipCache.object(forKey: cacheKey) {
+            return cached
+        }
+
+        let edge = 80
+        let renderer = UIGraphicsImageRenderer(size: CGSize(width: edge, height: edge))
+        let image = renderer.image { rendererContext in
+            self.renderBrushTip(into: rendererContext.cgContext,
+                                edge: CGFloat(edge),
+                                brushStyle: brushStyle,
+                                textureSeed: textureSeed,
+                                color: color)
+        }
+        brushTipCache.setObject(image, forKey: cacheKey)
+        return image
+    }
+
+    private func renderBrushTip(into ctx: CGContext,
+                                edge: CGFloat,
+                                brushStyle: KDBrushStyle,
+                                textureSeed: UInt64,
+                                color: UIColor) {
+        let center = CGPoint(x: edge / 2.0, y: edge / 2.0)
+        let radius = edge / 2.0
+        var cr: CGFloat = 0, cg: CGFloat = 0, cb: CGFloat = 0, ca: CGFloat = 0
+        color.getRed(&cr, green: &cg, blue: &cb, alpha: &ca)
+
+        // 软边径向渐变盘，硬度控制衰减起点（钢笔锐、铅笔中、蜡笔柔）。
+        let hardness: CGFloat = brushStyle == .pen ? 0.95 : (brushStyle == .pencil ? 0.55 : 0.34)
+        let fadeStart = max(0.0, min(0.98, 1.0 - hardness))
+        let colorspace = CGColorSpaceCreateDeviceRGB()
+        let coreColor = UIColor(red: cr, green: cg, blue: cb, alpha: ca).cgColor
+        let midColor = UIColor(red: cr, green: cg, blue: cb, alpha: ca * 0.7).cgColor
+        let fadeColor = UIColor(red: cr, green: cg, blue: cb, alpha: 0.0).cgColor
+        if let gradient = CGGradient(colorsSpace: colorspace,
+                                     colors: [coreColor, midColor, fadeColor] as CFArray,
+                                     locations: [0.0, fadeStart, 1.0]) {
+            ctx.drawRadialGradient(gradient,
+                                   startCenter: center, startRadius: 0,
+                                   endCenter: center, endRadius: radius,
+                                   options: [])
+        }
+
+        // 颗粒纹理（铅笔=石墨颗粒、蜡笔=蜡块颗粒），位置/大小/浓度由 textureSeed 确定，
+        //    故相同 stroke 重绘结果一致，undo/redo 不闪烁。
+        guard brushStyle != .pen else { return }
+        let speckCount = brushStyle == .crayon ? 46 : 30
+        let maxSpeckRadius = brushStyle == .crayon ? radius * 0.18 : radius * 0.10
+        for index in 1...speckCount {
+            let h = kcBrushDabMix(seed: textureSeed, index: UInt64(index))
+            let angle = CGFloat(Double(h & 0xFFFF) / 65535.0) * .pi * 2.0
+            let dist = CGFloat(Double((h >> 16) & 0xFFFF) / 65535.0) * radius * 0.92
+            let speckAlpha = CGFloat(Double((h >> 32) & 0xFFFF) / 65535.0)
+            let sx = center.x + cos(angle) * dist
+            let sy = center.y + sin(angle) * dist
+            let speck = max(0.8, maxSpeckRadius * (0.4 + 0.6 * speckAlpha))
+            UIColor(red: cr, green: cg, blue: cb,
+                    alpha: ca * (0.25 + 0.45 * speckAlpha)).setFill()
+            ctx.fillEllipse(in: CGRect(x: sx - speck, y: sy - speck,
+                                       width: speck * 2.0, height: speck * 2.0))
+        }
+    }
+
+    private func drawDabs(_ dabs: [KCBrushDab],
+                          brushStyle: KDBrushStyle,
+                          textureSeed: UInt64,
+                          color: UIColor) {
+        guard let ctx = UIGraphicsGetCurrentContext() else { return }
+        let tip = brushTipImage(brushStyle: brushStyle, textureSeed: textureSeed, color: color)
+        for dab in dabs {
+            let alpha = CGFloat(max(0.0, min(1.0, dab.alpha * dab.flow)))
+            guard alpha > 0.001, dab.radius > 0 else { continue }
+            let halfWidth = CGFloat(dab.radius * dab.aspectRatio)
+            let halfHeight = CGFloat(dab.radius)
+            ctx.saveGState()
+            ctx.translateBy(x: dab.center.x, y: dab.center.y)
+            ctx.rotate(by: CGFloat(dab.rotation))
+            let localRect = CGRect(x: -halfWidth, y: -halfHeight,
+                                   width: halfWidth * 2.0, height: halfHeight * 2.0)
+            tip.draw(in: localRect, blendMode: .normal, alpha: alpha)
+            ctx.restoreGState()
+        }
+    }
+
     private func strokeRenderBounds(_ stroke: KDStroke) -> CGRect {
         if let cachedRenderBounds = stroke.cachedRenderBounds {
             return cachedRenderBounds
         }
 
-        let rawBounds = stroke.path.cgPath.boundingBoxOfPath
-        let baseBounds: CGRect
-        if rawBounds.isNull || rawBounds.isEmpty {
-            baseBounds = CGRect(x: stroke.startPoint.x, y: stroke.startPoint.y, width: 1.0, height: 1.0)
+        let renderBounds: CGRect
+        if stroke.toolMode == .brush,
+           stroke.brushStyle == .pencil || stroke.brushStyle == .crayon,
+           !stroke.samples.isEmpty {
+            // 铅笔/蜡笔：dirty rect 由 dab bounds 取并集（含少量 inset 覆盖抖动/纹理）。
+            let dabs = resolvedDabs(for: stroke)
+            if dabs.isEmpty {
+                renderBounds = CGRect(x: stroke.startPoint.x, y: stroke.startPoint.y, width: 1.0, height: 1.0)
+            } else {
+                var union = dabs[0].bounds(inset: 2.0)
+                for dab in dabs.dropFirst() {
+                    union = union.union(dab.bounds(inset: 2.0))
+                }
+                renderBounds = union
+            }
         } else {
-            baseBounds = rawBounds
+            let rawBounds = stroke.path.cgPath.boundingBoxOfPath
+            let baseBounds: CGRect
+            if rawBounds.isNull || rawBounds.isEmpty {
+                baseBounds = CGRect(x: stroke.startPoint.x, y: stroke.startPoint.y, width: 1.0, height: 1.0)
+            } else {
+                baseBounds = rawBounds
+            }
+            let inset = max(24.0, stroke.lineWidth * 3.0)
+            renderBounds = baseBounds.insetBy(dx: -inset, dy: -inset)
         }
 
-        let inset = max(24.0, stroke.lineWidth * 3.0)
-        let renderBounds = baseBounds.insetBy(dx: -inset, dy: -inset)
         stroke.cachedRenderBounds = renderBounds
         return renderBounds
     }
@@ -316,6 +465,7 @@ final class KCDrawingCanvasView: UIView, UIGestureRecognizerDelegate {
         stroke.cachedRenderBounds = nil
         stroke.cachedCrayonGrainDashPoints = nil
         stroke.cachedCrayonGrainDashLineWidth = 0
+        stroke.cachedDabs = nil
     }
 
     private func setNeedsDisplayForStroke(_ stroke: KDStroke) {
@@ -382,6 +532,7 @@ final class KCDrawingCanvasView: UIView, UIGestureRecognizerDelegate {
         stroke.path.lineWidth = stroke.lineWidth
         stroke.startPoint = point
         addPressureSample(from: touch, to: stroke)
+        appendDabSample(from: touch, to: stroke)
         stroke.path.move(to: point)
         activeStroke = stroke
 
@@ -419,6 +570,7 @@ final class KCDrawingCanvasView: UIView, UIGestureRecognizerDelegate {
 
             activeStroke.path.addLine(to: point)
             addPressureSample(from: coalescedTouch, to: activeStroke)
+            appendDabSample(from: coalescedTouch, to: activeStroke)
             activeStrokeDidMutate = true
             didAppendPoint = true
         }
@@ -438,6 +590,7 @@ final class KCDrawingCanvasView: UIView, UIGestureRecognizerDelegate {
         if activeStrokeDidMutate {
             activeStroke.path.addLine(to: point)
             addPressureSample(from: touch, to: activeStroke)
+            appendDabSample(from: touch, to: activeStroke)
             invalidateStrokeRenderBounds(activeStroke)
         } else {
             let dotRadius = max(1.0, activeStroke.lineWidth * 0.5)
@@ -449,6 +602,7 @@ final class KCDrawingCanvasView: UIView, UIGestureRecognizerDelegate {
             activeStroke.dotStroke = true
             activeStrokeDidMutate = true
             addPressureSample(from: touch, to: activeStroke)
+            appendDabSample(from: touch, to: activeStroke)
             invalidateStrokeRenderBounds(activeStroke)
         }
         commitUndoStateSnapshot(pendingStrokeState)
@@ -476,6 +630,25 @@ final class KCDrawingCanvasView: UIView, UIGestureRecognizerDelegate {
     private func addPressureSample(from touch: UITouch, to stroke: KDStroke) {
         stroke.pressureTotal += normalizedPressure(for: touch)
         stroke.pressureSampleCount += 1
+    }
+
+    /// 为铅笔/蜡笔采集一个高保真 dab 输入采样（含倾角），存入 `stroke.samples`。
+    /// 其余工具（钢笔、橡皮等）不采集，drawStroke 会回落到 path 渲染。
+    private func appendDabSample(from touch: UITouch, to stroke: KDStroke) {
+        guard stroke.toolMode == .brush,
+              stroke.brushStyle == .pencil || stroke.brushStyle == .crayon else { return }
+        let isPencil = touch.type == .pencil
+        let sample = KCBrushInputSample(
+            point: touch.location(in: self),
+            timestamp: touch.timestamp,
+            pressure: normalizedPressure(for: touch),
+            velocity: 0,
+            altitude: isPencil ? Double(touch.altitudeAngle) : Double.pi / 2.0,
+            azimuth: Double(touch.azimuthAngle(in: self)),
+            isPencil: isPencil
+        )
+        stroke.samples.append(sample)
+        stroke.cachedDabs = nil
     }
 
     private func normalizedPressure(for touch: UITouch) -> Double {
