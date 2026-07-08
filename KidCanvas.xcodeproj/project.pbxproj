@@ -48,6 +48,11 @@
 		A1FB010000000000D0A10106 /* KCDrawingCanvasModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1FB110000000000D0A10106 /* KCDrawingCanvasModels.swift */; };
 		A1FB010000000000D0A10107 /* KCCanvasHistoryStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1FB110000000000D0A10107 /* KCCanvasHistoryStore.swift */; };
 		A1FB010000000000D0A10108 /* KCStickerViewPresenter.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1FB110000000000D0A10108 /* KCStickerViewPresenter.swift */; };
+		A1FB010000000000D0A10109 /* KCMainViewController+History.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1FB110000000000D0A10109 /* KCMainViewController+History.swift */; };
+		A1FB010000000000D0A1010A /* KCMainViewController+ImagePicking.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1FB110000000000D0A1010A /* KCMainViewController+ImagePicking.swift */; };
+		A1FB010000000000D0A1010B /* KCMainViewController+DraftAutosave.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1FB110000000000D0A1010B /* KCMainViewController+DraftAutosave.swift */; };
+		A1FB010000000000D0A1010C /* KCMainViewController+RuntimeAcceptance.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1FB110000000000D0A1010C /* KCMainViewController+RuntimeAcceptance.swift */; };
+		A1FB010000000000D0A1010D /* KCMainViewController+SessionSaving.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1FB110000000000D0A1010D /* KCMainViewController+SessionSaving.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -91,6 +96,11 @@
 		A1FB110000000000D0A10106 /* KCDrawingCanvasModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KCDrawingCanvasModels.swift; sourceTree = "<group>"; };
 		A1FB110000000000D0A10107 /* KCCanvasHistoryStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KCCanvasHistoryStore.swift; sourceTree = "<group>"; };
 		A1FB110000000000D0A10108 /* KCStickerViewPresenter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KCStickerViewPresenter.swift; sourceTree = "<group>"; };
+		A1FB110000000000D0A10109 /* KCMainViewController+History.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "KCMainViewController+History.swift"; sourceTree = "<group>"; };
+		A1FB110000000000D0A1010A /* KCMainViewController+ImagePicking.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "KCMainViewController+ImagePicking.swift"; sourceTree = "<group>"; };
+		A1FB110000000000D0A1010B /* KCMainViewController+DraftAutosave.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "KCMainViewController+DraftAutosave.swift"; sourceTree = "<group>"; };
+		A1FB110000000000D0A1010C /* KCMainViewController+RuntimeAcceptance.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "KCMainViewController+RuntimeAcceptance.swift"; sourceTree = "<group>"; };
+		A1FB110000000000D0A1010D /* KCMainViewController+SessionSaving.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "KCMainViewController+SessionSaving.swift"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -172,6 +182,11 @@
 				A1FB110000000000D0A10103 /* KCMainViewController+LayoutMetrics.swift */,
 				A1FB110000000000D0A10104 /* KCMainViewController+PanelCollapse.swift */,
 				A1FB110000000000D0A10105 /* KCMainViewController+ToolSelection.swift */,
+				A1FB110000000000D0A10109 /* KCMainViewController+History.swift */,
+				A1FB110000000000D0A1010A /* KCMainViewController+ImagePicking.swift */,
+				A1FB110000000000D0A1010B /* KCMainViewController+DraftAutosave.swift */,
+				A1FB110000000000D0A1010C /* KCMainViewController+RuntimeAcceptance.swift */,
+				A1FB110000000000D0A1010D /* KCMainViewController+SessionSaving.swift */,
 			);
 			path = Editor;
 			sourceTree = "<group>";
@@ -376,6 +391,11 @@
 				A1FB010000000000D0A10103 /* KCMainViewController+LayoutMetrics.swift in Sources */,
 				A1FB010000000000D0A10104 /* KCMainViewController+PanelCollapse.swift in Sources */,
 				A1FB010000000000D0A10105 /* KCMainViewController+ToolSelection.swift in Sources */,
+				A1FB010000000000D0A10109 /* KCMainViewController+History.swift in Sources */,
+				A1FB010000000000D0A1010A /* KCMainViewController+ImagePicking.swift in Sources */,
+				A1FB010000000000D0A1010B /* KCMainViewController+DraftAutosave.swift in Sources */,
+				A1FB010000000000D0A1010C /* KCMainViewController+RuntimeAcceptance.swift in Sources */,
+				A1FB010000000000D0A1010D /* KCMainViewController+SessionSaving.swift in Sources */,
 				A1FB010000000000D0A10106 /* KCDrawingCanvasModels.swift in Sources */,
 				A1FB010000000000D0A10107 /* KCCanvasHistoryStore.swift in Sources */,
 				A1FB010000000000D0A10108 /* KCStickerViewPresenter.swift in Sources */,

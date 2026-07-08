@@ -158,11 +158,11 @@ flowchart TD
 - 同步颜色、尺寸、贴纸、历史状态。
 - 调用画布执行操作。
 - 调用存储服务保存和恢复。
-- 处理相册导入导出；导入大图的方向归一化与尺寸压缩必须走 `imageImportProcessingQueue`，不能在 picker 回调主线程同步处理。
+- 处理历史删除和线稿加载等页面协调；相册导入入口、picker 配置、后台归一化和导入完成回调已拆到 `KidCanvas/Features/Editor/KCMainViewController+ImagePicking.swift`，草稿自动保存、启动草稿恢复、替换前草稿保护和打开草稿已拆到 `KidCanvas/Features/Editor/KCMainViewController+DraftAutosave.swift`，Debug 运行时验收探针已拆到 `KidCanvas/Features/Editor/KCMainViewController+RuntimeAcceptance.swift`，正式保存、保存 generation guard 与相册 best-effort 导出已拆到 `KidCanvas/Features/Editor/KCMainViewController+SessionSaving.swift`。导入大图的方向归一化与尺寸压缩必须走 `imageImportProcessingQueue`，不能在 picker 回调主线程同步处理。
 
 当前问题：
 
-- 主控制器职责已经通过多组 App Feature 收敛，但仍承担保存、草稿、历史删除、相册导入导出等高风险流程协调。
+- 主控制器职责已经通过多组 App Feature 与 extension 收敛，但仍承担历史删除和线稿加载等高风险流程协调。
 - App 层文件已按职责目录分组，后续重点是继续拆薄 `KCMainViewController`，再评估稳定 Feature 是否下沉为 SPM target。
 
 建议拆分：

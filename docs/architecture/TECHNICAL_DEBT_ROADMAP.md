@@ -39,13 +39,16 @@
 - 设备布局指标代理。
 - 面板收起协调。
 - 工具、画笔、颜色、橡皮和印章选择协调。
+- 历史 UI 刷新、分页、缩略图占位与预热协调。
+- 相册导入入口、picker 配置、后台图片归一化和导入完成回调协调。
+- 草稿自动保存、启动草稿恢复、替换前草稿保护和打开草稿协调。
+- Debug 运行时验收探针。
+- 正式保存、保存 generation guard 和相册 best-effort 导出协调。
 
 后续顺序：
 
-1. `KCMainViewController+History.swift`
-2. `KCMainViewController+ImagePicking.swift`
-3. `KCMainViewController+DraftAutosave.swift`
-4. `KCMainViewController+RuntimeAcceptance.swift`
+1. `KCMainViewController+LineArtLoading.swift`
+2. `KCMainViewController+HistoryDeletion.swift`
 
 验收口径：
 

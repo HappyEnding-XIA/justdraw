@@ -21,6 +21,11 @@ APP_FILE_PATHS = {
     "KCMainViewController+LayoutMetrics.swift": APP_ROOT / "Features" / "Editor" / "KCMainViewController+LayoutMetrics.swift",
     "KCMainViewController+PanelCollapse.swift": APP_ROOT / "Features" / "Editor" / "KCMainViewController+PanelCollapse.swift",
     "KCMainViewController+ToolSelection.swift": APP_ROOT / "Features" / "Editor" / "KCMainViewController+ToolSelection.swift",
+    "KCMainViewController+History.swift": APP_ROOT / "Features" / "Editor" / "KCMainViewController+History.swift",
+    "KCMainViewController+ImagePicking.swift": APP_ROOT / "Features" / "Editor" / "KCMainViewController+ImagePicking.swift",
+    "KCMainViewController+DraftAutosave.swift": APP_ROOT / "Features" / "Editor" / "KCMainViewController+DraftAutosave.swift",
+    "KCMainViewController+RuntimeAcceptance.swift": APP_ROOT / "Features" / "Editor" / "KCMainViewController+RuntimeAcceptance.swift",
+    "KCMainViewController+SessionSaving.swift": APP_ROOT / "Features" / "Editor" / "KCMainViewController+SessionSaving.swift",
     "KCCanvasFeature.swift": APP_ROOT / "Features" / "Canvas" / "KCCanvasFeature.swift",
     "KCDrawingCanvasModels.swift": APP_ROOT / "Features" / "Canvas" / "KCDrawingCanvasModels.swift",
     "KCCanvasHistoryStore.swift": APP_ROOT / "Features" / "Canvas" / "KCCanvasHistoryStore.swift",
@@ -1517,7 +1522,8 @@ def app_feature_checks(
     checks.append(require_text(content_catalog_defaults_text, "fallbackStickerGroups", "Content catalog exposes no-IO fallback sticker groups for startup"))
     checks.append(require_text(content_catalog_defaults_text, "public static func resourceBacked()", "Content catalog resource loading is behind an explicit resourceBacked entry point"))
     checks.append(require_regex(content_catalog_defaults_text, r"public init\([\s\S]*colors: KCContentCatalogDefaults\.fallbackPalette24[\s\S]*stickerGroups: \[KCStickerGroup\] = KCContentCatalogDefaults\.fallbackStickerGroups", "Default bundled catalog uses fallback content without reading package resources"))
-    checks.append(require_text(main_text, "private enum KCStartupDeferredDelay", "Startup deferred-work delays are centralized and auditable"))
+    checks.append(require_text(main_text, "enum KCStartupDeferredDelay", "Startup deferred-work delays are centralized and auditable"))
+    checks.append(forbid_text(main_text, "public enum KCStartupDeferredDelay", "Startup deferred-work delays stay internal to the App target"))
     checks.append(require_text(main_text, "static let colorControls: TimeInterval = 0.50", "Palette/recent-color startup work waits until the first interaction window is responsive"))
     checks.append(require_text(main_text, "static let restoreDraft: TimeInterval = 0.30", "Draft restore waits until the first frame has settled"))
     checks.append(require_text(main_text, "static let historySessions: TimeInterval = 0.80", "History metadata loading is deferred beyond the immediate launch burst"))
@@ -1534,8 +1540,8 @@ def app_feature_checks(
     checks.append(require_text(main_text, ".originalImage", "Album import extracts the original selected image"))
     checks.append(require_text(main_text, "func imagePickerController", "Album import validates and normalizes images before replacing the canvas"))
     checks.append(require_text(main_text, "func normalizedImage", "Album import rejects invalid image dimensions"))
-    checks.append(require_text(main_text, "private let imageImportProcessingQueue", "Album import has a dedicated image-processing queue"))
-    checks.append(require_text(main_text, "private var imageImportGeneration: Int = 0", "Album import tracks stale background normalization work"))
+    checks.append(require_text(main_text, "let imageImportProcessingQueue", "Album import has a dedicated image-processing queue"))
+    checks.append(require_text(main_text, "var imageImportGeneration: Int = 0", "Album import tracks stale background normalization work"))
     checks.append(require_regex(main_text, r"func imagePickerController[\s\S]*self\.imageImportProcessingQueue\.async[\s\S]*normalizedImageFromImage\(image\)[\s\S]*DispatchQueue\.main\.async", "Album import normalizes large photos off the main thread"))
     checks.append(require_regex(main_text, r"DispatchQueue\.main\.async[\s\S]*guard self\.imageImportGeneration == generation[\s\S]*finishImportingImage", "Album import returns through a stale-result guard before replacing the canvas"))
     checks.append(require_regex(main_text, r"func finishImportingImage[\s\S]*preserveUnsavedActiveSessionDraftIfNeeded\(\)[\s\S]*replaceCanvas\(with: normalizedImage\)", "Album import preserves dirty edits before replacing the canvas"))
@@ -1551,14 +1557,14 @@ def app_feature_checks(
     checks.append(require_text(photo_service_text, "removeValue(forKey: contextInfo)", "Photo export callbacks resolve the matching continuation by context token"))
     checks.append(forbid_text(main_text, "UIImageWriteToSavedPhotosAlbum", "Main view controller no longer calls the Photos export API directly"))
     checks.append(require_regex(main_text, r"func didTapSaveSession[\s\S]*hasVisibleContent[\s\S]*showSaveToastWithSuccess\(false\)", "Save action refuses empty canvas before creating history or Photos output", re.S))
-    checks.append(require_text(main_text, "private let sessionPersistenceQueue", "Formal save has a dedicated persistence queue"))
-    checks.append(require_text(main_text, "private let sessionSaveGenerationLock", "Formal save generation is lock-protected for background writes"))
-    checks.append(require_text(main_text, "private var sessionSaveGeneration: Int = 0", "Formal save tracks stale background persistence work"))
+    checks.append(require_text(main_text, "let sessionPersistenceQueue", "Formal save has a dedicated persistence queue"))
+    checks.append(require_text(main_text, "let sessionSaveGenerationLock", "Formal save generation is lock-protected for background writes"))
+    checks.append(require_text(main_text, "var sessionSaveGeneration: Int = 0", "Formal save tracks stale background persistence work"))
     checks.append(require_regex(main_text, r"func didTapSaveSession[\s\S]*self\.sessionPersistenceQueue\.async[\s\S]*encodedArtworkData\(from: snapshot\)[\s\S]*isSessionSaveGenerationCurrent\(generation\)[\s\S]*saveArtwork\(", "Formal save encodes artwork data and writes artwork files off the main thread"))
     checks.append(require_regex(main_text, r"DispatchQueue\.main\.async[\s\S]*finishSavingSession\([\s\S]*savedSession: savedSession", "Formal save returns with saved metadata before mutating UI/session state"))
     checks.append(forbid_regex(main_text, r"func finishSavingSession[\s\S]*saveArtwork\(", "Formal save does not write artwork files on the main thread"))
     checks.append(require_regex(main_text, r"func finishSavingSession[\s\S]*let saveStillMatchesVisibleCanvas = self\.isSessionSaveGenerationCurrent\(generation\)[\s\S]*self\.activeSessionHasUnsavedChanges = !saveStillMatchesVisibleCanvas[\s\S]*if saveStillMatchesVisibleCanvas", "Formal save preserves dirty state if the canvas changed while disk write was in flight"))
-    checks.append(require_regex(main_text, r"private func replaceLoadedHistorySession\(_ session: KCSessionMetadata\)[\s\S]*historySessionRefreshGeneration \+= 1[\s\S]*sessions\.removeAll[\s\S]*sessions\.insert\(session, at: 0\)", "Formal save updates in-memory history and invalidates stale async metadata results"))
+    checks.append(require_regex(main_text, r"(?:private )?func replaceLoadedHistorySession\(_ session: KCSessionMetadata\)[\s\S]*historySessionRefreshGeneration \+= 1[\s\S]*sessions\.removeAll[\s\S]*sessions\.insert\(session, at: 0\)", "Formal save updates in-memory history and invalidates stale async metadata results"))
     checks.append(require_regex(main_text, r"func finishSavingSession[\s\S]*self\.replaceLoadedHistorySession\(savedSession\)[\s\S]*self\.refreshHistoryUI\(loadDraftThumbnail: false, loadSessions: false\)", "Formal save refreshes history from returned metadata without rereading sessions"))
     checks.append(require_regex(main_text, r"func finishSavingSession[\s\S]*self\.showSaveToastWithSuccess\(true\)[\s\S]*self\.exportSavedArtworkToPhotoLibrary", "Formal save confirms local history before best-effort Photos export"))
     checks.append(require_regex(main_text, r"func exportSavedArtworkToPhotoLibrary[\s\S]*self\.photoLibraryService\.export\(imageData:[\s\S]*showPhotoExportFailedToast", "Photos export failure uses a separate toast and does not override local save success"))
@@ -1642,8 +1648,8 @@ def app_feature_checks(
     checks.append(require_regex(main_text, r"func didTapHistoryThumb[\s\S]*let session = self\.sessions\[index\][\s\S]*self\.selectedHistorySession = session[\s\S]*self\.openSession\(session\)", "Tapping a saved thumbnail selects and opens that session"))
     checks.append(require_regex(main_text, r"func currentSelectedHistorySession[\s\S]*self\.selectedHistorySession\?\.identifier[\s\S]*self\.selectedHistorySession = nil", "Selected history sessions are validated against current saved sessions"))
     checks.append(require_regex(main_text, r"func didTapDeleteLatestSession[\s\S]*self\.deleteSavedHistorySession\(session\)", "Delete action prioritizes the selected saved thumbnail before falling back to current/latest"))
-    checks.append(require_regex(main_text, r"private func deleteSavedHistorySession\(_ session: KCSessionMetadata\)[\s\S]*removeLoadedHistorySession\(withId: session\.identifier\)[\s\S]*refreshHistoryUI\(loadDraftThumbnail: false, loadSessions: false\)[\s\S]*self\.sessionPersistenceQueue\.async[\s\S]*self\?\.sessionStore\.deleteSession\(withId: sessionId\)", "Saved history deletion refreshes UI from memory and deletes files off the main thread"))
-    checks.append(require_regex(main_text, r"private func deleteSavedHistorySession\(_ session: KCSessionMetadata\)[\s\S]*let deletingActiveSession = self\.activeSession\?\.identifier == session\.identifier[\s\S]*self\.suppressNextDraftSave = true[\s\S]*self\.canvasView\.startBlankCanvas\(\)[\s\S]*self\.clearDraftAndInvalidateCurrentDraftMarker\(\)", "Deleting the open saved session clears the canvas without creating a draft"))
+    checks.append(require_regex(main_text, r"(?:private )?func deleteSavedHistorySession\(_ session: KCSessionMetadata\)[\s\S]*removeLoadedHistorySession\(withId: session\.identifier\)[\s\S]*refreshHistoryUI\(loadDraftThumbnail: false, loadSessions: false\)[\s\S]*self\.sessionPersistenceQueue\.async[\s\S]*self\?\.sessionStore\.deleteSession\(withId: sessionId\)", "Saved history deletion refreshes UI from memory and deletes files off the main thread"))
+    checks.append(require_regex(main_text, r"(?:private )?func deleteSavedHistorySession\(_ session: KCSessionMetadata\)[\s\S]*let deletingActiveSession = self\.activeSession\?\.identifier == session\.identifier[\s\S]*self\.suppressNextDraftSave = true[\s\S]*self\.canvasView\.startBlankCanvas\(\)[\s\S]*self\.clearDraftAndInvalidateCurrentDraftMarker\(\)", "Deleting the open saved session clears the canvas without creating a draft"))
     checks.append(require_text(canvas_text, "coalescedTouches", "Coalesced touch drawing exists"))
     checks.append(require_text(canvas_text, "touch.type == .pencil", "Apple Pencil pressure handling exists"))
     checks.append(require_regex(canvas_text, r"override func draw\(_ rect: CGRect\)[\s\S]*for stroke in strokes[\s\S]*strokeRenderBounds\(stroke\)\.intersects\(rect\)[\s\S]*drawStroke\(stroke\)", "Canvas draw skips stored strokes outside the dirty rect"))
@@ -1690,24 +1696,24 @@ def app_feature_checks(
     checks.append(require_regex(main_text, r"func drawingCanvasViewContentDidChange[\s\S]*if self\.suppressNextDraftSave[\s\S]*self\.suppressNextDraftSave = false[\s\S]*scheduleDraftSave", "Draft autosave ignores suppressed programmatic restore notifications"))
     checks.append(require_regex(main_text, r"func drawingCanvasViewContentDidChange[\s\S]*if self\.activeSession != nil[\s\S]*self\.activeSessionHasUnsavedChanges = true", "User edits mark opened saved sessions as dirty"))
     checks.append(require_regex(main_text, r"self\.activeSession = session[\s\S]*self\.selectedHistorySession = session[\s\S]*self\.activeSessionHasUnsavedChanges = false[\s\S]*self\.suppressNextDraftSave = true", "Opening a saved session starts clean until the next user edit"))
-    checks.append(require_regex(main_text, r"self\.activeSession = savedSession[\s\S]*self\.selectedHistorySession = savedSession[\s\S]*self\.activeSessionHasUnsavedChanges = false", "Saving clears saved-session dirty state"))
+    checks.append(require_regex(main_text, r"self\.activeSession = savedSession[\s\S]*self\.selectedHistorySession = savedSession[\s\S]*self\.activeSessionHasUnsavedChanges = !saveStillMatchesVisibleCanvas", "Saving clears dirty state only when the saved snapshot still matches the visible canvas"))
     # T024: history thumb dirty/active/selected state decisions moved to KCDomain KCHistoryThumbStatus;
     # the controller applies status.borderWidth / borderColor / emphasisScale via the history feature.
     checks.append(require_text(kc_history_thumb_status_text, "self == .dirtyActive ? 3.0 : 2.0", "History thumbnail dirty-active state uses a thicker border (KCDomain)"))
     checks.append(require_regex(main_text, r"self\.history\.thumbStatus\([\s\S]*status\.borderWidth[\s\S]*status\.isEmphasized", "History thumbnails apply KCDomain thumb-status decisions via the history feature"))
     checks.append(require_text(main_text, "self.history.borderColor(for: status)", "History thumbnail border color is delegated to the history feature"))
-    checks.append(require_text(main_text, "private var historyThumbImageIdentities", "History thumbnails track applied image identities"))
+    checks.append(require_text(main_text, "var historyThumbImageIdentities", "History thumbnails track applied image identities"))
     checks.append(require_text(main_text, "func applyHistoryBackgroundImageIfNeeded", "History thumbnails avoid re-applying unchanged background images"))
-    checks.append(require_text(main_text, "private static let historyThumbnailImageStates", "History thumbnails apply background images to all control states"))
+    checks.append(require_text(main_text, "static let historyThumbnailImageStates", "History thumbnails apply background images to all control states"))
     checks.append(require_text(main_text, ".highlighted.union(.selected)", "History thumbnails cover highlighted+selected control state"))
     checks.append(require_text(main_text, ".selected.union(.focused)", "History thumbnails cover selected+focused control state"))
     checks.append(require_regex(main_text, r"func setHistoryBackgroundImage\(_ image: UIImage\?, to button: UIButton\)[\s\S]*for state in Self\.historyThumbnailImageStates[\s\S]*button\.setBackgroundImage\(image, for: state\)", "History thumbnails keep the same artwork while highlighted/selected/disabled"))
     checks.append(forbid_text(main_text, "historySlotTransparentImage", "History saved-artwork slots clear foreground images instead of keeping transparent placeholders"))
-    checks.append(require_text(main_text, "private var historyThumbSessionIdentifiers", "History thumbnails track represented sessions to avoid clearing the same artwork on cache misses"))
+    checks.append(require_text(main_text, "var historyThumbSessionIdentifiers", "History thumbnails track represented sessions to avoid clearing the same artwork on cache misses"))
     checks.append(forbid_text(editor_ui_factory_text, "adjustsImageWhenHighlighted", "History thumbnail buttons avoid deprecated highlighted-image adjustment"))
     checks.append(forbid_text(editor_ui_factory_text, "adjustsImageWhenDisabled", "History thumbnail buttons avoid deprecated disabled-image adjustment"))
     checks.append(forbid_text(editor_ui_factory_text, "historyThumbPlaceholderStates", "History thumbnail factory leaves placeholder state control to refreshHistoryUI"))
-    checks.append(require_text(main_text, "private static let historyPlaceholderViewTag", "History thumbnail placeholder uses an independent image view instead of UIButton state images"))
+    checks.append(require_text(main_text, "static let historyPlaceholderViewTag", "History thumbnail placeholder uses an independent image view instead of UIButton state images"))
     checks.append(forbid_text(main_text, "button.setImage(visible ? Self.historySlotPlaceholderImage() : nil, for: state)", "History thumbnail placeholder is not stored as UIButton foreground images"))
     checks.append(require_regex(main_text, r"func setHistoryButtonPlaceholderVisible\(_ visible: Bool, on button: UIButton\)[\s\S]*clearHistoryButtonForegroundImages\(button\)[\s\S]*guard visible else[\s\S]*historyPlaceholderImageView\(on: button\)[\s\S]*placeholderView\.alpha = 1\.0[\s\S]*placeholderView\.isHidden = false", "History thumbnail placeholder is toggled through a dedicated UIImageView and cannot leak into selected/highlighted states"))
     checks.append(require_regex(refresh_history_text, r"let representsSameSession = self\.historyThumbSessionIdentifiers\[index\] == session\.identifier[\s\S]*if image != nil \|\| !representsSameSession", "History thumbnail cache misses do not clear an already displayed thumbnail for the same session"))
@@ -1745,10 +1751,10 @@ def app_feature_checks(
     checks.append(forbid_text(main_text, "self.undoButton.isEnabled = actionState.canUndo", "Main view controller no longer applies undo-button availability directly"))
     checks.append(require_regex(main_text, r"func openSession[\s\S]*preserveUnsavedActiveSessionDraftIfNeeded\(\)[\s\S]*self\.clearDraftAndInvalidateCurrentDraftMarker\(\)", "Opening another history item preserves dirty edits without clearing their draft"))
     checks.append(forbid_text(main_text, "self.activeSession == nil || !self.activeSessionHasUnsavedChanges", "New unsaved canvases are not skipped during draft preservation"))
-    checks.append(require_text(main_text, "private var activeDraftMatchesCanvas: Bool = false", "Controller tracks whether the draft already matches the visible canvas"))
+    checks.append(require_text(main_text, "var activeDraftMatchesCanvas: Bool = false", "Controller tracks whether the draft already matches the visible canvas"))
     checks.append(require_regex(main_text, r"func drawingCanvasViewContentDidChange[\s\S]*self\.activeDraftMatchesCanvas = false", "Canvas edits mark the cached draft as stale"))
-    checks.append(require_text(main_text, "private var draftProtectionGeneration: Int = 0", "Draft protection saves have an independent cancellation generation"))
-    checks.append(require_text(main_text, "private let draftGenerationLock = NSLock()", "Draft save/protection generations are lock-protected for background writes"))
+    checks.append(require_text(main_text, "var draftProtectionGeneration: Int = 0", "Draft protection saves have an independent cancellation generation"))
+    checks.append(require_text(main_text, "let draftGenerationLock = NSLock()", "Draft save/protection generations are lock-protected for background writes"))
     checks.append(require_regex(main_text, r"func nextDraftSaveGeneration\(\) -> Int[\s\S]*draftGenerationLock\.lock\(\)[\s\S]*draftSaveGeneration \+= 1[\s\S]*return self\.draftSaveGeneration", "Draft autosave generation can be advanced under lock"))
     checks.append(require_regex(main_text, r"func nextDraftProtectionGeneration\(\) -> Int[\s\S]*draftGenerationLock\.lock\(\)[\s\S]*draftProtectionGeneration \+= 1[\s\S]*return self\.draftProtectionGeneration", "Draft protection generation can be advanced under lock"))
     checks.append(require_regex(main_text, r"func isDraftSaveGenerationCurrent\(_ generation: Int\) -> Bool[\s\S]*draftGenerationLock\.lock\(\)[\s\S]*return self\.draftSaveGeneration == generation", "Draft autosave generation can be checked from the background queue"))
@@ -1771,10 +1777,10 @@ def app_feature_checks(
     checks.append(require_regex(main_text, r"func didTapNewCanvas[\s\S]*self\.suppressNextDraftSave = true[\s\S]*self\.canvasView\.startBlankCanvas\(\)", "New canvas starts a clean blank session without creating a draft"))
     checks.append(require_regex(main_text, r"func didTapDeleteLatestSession[\s\S]*shouldDeleteDraft[\s\S]*self\.suppressNextDraftSave = true[\s\S]*self\.canvasView\.startBlankCanvas\(\)", "Deleting the active draft starts a clean blank session"))
     checks.append(require_regex(main_text, r"func saveDraftIfNeeded[\s\S]*self\.activeSession != nil && !self\.activeSessionHasUnsavedChanges[\s\S]*return[\s\S]*self\.canvasFeature\.hasVisibleContent\(self\.canvasView\)", "Draft autosave skips only unchanged saved sessions"))
-    checks.append(require_text(main_text, "private let draftPersistenceQueue", "Draft autosave has a dedicated persistence queue"))
-    checks.append(require_text(main_text, "private var draftSaveGeneration: Int = 0", "Draft autosave tracks stale background work"))
+    checks.append(require_text(main_text, "let draftPersistenceQueue", "Draft autosave has a dedicated persistence queue"))
+    checks.append(require_text(main_text, "var draftSaveGeneration: Int = 0", "Draft autosave tracks stale background work"))
     checks.append(require_text(main_text, "private let artworkLoadingQueue", "Saved artwork opening has a dedicated loading queue"))
-    checks.append(require_text(main_text, "private var artworkLoadGeneration: Int = 0", "Saved artwork and draft opening track stale background work"))
+    checks.append(require_text(main_text, "var artworkLoadGeneration: Int = 0", "Saved artwork and draft opening track stale background work"))
     checks.append(require_regex(main_text, r"func nextArtworkLoadGeneration\(\) -> Int[\s\S]*artworkLoadGeneration \+= 1[\s\S]*return self\.artworkLoadGeneration", "Artwork loading generation has a single increment helper"))
     checks.append(require_regex(main_text, r"func invalidateDraftSaveTimer[\s\S]*nextDraftSaveGeneration\(\)", "Invalidating draft saves cancels stale background writes"))
     checks.append(require_regex(main_text, r"func invalidateArtworkLoadWork\(\)[\s\S]*artworkLoadGeneration \+= 1", "Invalidating artwork loads cancels stale background reads"))
@@ -1920,6 +1926,11 @@ def main():
         APP_FILE_PATHS["KCMainViewController+LayoutMetrics.swift"],
         APP_FILE_PATHS["KCMainViewController+PanelCollapse.swift"],
         APP_FILE_PATHS["KCMainViewController+ToolSelection.swift"],
+        APP_FILE_PATHS["KCMainViewController+History.swift"],
+        APP_FILE_PATHS["KCMainViewController+ImagePicking.swift"],
+        APP_FILE_PATHS["KCMainViewController+DraftAutosave.swift"],
+        APP_FILE_PATHS["KCMainViewController+RuntimeAcceptance.swift"],
+        APP_FILE_PATHS["KCMainViewController+SessionSaving.swift"],
         APP_FILE_PATHS["KCDrawingCanvasView.swift"],
     ]
     for path in objc_files:
@@ -1933,6 +1944,11 @@ def main():
         APP_FILE_PATHS["KCMainViewController+LayoutMetrics.swift"].read_text(encoding="utf-8"),
         APP_FILE_PATHS["KCMainViewController+PanelCollapse.swift"].read_text(encoding="utf-8"),
         APP_FILE_PATHS["KCMainViewController+ToolSelection.swift"].read_text(encoding="utf-8"),
+        APP_FILE_PATHS["KCMainViewController+History.swift"].read_text(encoding="utf-8"),
+        APP_FILE_PATHS["KCMainViewController+ImagePicking.swift"].read_text(encoding="utf-8"),
+        APP_FILE_PATHS["KCMainViewController+DraftAutosave.swift"].read_text(encoding="utf-8"),
+        APP_FILE_PATHS["KCMainViewController+RuntimeAcceptance.swift"].read_text(encoding="utf-8"),
+        APP_FILE_PATHS["KCMainViewController+SessionSaving.swift"].read_text(encoding="utf-8"),
     ])
     canvas_text = APP_FILE_PATHS["KCDrawingCanvasView.swift"].read_text(encoding="utf-8")
     canvas_models_text = APP_FILE_PATHS["KCDrawingCanvasModels.swift"].read_text(encoding="utf-8")

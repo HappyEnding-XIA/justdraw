@@ -134,8 +134,146 @@ swift test --package-path Packages/KidCanvasModules
 
 Expected: all commands exit 0.
 
+## Task 5: Extract History UI Coordination
+
+**Files:**
+- Create: `KidCanvas/Features/Editor/KCMainViewController+History.swift`
+- Modify: `KidCanvas/Features/Editor/KCMainViewController.swift`
+- Modify: `KidCanvas.xcodeproj/project.pbxproj`
+- Modify: `scripts/validate_project.py`
+- Modify: `docs/modules/KCHistoryFeature.md`
+
+- [x] **Step 1: Move history refresh helpers**
+
+Move `refreshHistoryUI(...)`, history pagination helpers, thumbnail identity helpers, placeholder toggling, and async metadata/thumbnail refresh helpers into `KCMainViewController+History.swift`.
+
+- [x] **Step 2: Keep high-risk flows in the main controller**
+
+Keep save, draft autosave, photo import, line-art loading, and runtime acceptance probes in `KCMainViewController.swift` for dedicated follow-up slices.
+
+- [x] **Step 3: Update project and validation coverage**
+
+Add the new extension file to the Xcode Sources phase and make `scripts/validate_project.py` read it as part of the controller composite text.
+
+- [x] **Step 4: Verify**
+
+Run:
+
+```bash
+python3 scripts/validate_project.py
+xcodebuild -project KidCanvas.xcodeproj -scheme KidCanvas -destination 'platform=iOS Simulator,name=iPhone 17 Pro' -derivedDataPath /tmp/KidCanvasHistorySplit-iPhone build -quiet
+xcodebuild -project KidCanvas.xcodeproj -scheme KidCanvas -destination 'platform=iOS Simulator,name=iPad Pro 11 M4' -derivedDataPath /tmp/KidCanvasHistorySplit-iPad build -quiet
+swift test --package-path Packages/KidCanvasModules
+```
+
+Expected: all commands exit 0.
+
+## Task 6: Extract Image Picking Coordination
+
+**Files:**
+- Create: `KidCanvas/Features/Editor/KCMainViewController+ImagePicking.swift`
+- Modify: `KidCanvas/Features/Editor/KCMainViewController.swift`
+- Modify: `KidCanvas.xcodeproj/project.pbxproj`
+- Modify: `scripts/validate_project.py`
+- Modify: `docs/architecture/TECHNICAL_DEBT_ROADMAP.md`
+
+- [x] **Step 1: Move photo import entry points**
+
+Move `didTapImportImage()`, `configuredPhotoLibraryPicker()`, `presentPhotoLibraryPicker(...)`, `imagePickerController(...)`, `imagePickerControllerDidCancel(...)`, `finishImportingImage(...)`, and `normalizedImageFromImage(...)` into `KCMainViewController+ImagePicking.swift`.
+
+- [x] **Step 2: Preserve async image normalization**
+
+Keep large photo orientation normalization and downscaling on `imageImportProcessingQueue`; keep `imageImportGeneration` stale-result protection and Debug runtime completion signaling intact.
+
+- [x] **Step 3: Update project and validation coverage**
+
+Add the new extension file to the Xcode Sources phase and make `scripts/validate_project.py` read it as part of the controller composite text.
+
+- [x] **Step 4: Verify**
+
+Run:
+
+```bash
+python3 scripts/validate_project.py
+xcodebuild -project KidCanvas.xcodeproj -scheme KidCanvas -destination 'platform=iOS Simulator,name=iPhone 17 Pro' -derivedDataPath /tmp/KidCanvasImagePickingSplit-iPhone build -quiet
+xcodebuild -project KidCanvas.xcodeproj -scheme KidCanvas -destination 'platform=iOS Simulator,name=iPad Pro 11 M4' -derivedDataPath /tmp/KidCanvasImagePickingSplit-iPad build -quiet
+swift test --package-path Packages/KidCanvasModules
+```
+
+Expected: all commands exit 0.
+
+## Task 7: Extract Draft Autosave Coordination
+
+**Files:**
+- Create: `KidCanvas/Features/Editor/KCMainViewController+DraftAutosave.swift`
+- Modify: `KidCanvas/Features/Editor/KCMainViewController.swift`
+- Modify: `KidCanvas.xcodeproj/project.pbxproj`
+- Modify: `scripts/validate_project.py`
+- Modify: `docs/modules/KCSessionPersistence.md`
+- Modify: `docs/architecture/TECHNICAL_DEBT_ROADMAP.md`
+
+- [x] **Step 1: Move draft coordination**
+
+Move canvas replacement confirmation, draft protection, draft thumbnail opening, startup draft restore, draft generation guards, draft autosave timer, and scene background draft flushing into `KCMainViewController+DraftAutosave.swift`.
+
+- [x] **Step 2: Preserve background persistence guarantees**
+
+Keep PNG encoding and `saveDraftData(pngData:cachedImage:)` on `draftPersistenceQueue`; keep `draftSaveGeneration`, `draftProtectionGeneration`, and `artworkLoadGeneration` stale-result protection intact.
+
+- [x] **Step 3: Update project, validation, and docs**
+
+Add the new extension file to the Xcode Sources phase, make `scripts/validate_project.py` read it as part of the controller composite text, and update session persistence / roadmap docs.
+
+- [x] **Step 4: Verify**
+
+Run:
+
+```bash
+python3 scripts/validate_project.py
+xcodebuild -project KidCanvas.xcodeproj -scheme KidCanvas -destination 'platform=iOS Simulator,name=iPhone 17 Pro' -derivedDataPath /tmp/KidCanvasDraftAutosaveSplit-iPhone build -quiet
+xcodebuild -project KidCanvas.xcodeproj -scheme KidCanvas -destination 'platform=iOS Simulator,name=iPad Pro 11 M4' -derivedDataPath /tmp/KidCanvasDraftAutosaveSplit-iPad build -quiet
+swift test --package-path Packages/KidCanvasModules
+```
+
+Expected: all commands exit 0.
+
+## Task 8: Extract Runtime Acceptance Probes
+
+**Files:**
+- Create: `KidCanvas/Features/Editor/KCMainViewController+RuntimeAcceptance.swift`
+- Modify: `KidCanvas/Features/Editor/KCMainViewController.swift`
+- Modify: `KidCanvas.xcodeproj/project.pbxproj`
+- Modify: `scripts/validate_project.py`
+- Modify: `docs/architecture/TECHNICAL_ARCHITECTURE.md`
+- Modify: `docs/architecture/TECHNICAL_DEBT_ROADMAP.md`
+
+- [x] **Step 1: Move Debug-only probe code**
+
+Move runtime acceptance probe dispatch, empty-save, layout, sticker undo/redo, save-history, photo-export-failure, drawing-tools, system-UI probes, and result-writing helpers into `KCMainViewController+RuntimeAcceptance.swift`.
+
+- [x] **Step 2: Keep release behavior unchanged**
+
+Keep the whole extension behind `#if DEBUG`; only expose the probe entry point and the minimal same-target state needed by `viewDidAppear`.
+
+- [x] **Step 3: Update project and validation coverage**
+
+Add the new extension file to the Xcode Sources phase and make `scripts/validate_project.py` read it as part of the controller composite text.
+
+- [x] **Step 4: Verify**
+
+Run:
+
+```bash
+python3 scripts/validate_project.py
+xcodebuild -project KidCanvas.xcodeproj -scheme KidCanvas -destination 'platform=iOS Simulator,name=iPhone 17 Pro' -derivedDataPath /tmp/KidCanvasRuntimeAcceptanceSplit-iPhone build -quiet
+xcodebuild -project KidCanvas.xcodeproj -scheme KidCanvas -destination 'platform=iOS Simulator,name=iPad Pro 11 M4' -derivedDataPath /tmp/KidCanvasRuntimeAcceptanceSplit-iPad build -quiet
+swift test --package-path Packages/KidCanvasModules
+```
+
+Expected: all commands exit 0.
+
 ## Self-Review
 
-- Spec coverage: covers first low-risk split and next two extension-based splits.
+- Spec coverage: covers the completed split slices for helpers, layout, panel collapse, tool selection, history UI coordination, image picking coordination, draft autosave coordination, and runtime acceptance probes.
 - Placeholder scan: no TBD/TODO placeholders.
-- Scope control: avoids save/history/draft/runtime acceptance extraction until lower-risk helpers and layout sections are out.
+- Scope control: keeps formal save, history deletion, and line-art loading as later dedicated slices.

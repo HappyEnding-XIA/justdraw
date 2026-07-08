@@ -18,7 +18,7 @@ App 层系统相册适配模块：承接作品导出到系统相册的 UIKit / P
 ## 3. 当前接入
 
 - `KCAppCompositionRoot` 创建 `KCPhotoLibraryService`，并以 `KCPhotoLibraryServicing` 注入 `KCMainViewController`。
-- `KCMainViewController.finishSavingSession(...)` 在 App 内历史保存成功后先展示“已保存”，再调用 `exportSavedArtworkToPhotoLibrary(imageData:)` 进行 best-effort 相册导出。
+- `KCMainViewController+SessionSaving.finishSavingSession(...)` 在 App 内历史保存成功后先展示“已保存”，再调用 `exportSavedArtworkToPhotoLibrary(imageData:)` 进行 best-effort 相册导出。
 - 相册导出失败时展示独立文案“已保存，相册未保存”，不得复用“无法保存”否定 App 内保存成功。
 - Debug 运行时探针 `photo-export-failure` 会强制相册导出失败，验证历史数增加、当前会话建立、主保存成功反馈已观察到，并且失败反馈不覆盖成本地保存失败语义。
 
