@@ -194,3 +194,21 @@
 
 /* T099: delete custom line art alert message (only the line art, not history) */
 "alert.delete-custom-line-art.message" = "Deleting it will not affect your saved drawings.";
+
+/* T100: image import action sheet title */
+"import.action-sheet.title" = "Import Image";
+
+/* T100: import from photo library */
+"import.from-photo-library.title" = "Choose from Photos";
+
+/* T100: import by taking a photo */
+"import.from-camera.title" = "Take a Photo";
+
+/* T100: no-camera fallback (simulator or device without a camera) */
+"import.no-camera.title" = "This device can't take photos. Pick from Photos instead.";
+
+/* T100: camera permission denied */
+"import.camera-denied.title" = "Camera access is needed to take photos. Enable it in Settings.";
+
+/* T100: photo library permission denied */
+"import.photo-library-denied.title" = "Photos access is off. Enable it in Settings.";

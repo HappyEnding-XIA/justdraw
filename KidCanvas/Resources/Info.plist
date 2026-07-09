@@ -66,5 +66,7 @@
 	<string>选择一张照片，在画布上涂色。</string>
 	<key>NSPhotoLibraryAddUsageDescription</key>
 	<string>把完成的画作保存到相册。</string>
+	<key>NSCameraUsageDescription</key>
+	<string>拍一张照片，在画布上涂色或生成线稿。</string>
 </dict>
 </plist>

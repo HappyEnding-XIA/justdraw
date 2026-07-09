@@ -210,7 +210,7 @@ Feature 拆分进度（App 层 Feature 类型 + KCDomain 纯逻辑）：
 - **T097 `KCCanvasViewportState`（已完成）**：承接画布 scale、translation、安全创作区、默认视图判断和位移裁剪的纯逻辑模型，落地在 `KCDomain`（UIKit-free，可单测）。真实 UIKit 手势（双指缩放/平移）与恢复视图按钮在画布 view / 主控制器（App/Canvas 层）处理。该模型服务绘制、填色、取色、印章命中和恢复视图，统一经 `canvasPoint(forViewPoint:)` 做屏幕→内容坐标转换，不得只服务视觉缩放。详见 `docs/modules/KCCanvasViewportState.md`。
 - **T098 `KCContentLibraryFeature`（已完成）**：统一内容库分区、条目状态、打开能力、删除能力和空态。它只做 App 层编排，不直接读写会话文件、不生成线稿、不持有系统 picker。落地形态：`KCContentLibraryFeature`（决策门面，持有面板可见性与当前分区）+ `KCContentLibraryPanelView`（按需浮层，分段控件切换官方线稿/我的线稿/历史作品）+ KCDomain `KCContentLibraryPartition`/`KCContentLibrarySectionState`（UIKit-free 状态模型）。官方线稿分区内嵌 `KCLineArtPickerViewController` 网格（线稿弹窗并入）；历史分区承载从右侧 `rightStack` 迁出的 `historyPanel`；我的线稿/导入为预留空态。详见 `docs/modules/KCContentLibraryFeature.md`。
 - **T099 `KCCustomLineArt` / `KCCustomLineArtStore`（已完成）**：定义我的线稿 metadata（`sequenceNumber` 自动命名）、PNG、缩略图和删除生命周期，落地于 KCDomain 模型+协议与 KCSessionPersistence 的 `KCCustomLineArtStore`（独立目录 `KidCanvasCustomLineArt/`、软上限 50、schema 版本化、回滚）。App 适配 `KCCustomLineArtService` + 内容库“我的线稿”分区网格 `KCMyLineArtGridView`；保存为线稿经 `strokeCount` 校验 + `lineArtImage()` 线稿化。删除我的线稿只影响线稿库条目，不影响已经保存的历史作品。详见 `docs/modules/KCCustomLineArtStore.md`。
-- **T100 `KCImageImportSource` / 图片导入服务（规划）**：统一相册和拍照入口；系统 picker 细节通过服务/协议隔离，主控制器不继续堆系统 UI 回调。
+- **T100 `KCImageImportSource` / 图片导入服务（已完成）**：统一相册和拍照入口；落地 `KCDomain.KCImageImportSource/Failure/Authorization/Action` + `KCImageImportDecision`（UIKit-free 决策，单测）+ App `KCImageImportService`（权限/可用性/降级）+ 控制器动作表（相册/拍照）+ 相机 picker + 失败/无相机本地化反馈。系统 picker 细节经服务/协议隔离；顶栏与内容库入口复用同一服务。“生成线稿”分支留 T101。
 - **T101 `KCLineArtExtracting`（规划）**：定义离线图片生成线稿协议。MVP 只输出位图线稿，优先 Core Image / Vision / Core Graphics 离线 pipeline，不引入云端 AI。
 
 ### 5.3 Core / Infrastructure 能力层
@@ -259,7 +259,7 @@ Feature 拆分进度（App 层 Feature 类型 + KCDomain 纯逻辑）：
 | `KCContentCatalog` | Infra | 线稿、贴纸、调色板等资源目录 |
 | `KCContentLibraryFeature` | Feature | 官方线稿、我的线稿、历史作品和导入结果入口编排（T098 已落地） |
 | `KCCustomLineArtStore` | Infra | 我的线稿 PNG、缩略图与 metadata 本地存储（T099 已落地） |
-| `KCImageImportService` | Infra（规划） | 相册与拍照导入、权限失败和取消处理 |
+| `KCImageImportService` | Infra | 相册与拍照导入、权限失败和取消处理（T100 已落地） |
 | `KCLineArtExtraction` | Core（规划） | 离线图片生成线稿 pipeline |
 | `KCEditorPanelsFeature` | Feature | 工具、颜色、尺寸、贴纸、线稿面板 |
 | `KCContentPickerFeature` | Feature | 色盘、最近色与贴纸分类状态决策 |

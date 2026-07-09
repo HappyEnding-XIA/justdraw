@@ -173,6 +173,21 @@ enum KCL10n {
     static var deleteCustomLineArtAlertTitle: String { tr("alert.delete-custom-line-art.title") }
     /// T099：删除我的线稿确认弹层消息。
     static var deleteCustomLineArtAlertMessage: String { tr("alert.delete-custom-line-art.message") }
+
+    // MARK: - 图片导入（T100）
+
+    /// T100：导入动作表标题。
+    static var importActionSheetTitle: String { tr("import.action-sheet.title") }
+    /// T100：从相册导入。
+    static var importFromPhotoLibraryTitle: String { tr("import.from-photo-library.title") }
+    /// T100：拍照导入。
+    static var importFromCameraTitle: String { tr("import.from-camera.title") }
+    /// T100：无相机（模拟器/无相机设备）降级提示。
+    static var importNoCameraTitle: String { tr("import.no-camera.title") }
+    /// T100：相机权限被拒绝提示。
+    static var importCameraDeniedTitle: String { tr("import.camera-denied.title") }
+    /// T100：相册权限被拒绝提示。
+    static var importPhotoLibraryDeniedTitle: String { tr("import.photo-library-denied.title") }
     static var hideToolsTitle: String { tr("action.hide-tools.title") }
     static var showToolsTitle: String { tr("action.show-tools.title") }
     static var clearCanvasAlertTitle: String { tr("alert.clear-canvas.title") }

@@ -194,3 +194,21 @@
 
 /* T099：删除我的线稿确认弹层消息（只删线稿，不影响历史作品） */
 "alert.delete-custom-line-art.message" = "删除后不影响已经保存的画作。";
+
+/* T100：图片导入动作表标题 */
+"import.action-sheet.title" = "导入图片";
+
+/* T100：从相册导入 */
+"import.from-photo-library.title" = "从相册导入";
+
+/* T100：拍照导入 */
+"import.from-camera.title" = "拍照导入";
+
+/* T100：无相机（模拟器或无相机设备）降级提示 */
+"import.no-camera.title" = "当前设备不能拍照，可以从相册导入";
+
+/* T100：相机权限被拒绝提示 */
+"import.camera-denied.title" = "拍照需要相机权限，可在设置中开启";
+
+/* T100：相册权限被拒绝提示 */
+"import.photo-library-denied.title" = "相册访问未开启，可在设置中开启";

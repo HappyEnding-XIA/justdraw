@@ -20,6 +20,7 @@ final class KCAppCompositionRoot {
     private let drawingEngine: KCDrawingEngineProviding
     private let photoLibraryService: KCPhotoLibraryServicing
     private let customLineArtService: KCCustomLineArtService
+    private let imageImportService: KCImageImportServicing
 
     init() {
         // 会话服务：内部装配 Swift KCSessionStore + 旧 archive 迁移器。
@@ -33,6 +34,8 @@ final class KCAppCompositionRoot {
         self.photoLibraryService = KCPhotoLibraryService()
         // 我的线稿本地服务（T099）：独立目录，删除我的线稿不影响历史作品。
         self.customLineArtService = KCCustomLineArtService()
+        // 图片导入策略服务（T100）：相册/相机可用性与权限决策。
+        self.imageImportService = KCImageImportService()
     }
 
     /// 创建主控制器并注入已装配的依赖。
@@ -42,7 +45,8 @@ final class KCAppCompositionRoot {
             contentCatalog: contentCatalog,
             drawingEngine: drawingEngine,
             photoLibraryService: photoLibraryService,
-            customLineArtService: customLineArtService
+            customLineArtService: customLineArtService,
+            imageImportService: imageImportService
         )
     }
 }

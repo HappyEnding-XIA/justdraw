@@ -308,6 +308,12 @@ extension KCMainViewController {
         let deleteRestoredCount = self.customLineArtService.count() == customLineArtCountBefore
         let historyUnaffectedByDelete = self.sessions.count == historyCountBefore
 
+        // T100：图片导入——模拟器无相机走降级分支；相册来源不走 noCamera。
+        let cameraDecision = self.imageImportService.decideAction(for: .camera)
+        let photoDecision = self.imageImportService.decideAction(for: .photoLibrary)
+        let cameraNoCameraFallback = cameraDecision == .showNoCamera
+        let photoNotNoCamera = photoDecision != .showNoCamera
+
         // 关闭内容库。
         self.setContentLibraryPanelVisible(false)
 
@@ -339,6 +345,7 @@ extension KCMainViewController {
             && historyUnaffectedBySave
             && deleteRestoredCount
             && historyUnaffectedByDelete
+            && photoNotNoCamera
 
         let result: [String: Any] = [
             "probe": "content-library",
@@ -373,7 +380,9 @@ extension KCMainViewController {
             "countIncreased": countIncreased,
             "historyUnaffectedBySave": historyUnaffectedBySave,
             "deleteRestoredCount": deleteRestoredCount,
-            "historyUnaffectedByDelete": historyUnaffectedByDelete
+            "historyUnaffectedByDelete": historyUnaffectedByDelete,
+            "cameraNoCameraFallback": cameraNoCameraFallback,
+            "photoNotNoCamera": photoNotNoCamera
         ]
         self.writeRuntimeAcceptanceResult(result, fileName: "kc_runtime_acceptance_content_library.json")
     }

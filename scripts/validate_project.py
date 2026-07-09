@@ -47,6 +47,7 @@ APP_FILE_PATHS = {
     "KCSessionService.swift": APP_ROOT / "Infrastructure" / "KCSessionService.swift",
     "KCPhotoLibraryService.swift": APP_ROOT / "Infrastructure" / "KCPhotoLibraryService.swift",
     "KCCustomLineArtService.swift": APP_ROOT / "Infrastructure" / "KCCustomLineArtService.swift",
+    "KCImageImportService.swift": APP_ROOT / "Infrastructure" / "KCImageImportService.swift",
     "LegacyArchiveMigrator.swift": APP_ROOT / "Infrastructure" / "LegacyArchiveMigrator.swift",
     "KCEditorUIFactory.swift": APP_ROOT / "DesignSystem" / "KCEditorUIFactory.swift",
     "KCPressFeedbackController.swift": APP_ROOT / "DesignSystem" / "KCPressFeedbackController.swift",
@@ -900,6 +901,73 @@ def custom_line_art_checks():
         doc_text = module_doc.read_text(encoding="utf-8")
         checks.append(require_text(doc_text, "## 1. 职责", "KCCustomLineArtStore doc documents responsibilities"))
         checks.append(require_text(doc_text, "## 4. 禁止回流规则", "KCCustomLineArtStore doc documents anti-backflow rules"))
+    return checks
+
+
+def image_import_checks():
+    """T100：图片导入入口重构与拍照能力防回流校验。"""
+    checks = []
+    domain_model = ROOT / "Packages" / "KidCanvasModules" / "Sources" / "KCDomain" / "KCImageImport.swift"
+    domain_test = ROOT / "Packages" / "KidCanvasModules" / "Tests" / "KCDomainTests" / "KCImageImportTests.swift"
+    service_file = APP_FILE_PATHS["KCImageImportService.swift"]
+
+    for path, label in [
+        (domain_model, "KCImageImport.swift"),
+        (domain_test, "KCImageImportTests.swift"),
+        (service_file, "KCImageImportService.swift"),
+    ]:
+        if not path.exists():
+            checks.append(fail(f"T100 image import file exists: {label}"))
+        else:
+            checks.append(ok(f"T100 image import file exists: {label}"))
+
+    if domain_model.exists():
+        text = domain_model.read_text(encoding="utf-8")
+        checks.append(require_text(text, "public enum KCImageImportSource", "Image import declares the source enum"))
+        checks.append(require_text(text, "case photoLibrary", "Image import has a photo-library source"))
+        checks.append(require_text(text, "case camera", "Image import has a camera source"))
+        checks.append(require_text(text, "public enum KCImageImportFailure", "Image import declares a unified failure model"))
+        checks.append(require_text(text, "case noCamera", "Image import failure covers the no-camera case"))
+        checks.append(require_text(text, "public enum KCImageImportDecision", "Image import has a UIKit-free decision resolver"))
+        checks.append(require_text(text, "func resolve", "Image import resolver maps source+availability+authorization to an action"))
+        checks.append(forbid_text(text, "import UIKit", "KCImageImport decision model stays UIKit-free in KCDomain"))
+
+    if domain_test.exists():
+        text = domain_test.read_text(encoding="utf-8")
+        checks.append(require_count_at_least(text, r"func test", 6, "KCImageImport has unit-test coverage"))
+
+    if service_file.exists():
+        text = service_file.read_text(encoding="utf-8")
+        checks.append(require_text(text, "protocol KCImageImportServicing", "Image import service is protocol-injected"))
+        checks.append(require_text(text, "func decideAction(for", "Image import service exposes a decide-action entry"))
+        checks.append(require_text(text, "AVCaptureDevice.authorizationStatus", "Image import service checks camera authorization"))
+        checks.append(require_text(text, "PHPhotoLibrary.authorizationStatus", "Image import service checks photo-library authorization"))
+
+    picking_text = APP_FILE_PATHS["KCMainViewController+ImagePicking.swift"].read_text(encoding="utf-8")
+    checks.append(require_text(picking_text, "func presentImportActionSheet", "Editor presents an album/camera import action sheet"))
+    checks.append(require_text(picking_text, "func confirmImport(from", "Editor confirms canvas replacement before importing a chosen source"))
+    checks.append(require_text(picking_text, "func beginImport(from", "Editor routes the chosen source through the import service"))
+    checks.append(require_text(picking_text, "func presentCameraPicker", "Editor can present the camera picker"))
+    checks.append(require_text(picking_text, "func showImageImportFailure", "Editor maps import failures to localized feedback"))
+
+    runtime_text = APP_FILE_PATHS["KCMainViewController+RuntimeAcceptance.swift"].read_text(encoding="utf-8")
+    checks.append(require_text(runtime_text, "cameraNoCameraFallback", "Runtime acceptance verifies the no-camera fallback (T100)"))
+
+    info_plist = (APP_ROOT / "Resources" / "Info.plist").read_text(encoding="utf-8")
+    checks.append(require_text(info_plist, "NSCameraUsageDescription", "Info.plist declares a camera usage description (T100)"))
+
+    zh_text = (ROOT / "KidCanvas" / "Localization" / "zh-Hans.lproj" / "Localizable.strings").read_text(encoding="utf-8")
+    en_text = (ROOT / "KidCanvas" / "Localization" / "en.lproj" / "Localizable.strings").read_text(encoding="utf-8")
+    for key in [
+        "import.action-sheet.title",
+        "import.from-photo-library.title",
+        "import.from-camera.title",
+        "import.no-camera.title",
+        "import.camera-denied.title",
+        "import.photo-library-denied.title",
+    ]:
+        checks.append(require_text(zh_text, f'"{key}"', f"Image import zh localization: {key}"))
+        checks.append(require_text(en_text, f'"{key}"', f"Image import en localization: {key}"))
     return checks
 
 
@@ -2327,6 +2395,7 @@ def main():
     checks.extend(canvas_viewport_checks())
     checks.extend(content_library_checks())
     checks.extend(custom_line_art_checks())
+    checks.extend(image_import_checks())
     checks.extend(module_documentation_checks())
     checks.extend(delivery_acceptance_checks())
     checks.extend(product_stamp_naming_checks())

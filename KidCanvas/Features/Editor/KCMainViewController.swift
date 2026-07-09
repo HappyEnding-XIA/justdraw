@@ -65,6 +65,10 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
     let photoLibraryService: KCPhotoLibraryServicing
     /// T099：我的线稿本地服务（保存/读取/删除，独立于历史作品）。
     let customLineArtService: KCCustomLineArtService
+    /// T100：图片导入策略服务（相册/相机可用性与权限决策）。
+    let imageImportService: KCImageImportServicing
+    /// T100：顶栏右导入按钮（动作表 popover 锚点）。
+    var importButton: UIButton!
     /// 内容选择 Feature（色盘 / 最近色 / 贴纸分类），从 contentCatalog 构造，T022 抽出。
     private(set) lazy var contentPicker: KCContentPickerFeature = {
         KCContentPickerFeature(contentCatalog: self.contentCatalog)
@@ -185,19 +189,21 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
         contentCatalog: KCBundledContentCatalog,
         drawingEngine: KCDrawingEngineProviding,
         photoLibraryService: KCPhotoLibraryServicing,
-        customLineArtService: KCCustomLineArtService
+        customLineArtService: KCCustomLineArtService,
+        imageImportService: KCImageImportServicing
     ) {
         self.sessionStore = sessionService
         self.contentCatalog = contentCatalog
         self.drawingEngine = drawingEngine
         self.photoLibraryService = photoLibraryService
         self.customLineArtService = customLineArtService
+        self.imageImportService = imageImportService
         super.init(nibName: nil, bundle: nil)
     }
 
-    @available(*, unavailable, message: "Use init(sessionService:contentCatalog:drawingEngine:photoLibraryService:customLineArtService:) via KCAppCompositionRoot")
+    @available(*, unavailable, message: "Use init(sessionService:contentCatalog:drawingEngine:photoLibraryService:customLineArtService:imageImportService:) via KCAppCompositionRoot")
     required init?(coder: NSCoder) {
-        fatalError("Use init(sessionService:contentCatalog:drawingEngine:photoLibraryService:customLineArtService:)")
+        fatalError("Use init(sessionService:contentCatalog:drawingEngine:photoLibraryService:customLineArtService:imageImportService:)")
     }
 
     override func viewDidLoad() {
@@ -465,6 +471,7 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
 
         self.contentLibraryButton = self.iconButtonWithSymbolName("books.vertical.fill", accentColor: nil)
         let importButton = self.iconButtonWithSymbolName("photo.on.rectangle", accentColor: nil)
+        self.importButton = importButton
         self.saveButton = self.iconButtonWithSymbolName("square.and.arrow.down.fill", accentColor: UIColor(red: 0.54, green: 0.80, blue: 0.98, alpha: 1.0))
         self.applyAccessibilityLabel(KCL10n.contentLibraryTitle, identifier: "top.content-library", toControl: self.contentLibraryButton)
         self.applyAccessibilityLabel(KCL10n.importPhotoTitle, identifier: "top.import-photo", toControl: importButton)
