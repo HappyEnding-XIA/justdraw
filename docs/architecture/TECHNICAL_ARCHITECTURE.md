@@ -4,6 +4,20 @@
 
 KidCanvas 的目标架构是 **Swift-first + UIKit/Core Graphics 画布核心 + SPM 模块化**。当前 App target 已无业务 Objective-C `.m` 源码，当前工程已无 `KidCanvas-Bridging-Header.h`；后续重点不再是语言迁移，而是继续收敛模块边界、控制器职责和可测试性。
 
+### 1.1 版本基线与下一阶段方向（2026-07-09）
+
+当前代码基线已封为 `v0.1.0-beta.1`，对应提交 `603980c`。该基线的定位是“可运行、可回滚、可对比”的第一版内测基线，包含 Swift-first 主线、iPhone/iPad 横屏、单页编辑器、绘画工具、线稿、印章、保存/历史、相册导入导出和画笔 dab 基础能力。
+
+产品经理更新后的 `docs/product/prd.md` 是下一阶段需求基线，不应被理解为当前代码已全部实现。下一阶段目标可以归纳为五条主线：
+
+1. 画布导航：安全创作区默认居中、双指缩放、双指平移和恢复默认视图。
+2. 内容库：统一承载官方线稿、我的线稿、历史作品和后续导入结果。
+3. 我的线稿：把当前画布保存为可复用线稿，并提供独立删除生命周期。
+4. 图片导入：把相册导入提升为图片导入服务，补充拍照入口和无相机降级。
+5. 图片生成线稿：优先离线图像处理，不上传儿童照片；AI/Core ML 只作为增强候选。
+
+这些能力会影响画布坐标转换、内容入口、持久化模型和验收口径。进入功能开发前必须先完成 T096 的文档对齐，再按 T097-T101 顺序渐进落地。
+
 推荐的长期目标架构是：
 
 ```text
@@ -86,19 +100,35 @@ flowchart TD
     App["App Shell\nScene / lifecycle / dependency setup"]
     UI["Presentation Layer\nUIKit VC + optional SwiftUI panels"]
     Canvas["Canvas Engine\nUIView + Core Graphics"]
+    Viewport["Canvas Viewport\nscale / translation / safe drawing rect"]
     Tools["Tool State\nbrush / eraser / fill / picker / sticker"]
+    Library["Content Library\nofficial line art / custom line art / history"]
     Content["Content Catalog\nline art / sticker / palette config"]
     Storage["Session Storage\nartwork / thumbnails / draft / metadata"]
+    CustomLineArt["Custom Line Art Storage\nPNG / thumbnail / metadata"]
+    Import["Image Import\nphoto library / camera"]
+    Extract["Line Art Extraction\noffline image processing"]
     Photos["System Services\nPhoto Library"]
     Prefs["Preferences\nrecent colors / brush widths"]
 
     App --> UI
     UI --> Canvas
+    UI --> Viewport
     UI --> Tools
+    UI --> Library
     UI --> Content
     UI --> Storage
+    UI --> CustomLineArt
+    UI --> Import
     UI --> Photos
     UI --> Prefs
+    Library --> Content
+    Library --> Storage
+    Library --> CustomLineArt
+    Import --> Photos
+    Import --> Extract
+    Extract --> CustomLineArt
+    Viewport --> Canvas
     Canvas --> Tools
     Canvas --> UI
     Storage --> UI
@@ -111,10 +141,13 @@ flowchart TD
 | App Shell | 启动、Scene 生命周期、依赖装配 | Swift |
 | Presentation | 单页界面、面板、按钮状态、用户流程 | SwiftUI + UIKit host |
 | Canvas Engine | 笔触、填色、取色、贴纸、撤销重做 | Swift `UIView` + Core Graphics |
+| Canvas Viewport | 缩放、平移、安全创作区、坐标转换 | Swift model + UIKit gestures |
 | Tool State | 当前工具、颜色、尺寸、画笔样式、贴纸选择 | Swift model |
+| Content Library | 官方线稿、我的线稿、历史作品、导入结果入口 | App Feature + Domain model |
 | Content Catalog | 线稿、贴纸、色盘、资源配置 | JSON/asset catalog |
-| Storage | 作品、缩略图、草稿、历史 metadata | FileManager + Codable/JSON |
-| System Services | 相册导入导出、权限 | Swift + Photos/UIKit bridge |
+| Storage | 作品、缩略图、草稿、历史 metadata、自定义线稿 metadata | FileManager + Codable/JSON |
+| Image Import / Extraction | 相册、拍照、离线图片转线稿 | PhotosUI/UIKit + Core Image/Vision fallback |
+| System Services | 相册导入导出、相机、权限 | Swift + Photos/UIKit bridge |
 
 ## 4. 模块边界
 
@@ -237,6 +270,23 @@ CanvasEngine
 - stroke、sticker、canvas state 继续向 Swift value types 和 KCDomain 语义收敛。
 - flood fill、取色、线稿几何、蜡笔纹理等算法继续沉入 `KCDrawingEngine` 并补单测。
 - 如果后续引入 SwiftUI 面板，只通过状态、action 或协议与画布交互，不直接操纵底层绘图细节。
+
+下一阶段画布导航边界（T097）：
+
+- 新增 viewport 状态时，必须把屏幕坐标到画布坐标的转换集中在画布或画布协调层，绘制、填色、取色和印章命中不得各自重复换算。
+- 双指缩放/平移只改变 viewport，不改变作品像素数据、历史存储格式或已保存作品尺寸。
+- 默认居中必须基于安全创作区，而不是整屏几何中心。
+- MVP 不要求把 viewport 持久化进历史作品；当前会话内可保留，打开历史作品可先恢复默认视图。
+
+### 4.3.1 Content Library / Line Art 系统（规划中）
+
+PRD 已把线稿从“官方线稿弹窗”升级为“官方线稿 + 我的线稿 + 照片生成线稿”的内容体系。下一阶段按以下边界实现：
+
+- `KCContentCatalog` 继续只负责官方内容元数据，不负责用户生成内容。
+- `KCContentLibraryFeature` 规划为 App 层内容库入口，组合官方线稿、我的线稿和历史作品，不直接写文件。
+- `KCCustomLineArt` / `KCCustomLineArtStore` 规划为我的线稿生命周期，独立于历史作品；删除我的线稿不得影响已保存历史作品。
+- 图片生成线稿输出先作为位图线稿接入，不做矢量化，不上传图片。
+- AI/Core ML 不是 T101 MVP 的前置条件；只有离线图像处理无法达到产品目标时再进入增强评估。
 
 ### 4.4 Tool State
 

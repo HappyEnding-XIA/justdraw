@@ -43,6 +43,21 @@ App 壳工程 + 本地 SPM 聚合包 + 多 target 模块 + 分层依赖约束
 
 产品继续支持 iPhone + iPad，横屏优先。架构治理上禁止一个模块一个 package，禁止把画布核心重写为纯 SwiftUI Canvas；画布仍以 Swift UIKit/Core Graphics 为主，外围面板可在边界稳定后按需 SwiftUI 化。
 
+### 2.2 下一阶段 PRD 基线（2026-07-09）
+
+`v0.1.0-beta.1` 已作为第一版代码封板基线。产品经理更新后的 PRD 将下一阶段能力扩展为可导航画布、内容库、我的线稿、图片导入和离线图片生成线稿。该 PRD 是后续开发目标，不代表当前模块均已实现。
+
+下一阶段模块化策略保持“一个本地 package，多 target / 多 App Feature”的原则：
+
+- T096 先完成架构、模块文档和验收口径对齐。
+- T097 先建立画布 viewport 边界，避免后续内容库和线稿能力建立在错误坐标体系上。
+- T098 再建立内容库框架，收敛官方线稿、我的线稿、历史作品和导入结果入口。
+- T099 新增我的线稿本地生命周期，独立于历史作品。
+- T100 抽出图片导入服务，统一相册和拍照入口。
+- T101 实现离线图片转线稿 MVP，并复用我的线稿生命周期。
+
+在 T097-T101 完成前，任何文档中的 `KCContentLibraryFeature`、`KCCustomLineArtStore`、`KCImageImportSource`、`KCLineArtExtracting` 都是规划边界，不得在验收或发布说明中写成已落地能力。
+
 ## 3. 当前项目问题
 
 当前工程已经完成 Swift-first 基线迁移，但仍处在模块边界继续收敛阶段，主要问题如下：
@@ -190,6 +205,14 @@ Feature 拆分进度（App 层 Feature 类型 + KCDomain 纯逻辑）：
 - **T050 `KCBrushStickerPanelView`（App 层）**：从 `KCMainViewController.buildSizePanel(_:)`、`reloadStickerButtons()`、`refreshStickerCategoryButtons()` 和 `refreshStickerEditButtons()` 抽出画笔/贴纸/橡皮/贴纸编辑面板的 UIKit 组装与按钮表现；控制器仍负责事件 selector、画布状态、当前贴纸选择、橡皮真实路径、贴纸手势和 undo/redo。
 - **T013 `KCHistoryPaging`、T017 `KCToolStateChipTitle`（KCDomain）**：更早的最小边界抽取。
 
+下一阶段 Feature 规划：
+
+- **T097 `KCCanvasViewportState`（规划）**：承接画布 scale、translation、安全创作区、默认视图判断和位移裁剪。先放在 App 层或 `KCDomain` 纯模型中，真实 UIKit 手势仍由画布/页面协调层处理。该模型必须服务绘制、填色、取色、印章命中和恢复视图，不得只服务视觉缩放。
+- **T098 `KCContentLibraryFeature`（规划）**：统一内容库分区、条目状态、打开能力、删除能力和空态。它只做 App 层编排，不直接读写会话文件、不生成线稿、不持有系统 picker。
+- **T099 `KCCustomLineArt` / `KCCustomLineArtStore`（规划）**：定义我的线稿 metadata、PNG、缩略图和删除生命周期。删除我的线稿只影响线稿库条目，不影响已经保存的历史作品。
+- **T100 `KCImageImportSource` / 图片导入服务（规划）**：统一相册和拍照入口；系统 picker 细节通过服务/协议隔离，主控制器不继续堆系统 UI 回调。
+- **T101 `KCLineArtExtracting`（规划）**：定义离线图片生成线稿协议。MVP 只输出位图线稿，优先 Core Image / Vision / Core Graphics 离线 pipeline，不引入云端 AI。
+
 ### 5.3 Core / Infrastructure 能力层
 
 职责：
@@ -234,6 +257,10 @@ Feature 拆分进度（App 层 Feature 类型 + KCDomain 纯逻辑）：
 | `KCSessionPersistence` | Infra | 本地会话存储、缩略图、草稿、元数据 |
 | `KCPhotoLibrary` | Infra | 相册导入导出和权限适配 |
 | `KCContentCatalog` | Infra | 线稿、贴纸、调色板等资源目录 |
+| `KCContentLibraryFeature` | Feature（规划） | 官方线稿、我的线稿、历史作品和导入结果入口编排 |
+| `KCCustomLineArtStore` | Infra（规划） | 我的线稿 PNG、缩略图与 metadata 本地存储 |
+| `KCImageImportService` | Infra（规划） | 相册与拍照导入、权限失败和取消处理 |
+| `KCLineArtExtraction` | Core（规划） | 离线图片生成线稿 pipeline |
 | `KCEditorPanelsFeature` | Feature | 工具、颜色、尺寸、贴纸、线稿面板 |
 | `KCContentPickerFeature` | Feature | 色盘、最近色与贴纸分类状态决策 |
 | `KCHistoryFeature` | Feature | 历史会话与草稿入口 |
