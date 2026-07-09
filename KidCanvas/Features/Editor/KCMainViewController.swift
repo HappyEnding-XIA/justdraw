@@ -10,6 +10,7 @@ import QuartzCore
 import KCCommon
 import KCDomain
 import KCContentCatalog
+import KCDrawingEngine
 
 enum KCStartupDeferredDelay {
     static let restoreDraft: TimeInterval = 0.30
@@ -69,6 +70,10 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
     let imageImportService: KCImageImportServicing
     /// T100：顶栏右导入按钮（动作表 popover 锚点）。
     var importButton: UIButton!
+    /// T101：离线线稿生成器（CoreImage pipeline）。
+    private(set) lazy var lineArtExtractor: KCLineArtExtracting = KCLineArtExtractor()
+    /// T101：当前图片导入意图（作为画布底图 / 生成线稿）。
+    var pendingImageImportIntent: KCImageImportIntent = .asCanvas
     /// 内容选择 Feature（色盘 / 最近色 / 贴纸分类），从 contentCatalog 构造，T022 抽出。
     private(set) lazy var contentPicker: KCContentPickerFeature = {
         KCContentPickerFeature(contentCatalog: self.contentCatalog)
@@ -1346,6 +1351,7 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
             grid.bottomAnchor.constraint(equalTo: panel.myLineArtContainer.bottomAnchor)
         ])
         grid.onSaveAsLineArt = { [weak self] in self?.didTapSaveAsLineArt() }
+        grid.onGenerateFromPhoto = { [weak self] in self?.didTapGenerateLineArtFromPhoto() }
         grid.onOpen = { [weak self] identifier in self?.loadCustomLineArt(withIdentifier: identifier) }
         grid.onDelete = { [weak self] identifier, title in
             self?.confirmDeleteCustomLineArt(withIdentifier: identifier, title: title)
@@ -1360,12 +1366,13 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
             self?.customLineArtService.cachedThumbnailImage(forId: id)
         }
         let saveTitle = KCL10n.saveAsLineArtTitle
+        let generateTitle = KCL10n.generateLineArtFromPhotoTitle
         let emptyText = KCL10n.libraryMyLineArtEmptyTitle
-        self.myLineArtGridView?.configure(items: items, saveTitle: saveTitle, emptyText: emptyText, thumbnailProvider: provider)
+        self.myLineArtGridView?.configure(items: items, saveTitle: saveTitle, generateTitle: generateTitle, emptyText: emptyText, thumbnailProvider: provider)
         let ids = items.map { $0.identifier }
         guard !ids.isEmpty else { return }
         self.customLineArtService.preloadThumbnailImages(forIds: ids) { [weak self] in
-            self?.myLineArtGridView?.configure(items: items, saveTitle: saveTitle, emptyText: emptyText, thumbnailProvider: provider)
+            self?.myLineArtGridView?.configure(items: items, saveTitle: saveTitle, generateTitle: generateTitle, emptyText: emptyText, thumbnailProvider: provider)
         }
     }
 

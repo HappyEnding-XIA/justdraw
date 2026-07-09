@@ -8,11 +8,97 @@
 import UIKit
 import KCDomain
 
-// MARK: - 图片导入（相册 / 拍照，T100）
+// MARK: - 图片导入（相册 / 拍照，T100；生成线稿，T101）
+
+/// 图片导入意图：作为画布底图（既有），或离线生成线稿（T101）。
+enum KCImageImportIntent {
+    case asCanvas
+    case generateLineArt
+}
 
 extension KCMainViewController {
     @objc func didTapImportImage() {
         self.presentImportActionSheet()
+    }
+
+    // MARK: - T101 从照片生成线稿
+
+    /// “从照片生成线稿”入口：选相册图片（不覆盖当前画布）→ 离线提取 → 结果确认。
+    func didTapGenerateLineArtFromPhoto() {
+        self.pendingImageImportIntent = .generateLineArt
+        self.setContentLibraryPanelVisible(false)
+        // 直接走相册导入；草稿保护在 confirmImport 内处理。
+        self.performCanvasReplacementAfterUserConfirmation { [weak self] in
+            self?.beginImport(from: .photoLibrary)
+        }
+    }
+
+    /// 用导入的图片离线生成线稿，并弹结果确认（使用这张线稿 / 重新生成 / 取消）。
+    func generateLineArt(from image: UIImage) {
+        self.pendingImageImportIntent = .asCanvas
+        let extractor = self.lineArtExtractor
+        let imageData = image.pngData() ?? Data()
+        self.imageImportProcessingQueue.async { [weak self] in
+            let result = extractor.extract(from: imageData)
+            DispatchQueue.main.async { [weak self] in
+                guard let self else { return }
+                self.presentLineArtExtractionResult(result, sourceImage: image)
+            }
+        }
+    }
+
+    /// 结果确认：使用这张线稿（保存到我的线稿并打开）/ 重新生成（重选）/ 取消。
+    private func presentLineArtExtractionResult(_ result: KCLineArtExtractionResult?, sourceImage: UIImage) {
+        guard let result else {
+            self.showCustomLineArtToast(title: KCL10n.lineArtExtractionFailedTitle,
+                                        symbol: "exclamationmark.triangle.fill",
+                                        tint: .systemOrange)
+            return
+        }
+        let message: String
+        switch result.quality {
+        case .good: message = KCL10n.lineArtExtractionGoodMessage
+        case .marginal: message = KCL10n.lineArtExtractionMarginalMessage
+        case .poor: message = KCL10n.lineArtExtractionPoorMessage
+        }
+        let sheet = UIAlertController(title: KCL10n.lineArtExtractionConfirmTitle,
+                                      message: message,
+                                      preferredStyle: .alert)
+        // poor 时不直接“使用”，强制重新生成或取消（适合度低）。
+        if result.quality.isUsable {
+            sheet.addAction(UIAlertAction(title: KCL10n.lineArtExtractionUseTitle, style: .default) { [weak self] _ in
+                self?.useGeneratedLineArt(result)
+            })
+        }
+        sheet.addAction(UIAlertAction(title: KCL10n.lineArtExtractionRetryTitle, style: .default) { [weak self] _ in
+            self?.didTapGenerateLineArtFromPhoto()
+        })
+        sheet.addAction(UIAlertAction(title: KCL10n.cancelTitle, style: .cancel))
+        self.present(sheet, animated: true)
+    }
+
+    /// 确认使用：保存到我的线稿（sourceKind=.photoExtraction）并打开。
+    private func useGeneratedLineArt(_ result: KCLineArtExtractionResult) {
+        let activeId = (self.activeSession as KCSessionMetadata?)?.identifier
+        self.customLineArtService.saveExtraction(result, sourceSessionId: activeId) { [weak self] saved in
+            guard let self else { return }
+            self.refreshCustomLineArt()
+            guard let saved, let uiImage = UIImage(data: result.lineArtPNG) else {
+                self.showSaveToastWithSuccess(false)
+                return
+            }
+            // 打开到画布（替换当前画布前已由用户在导入入口确认过草稿保护）。
+            self.canvasView.loadLineArtImage(uiImage)
+            self.activeSession = nil
+            self.selectedHistorySession = nil
+            self.activeSessionHasUnsavedChanges = false
+            self.selectToolMode(.fill)
+            self.refreshHistoryUI(loadDraftThumbnail: false, loadSessions: false)
+            self.refreshActionButtons()
+            self.showCustomLineArtToast(title: KCL10n.saveAsLineArtSuccessTitle,
+                                        symbol: "checkmark.circle.fill",
+                                        tint: .systemGreen)
+        }
     }
 
     /// 导入动作表：从相册导入 / 拍照导入 / 取消。顶栏与内容库入口共用此入口。
@@ -170,7 +256,11 @@ extension KCMainViewController {
 #endif
                     return
                 }
-                self.finishImportingImage(normalizedImage)
+                if self.pendingImageImportIntent == .generateLineArt {
+                    self.generateLineArt(from: normalizedImage)
+                } else {
+                    self.finishImportingImage(normalizedImage)
+                }
             }
         }
     }

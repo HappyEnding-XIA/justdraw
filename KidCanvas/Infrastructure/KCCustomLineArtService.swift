@@ -184,6 +184,27 @@ final class KCCustomLineArtService: NSObject {
         }
     }
 
+    /// T101：直接保存离线线稿生成结果（复用其已编码的 PNG/缩略图，避免二次编码）。
+    /// sourceKind 固定为 `.photoExtraction`。completion 回主线程。
+    func saveExtraction(_ result: KCLineArtExtractionResult, sourceSessionId: String?, completion: ((KCCustomLineArtMetadata?) -> Void)?) {
+        let store = self.store
+        let cache = self.thumbnailCache
+        let thumbData = result.thumbnailJPEG
+        persistenceQueue.async {
+            let saved = try? store.save(
+                lineArtPNG: result.lineArtPNG,
+                thumbnailJPEG: result.thumbnailJPEG,
+                sourceKind: .photoExtraction,
+                sourceSessionId: sourceSessionId
+            )
+            if let saved, let thumb = UIImage(data: thumbData) {
+                cache.setObject(thumb, forKey: saved.id as NSString)
+            }
+            let dto = saved.map { KCCustomLineArtMetadata($0) }
+            DispatchQueue.main.async { completion?(dto) }
+        }
+    }
+
     // MARK: - 内部
 
     private func item(matching identifier: String) -> KCCustomLineArt? {

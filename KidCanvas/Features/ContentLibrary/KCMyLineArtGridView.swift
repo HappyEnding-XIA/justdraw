@@ -15,6 +15,8 @@ final class KCMyLineArtGridView: UIView {
 
     /// “保存当前为线稿”入口回调。
     var onSaveAsLineArt: (() -> Void)?
+    /// T101：“从照片生成线稿”入口回调。
+    var onGenerateFromPhoto: (() -> Void)?
     /// 打开某条线稿回调（参数为线稿 id）。
     var onOpen: ((String) -> Void)?
     /// 删除某条线稿回调（参数为 id 与展示标题，由控制器弹确认框）。
@@ -23,6 +25,7 @@ final class KCMyLineArtGridView: UIView {
     var thumbnailProvider: ((String) -> UIImage?)?
 
     private let saveButton = UIButton(type: .system)
+    private let generateButton = UIButton(type: .system)
     private let scrollView = UIScrollView()
     private let gridStack = UIStackView()
     private let emptyLabel = UILabel()
@@ -55,6 +58,16 @@ final class KCMyLineArtGridView: UIView {
         saveButton.addTarget(self, action: #selector(handleSaveAsLineArt), for: .touchUpInside)
         addSubview(saveButton)
 
+        generateButton.translatesAutoresizingMaskIntoConstraints = false
+        generateButton.titleLabel?.font = .systemFont(ofSize: 15.0, weight: .semibold)
+        generateButton.tintColor = KCEditorVisualStyle.inkColor
+        generateButton.layer.cornerRadius = 16.0
+        generateButton.layer.cornerCurve = .continuous
+        generateButton.backgroundColor = KCEditorVisualStyle.compactBackgroundColor
+        generateButton.contentEdgeInsets = UIEdgeInsets(top: 12.0, left: 16.0, bottom: 12.0, right: 16.0)
+        generateButton.addTarget(self, action: #selector(handleGenerateFromPhoto), for: .touchUpInside)
+        addSubview(generateButton)
+
         scrollView.translatesAutoresizingMaskIntoConstraints = false
         scrollView.showsVerticalScrollIndicator = true
         scrollView.alwaysBounceVertical = true
@@ -76,7 +89,10 @@ final class KCMyLineArtGridView: UIView {
             saveButton.topAnchor.constraint(equalTo: topAnchor, constant: 4.0),
             saveButton.centerXAnchor.constraint(equalTo: centerXAnchor),
 
-            scrollView.topAnchor.constraint(equalTo: saveButton.bottomAnchor, constant: 16.0),
+            generateButton.topAnchor.constraint(equalTo: saveButton.bottomAnchor, constant: 10.0),
+            generateButton.centerXAnchor.constraint(equalTo: centerXAnchor),
+
+            scrollView.topAnchor.constraint(equalTo: generateButton.bottomAnchor, constant: 16.0),
             scrollView.leadingAnchor.constraint(equalTo: leadingAnchor),
             scrollView.trailingAnchor.constraint(equalTo: trailingAnchor),
             scrollView.bottomAnchor.constraint(equalTo: bottomAnchor),
@@ -97,12 +113,14 @@ final class KCMyLineArtGridView: UIView {
     func configure(
         items: [KCCustomLineArtMetadata],
         saveTitle: String,
+        generateTitle: String,
         emptyText: String,
         thumbnailProvider: @escaping (String) -> UIImage?
     ) {
         self.items = items
         self.thumbnailProvider = thumbnailProvider
         saveButton.setTitle(saveTitle, for: .normal)
+        generateButton.setTitle(generateTitle, for: .normal)
         emptyLabel.text = emptyText
         rebuildGrid()
         let isEmpty = items.isEmpty
@@ -176,6 +194,10 @@ final class KCMyLineArtGridView: UIView {
 
     @objc private func handleSaveAsLineArt() {
         onSaveAsLineArt?()
+    }
+
+    @objc private func handleGenerateFromPhoto() {
+        onGenerateFromPhoto?()
     }
 
     @objc private func handleCellTap(_ sender: UIButton) {

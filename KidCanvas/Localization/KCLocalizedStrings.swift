@@ -188,6 +188,25 @@ enum KCL10n {
     static var importCameraDeniedTitle: String { tr("import.camera-denied.title") }
     /// T100：相册权限被拒绝提示。
     static var importPhotoLibraryDeniedTitle: String { tr("import.photo-library-denied.title") }
+
+    // MARK: - 离线图片生成线稿（T101）
+
+    /// T101：“从照片生成线稿”入口。
+    static var generateLineArtFromPhotoTitle: String { tr("line-art.generate-from-photo.title") }
+    /// T101：生成结果确认弹层标题。
+    static var lineArtExtractionConfirmTitle: String { tr("line-art.extraction.confirm-title") }
+    /// T101：质量良好时的确认消息。
+    static var lineArtExtractionGoodMessage: String { tr("line-art.extraction.good-message") }
+    /// T101：质量一般时的确认消息（可能不理想）。
+    static var lineArtExtractionMarginalMessage: String { tr("line-art.extraction.marginal-message") }
+    /// T101：质量差时的确认消息（这张图片可能不适合）。
+    static var lineArtExtractionPoorMessage: String { tr("line-art.extraction.poor-message") }
+    /// T101：结果确认——使用这张线稿。
+    static var lineArtExtractionUseTitle: String { tr("line-art.extraction.use-title") }
+    /// T101：结果确认——重新生成。
+    static var lineArtExtractionRetryTitle: String { tr("line-art.extraction.retry-title") }
+    /// T101：生成失败的轻提示。
+    static var lineArtExtractionFailedTitle: String { tr("line-art.extraction.failed-title") }
     static var hideToolsTitle: String { tr("action.hide-tools.title") }
     static var showToolsTitle: String { tr("action.show-tools.title") }
     static var clearCanvasAlertTitle: String { tr("alert.clear-canvas.title") }

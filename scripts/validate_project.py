@@ -971,6 +971,84 @@ def image_import_checks():
     return checks
 
 
+def line_art_extraction_checks():
+    """T101：离线图片生成线稿防回流校验。"""
+    checks = []
+    domain_model = ROOT / "Packages" / "KidCanvasModules" / "Sources" / "KCDomain" / "KCLineArtExtraction.swift"
+    extractor = ROOT / "Packages" / "KidCanvasModules" / "Sources" / "KCDrawingEngine" / "KCLineArtExtractor.swift"
+    extractor_test = ROOT / "Packages" / "KidCanvasModules" / "Tests" / "KCDrawingEngineTests" / "KCLineArtExtractorTests.swift"
+    module_doc = ROOT / "docs" / "modules" / "KCLineArtExtraction.md"
+
+    for path, label in [
+        (domain_model, "KCLineArtExtraction.swift"),
+        (extractor, "KCLineArtExtractor.swift"),
+        (extractor_test, "KCLineArtExtractorTests.swift"),
+        (module_doc, "KCLineArtExtraction.md"),
+    ]:
+        if not path.exists():
+            checks.append(fail(f"T101 line art extraction file exists: {label}"))
+        else:
+            checks.append(ok(f"T101 line art extraction file exists: {label}"))
+
+    if domain_model.exists():
+        text = domain_model.read_text(encoding="utf-8")
+        checks.append(require_text(text, "public struct KCLineArtExtractionResult", "Line art extraction declares the result model"))
+        checks.append(require_text(text, "public enum KCLineArtQuality", "Line art extraction declares a quality grade"))
+        checks.append(require_text(text, "case poor", "Line art quality has a poor grade (unsuitable image feedback)"))
+        checks.append(require_text(text, "public protocol KCLineArtExtracting", "Line art extraction declares the UIKit-free protocol"))
+        checks.append(forbid_text(text, "import UIKit", "KCLineArtExtraction model stays UIKit-free in KCDomain"))
+
+    if extractor.exists():
+        text = extractor.read_text(encoding="utf-8")
+        checks.append(require_text(text, "CoreImage", "Line art extractor uses Core Image (offline, no cloud)"))
+        checks.append(require_text(text, "CIPhotoEffectMono", "Line art extractor grayscale step"))
+        checks.append(require_text(text, "CIEdges", "Line art extractor edge-detection step"))
+        checks.append(require_text(text, "CIColorInvert", "Line art extractor invert step (edges to dark lines)"))
+        checks.append(forbid_text(text, "URLSession", "Line art extractor must not use the network (no photo upload)"))
+
+    if extractor_test.exists():
+        text = extractor_test.read_text(encoding="utf-8")
+        checks.append(require_count_at_least(text, r"func test", 3, "KCLineArtExtractor has unit-test coverage"))
+
+    grid_text = APP_FILE_PATHS["KCMyLineArtGridView.swift"].read_text(encoding="utf-8")
+    checks.append(require_text(grid_text, "onGenerateFromPhoto", "My-line-art grid exposes the generate-from-photo entry"))
+
+    service_text = APP_FILE_PATHS["KCCustomLineArtService.swift"].read_text(encoding="utf-8")
+    checks.append(require_text(service_text, "func saveExtraction", "Custom line art service can persist an extraction result"))
+
+    picking_text = APP_FILE_PATHS["KCMainViewController+ImagePicking.swift"].read_text(encoding="utf-8")
+    checks.append(require_text(picking_text, "func didTapGenerateLineArtFromPhoto", "Editor exposes the generate-line-art-from-photo entry"))
+    checks.append(require_text(picking_text, "func generateLineArt(from", "Editor runs the offline extraction"))
+    checks.append(require_text(picking_text, "func useGeneratedLineArt", "Editor applies a confirmed extraction result"))
+    checks.append(require_text(picking_text, "KCImageImportIntent", "Editor routes image import by intent (canvas vs line-art)"))
+    checks.append(require_text(picking_text, "presentLineArtExtractionResult", "Image-picking hosts the extraction result confirm sheet"))
+
+    runtime_text = APP_FILE_PATHS["KCMainViewController+RuntimeAcceptance.swift"].read_text(encoding="utf-8")
+    checks.append(require_text(runtime_text, "extractionUsable", "Runtime acceptance verifies the extractor produces a usable result"))
+    checks.append(require_text(runtime_text, "generateEntryWired", "Runtime acceptance verifies the generate-from-photo entry is wired"))
+
+    zh_text = (ROOT / "KidCanvas" / "Localization" / "zh-Hans.lproj" / "Localizable.strings").read_text(encoding="utf-8")
+    en_text = (ROOT / "KidCanvas" / "Localization" / "en.lproj" / "Localizable.strings").read_text(encoding="utf-8")
+    for key in [
+        "line-art.generate-from-photo.title",
+        "line-art.extraction.confirm-title",
+        "line-art.extraction.good-message",
+        "line-art.extraction.marginal-message",
+        "line-art.extraction.poor-message",
+        "line-art.extraction.use-title",
+        "line-art.extraction.retry-title",
+        "line-art.extraction.failed-title",
+    ]:
+        checks.append(require_text(zh_text, f'"{key}"', f"Line art extraction zh localization: {key}"))
+        checks.append(require_text(en_text, f'"{key}"', f"Line art extraction en localization: {key}"))
+
+    if module_doc.exists():
+        doc_text = module_doc.read_text(encoding="utf-8")
+        checks.append(require_text(doc_text, "## 1. 职责", "KCLineArtExtraction doc documents responsibilities"))
+        checks.append(require_text(doc_text, "## 4. 禁止回流规则", "KCLineArtExtraction doc documents anti-backflow rules"))
+    return checks
+
+
 def project_file_references_exist(pbx_text):
     missing = []
     for match in re.finditer(r"/\* ([^*]+) \*/ = \{isa = PBXFileReference; [^;]+; path = ([^;]+); sourceTree = \"?<group>\"?;", pbx_text):
@@ -2396,6 +2474,7 @@ def main():
     checks.extend(content_library_checks())
     checks.extend(custom_line_art_checks())
     checks.extend(image_import_checks())
+    checks.extend(line_art_extraction_checks())
     checks.extend(module_documentation_checks())
     checks.extend(delivery_acceptance_checks())
     checks.extend(product_stamp_naming_checks())

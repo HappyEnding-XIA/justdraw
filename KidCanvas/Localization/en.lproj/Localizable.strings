@@ -212,3 +212,27 @@
 
 /* T100: photo library permission denied */
 "import.photo-library-denied.title" = "Photos access is off. Enable it in Settings.";
+
+/* T101: generate line art from a photo entry */
+"line-art.generate-from-photo.title" = "Make Line Art from Photo";
+
+/* T101: extraction result confirm title */
+"line-art.extraction.confirm-title" = "Done! Use this line art?";
+
+/* T101: good quality confirm message */
+"line-art.extraction.good-message" = "A colorable line art is ready. It'll be saved to My Line Art and opened.";
+
+/* T101: marginal quality confirm message */
+"line-art.extraction.marginal-message" = "The result is okay. You can try it, or pick another photo.";
+
+/* T101: poor quality confirm message (photo may not be suitable) */
+"line-art.extraction.poor-message" = "This photo may not work well. Try a white-background or clear-line image.";
+
+/* T101: extraction confirm — use this line art */
+"line-art.extraction.use-title" = "Use This Line Art";
+
+/* T101: extraction confirm — regenerate */
+"line-art.extraction.retry-title" = "Pick Another";
+
+/* T101: extraction failed prompt */
+"line-art.extraction.failed-title" = "Couldn't make line art. Try another photo.";

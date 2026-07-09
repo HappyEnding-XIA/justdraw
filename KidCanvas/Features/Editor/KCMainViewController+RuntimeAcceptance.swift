@@ -314,6 +314,13 @@ extension KCMainViewController {
         let cameraNoCameraFallback = cameraDecision == .showNoCamera
         let photoNotNoCamera = photoDecision != .showNoCamera
 
+        // T101：离线线稿提取器对合成卡通图返回可用结果，且“从照片生成线稿”入口已接线。
+        let generateEntryWired = self.myLineArtGridView?.onGenerateFromPhoto != nil
+        let syntheticSource = Self.runtimeAcceptanceLineArtSourcePNG()
+        let extraction = self.lineArtExtractor.extract(from: syntheticSource)
+        let extractionUsable = extraction?.quality.isUsable ?? false
+        let extractionHasData = !(extraction?.lineArtPNG.isEmpty ?? true) && !(extraction?.thumbnailJPEG.isEmpty ?? true)
+
         // 关闭内容库。
         self.setContentLibraryPanelVisible(false)
 
@@ -346,6 +353,9 @@ extension KCMainViewController {
             && deleteRestoredCount
             && historyUnaffectedByDelete
             && photoNotNoCamera
+            && generateEntryWired
+            && extractionUsable
+            && extractionHasData
 
         let result: [String: Any] = [
             "probe": "content-library",
@@ -382,7 +392,10 @@ extension KCMainViewController {
             "deleteRestoredCount": deleteRestoredCount,
             "historyUnaffectedByDelete": historyUnaffectedByDelete,
             "cameraNoCameraFallback": cameraNoCameraFallback,
-            "photoNotNoCamera": photoNotNoCamera
+            "photoNotNoCamera": photoNotNoCamera,
+            "generateEntryWired": generateEntryWired,
+            "extractionUsable": extractionUsable,
+            "extractionHasData": extractionHasData
         ]
         self.writeRuntimeAcceptanceResult(result, fileName: "kc_runtime_acceptance_content_library.json")
     }
@@ -1035,6 +1048,22 @@ extension KCMainViewController {
             UIColor(red: 0.24, green: 0.58, blue: 0.92, alpha: 1.0).setFill()
             context.cgContext.fillEllipse(in: CGRect(x: 96.0, y: 56.0, width: 128.0, height: 128.0))
         }
+    }
+
+    /// T101：合成白底 + 多个黑色形状的 PNG，作为离线线稿提取的卡通样例源。
+    private static func runtimeAcceptanceLineArtSourcePNG() -> Data {
+        let renderer = UIGraphicsImageRenderer(size: CGSize(width: 400.0, height: 400.0))
+        let image = renderer.image { context in
+            UIColor.white.setFill()
+            context.fill(CGRect(x: 0.0, y: 0.0, width: 400.0, height: 400.0))
+            UIColor.black.setFill()
+            context.cgContext.fillEllipse(in: CGRect(x: 60.0, y: 250.0, width: 110.0, height: 110.0))
+            context.cgContext.fillEllipse(in: CGRect(x: 240.0, y: 250.0, width: 110.0, height: 110.0))
+            context.cgContext.fill(CGRect(x: 150.0, y: 110.0, width: 100.0, height: 80.0))
+            context.cgContext.fill(CGRect(x: 60.0, y: 60.0, width: 90.0, height: 30.0))
+            context.cgContext.fill(CGRect(x: 250.0, y: 60.0, width: 90.0, height: 30.0))
+        }
+        return image.pngData() ?? Data()
     }
 
     private func resetRuntimeAcceptanceCanvasState() {

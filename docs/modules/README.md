@@ -29,9 +29,8 @@
 - [KCCanvasViewportState](./KCCanvasViewportState.md) — KCDomain 画布视口纯逻辑：缩放/平移/安全创作区居中/坐标转换（T097）。
 - [KCContentLibraryFeature](./KCContentLibraryFeature.md) — App 层内容库按需浮层：官方线稿/我的线稿/历史作品分区编排（T098）。
 - [KCCustomLineArtStore](./KCCustomLineArtStore.md) — 我的线稿本地存储：位图线稿保存/读取/删除/上限（T099）。
+- [KCLineArtExtraction](./KCLineArtExtraction.md) — 离线图片生成线稿：Core Image pipeline + 质量分级 + 结果确认（T101）。
 
 ## 下一阶段规划模块
 
-以下条目来自 2026-07-09 PRD 新基线，目前只作为 T101 的设计边界；在对应任务实现和补齐模块文档前，不视为已落地模块。
-
-- `KCLineArtExtraction` — 规划用于离线图片生成线稿，MVP 不依赖云端 AI（T101）。
+T097–T102 已全部落地（画布导航、内容库框架与收口、我的线稿、图片导入、离线图片生成线稿）。后续若有新需求（如照片线稿的 AI/Core ML 增强、导入结果分区、历史自动清理策略等），在此补充设计边界后再开发。

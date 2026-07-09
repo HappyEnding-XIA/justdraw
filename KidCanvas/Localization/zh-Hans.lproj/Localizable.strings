@@ -212,3 +212,27 @@
 
 /* T100：相册权限被拒绝提示 */
 "import.photo-library-denied.title" = "相册访问未开启，可在设置中开启";
+
+/* T101：从照片生成线稿入口 */
+"line-art.generate-from-photo.title" = "从照片生成线稿";
+
+/* T101：生成结果确认弹层标题 */
+"line-art.extraction.confirm-title" = "生成好了，要用这张线稿吗？";
+
+/* T101：质量良好时的确认消息 */
+"line-art.extraction.good-message" = "已生成可填色的线稿，确认后保存到我的线稿并打开。";
+
+/* T101：质量一般时的确认消息（可能不理想） */
+"line-art.extraction.marginal-message" = "这张图生成效果一般，可以试试，或重新选一张。";
+
+/* T101：质量差时的确认消息（这张图片可能不适合） */
+"line-art.extraction.poor-message" = "这张图片可能不适合生成线稿，换一张白底或线条清晰的图试试。";
+
+/* T101：结果确认——使用这张线稿 */
+"line-art.extraction.use-title" = "使用这张线稿";
+
+/* T101：结果确认——重新生成 */
+"line-art.extraction.retry-title" = "重新选一张";
+
+/* T101：生成失败提示 */
+"line-art.extraction.failed-title" = "生成线稿失败，换一张图试试";
