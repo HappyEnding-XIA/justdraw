@@ -173,3 +173,24 @@
 
 /* Content library: imports empty state (reserved, T100/T101) */
 "library.empty.imports" = "No imported content yet.";
+
+/* T099: my-line-art auto title (stable, readable; no timestamps) */
+"library.my-line-art.title.n" = "My Line Art %d";
+
+/* T099: content-library "save current as line art" entry */
+"library.save-as-line-art.title" = "Save as Line Art";
+
+/* T099: light prompt when too few strokes to save as line art */
+"library.save-as-line-art.too-few-strokes" = "Too few lines — draw a bit more before saving as line art.";
+
+/* T099: my-line-art soft cap reached */
+"library.save-as-line-art.cap-reached" = "My Line Art is full. Remove some before saving.";
+
+/* T099: save-as-line-art success */
+"library.save-as-line-art.success" = "Saved to My Line Art";
+
+/* T099: delete custom line art alert title */
+"alert.delete-custom-line-art.title" = "Delete this line art?";
+
+/* T099: delete custom line art alert message (only the line art, not history) */
+"alert.delete-custom-line-art.message" = "Deleting it will not affect your saved drawings.";

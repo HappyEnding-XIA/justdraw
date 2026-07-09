@@ -159,6 +159,20 @@ enum KCL10n {
     static var libraryMyLineArtEmptyTitle: String { tr("library.empty.my-line-art") }
     /// 历史作品分区空态文案（无已保存会话且无草稿时显示）。
     static var libraryHistoryEmptyTitle: String { tr("library.empty.history") }
+    /// T099：我的线稿自动命名“我的线稿 N”（稳定可读，不用时间戳）。
+    static func customLineArtTitle(_ sequenceNumber: Int) -> String { tr("library.my-line-art.title.n", sequenceNumber) }
+    /// T099：“保存当前为线稿”入口。
+    static var saveAsLineArtTitle: String { tr("library.save-as-line-art.title") }
+    /// T099：线条过少、不适合保存为线稿的轻提示。
+    static var saveAsLineArtTooFewStrokesTitle: String { tr("library.save-as-line-art.too-few-strokes") }
+    /// T099：我的线稿已达数量上限的提示。
+    static var saveAsLineArtCapReachedTitle: String { tr("library.save-as-line-art.cap-reached") }
+    /// T099：保存为线稿成功的轻提示。
+    static var saveAsLineArtSuccessTitle: String { tr("library.save-as-line-art.success") }
+    /// T099：删除我的线稿确认弹层标题。
+    static var deleteCustomLineArtAlertTitle: String { tr("alert.delete-custom-line-art.title") }
+    /// T099：删除我的线稿确认弹层消息。
+    static var deleteCustomLineArtAlertMessage: String { tr("alert.delete-custom-line-art.message") }
     static var hideToolsTitle: String { tr("action.hide-tools.title") }
     static var showToolsTitle: String { tr("action.show-tools.title") }
     static var clearCanvasAlertTitle: String { tr("alert.clear-canvas.title") }

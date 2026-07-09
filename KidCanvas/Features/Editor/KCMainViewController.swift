@@ -63,6 +63,8 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
     let contentCatalog: KCBundledContentCatalog
     let drawingEngine: KCDrawingEngineProviding
     let photoLibraryService: KCPhotoLibraryServicing
+    /// T099：我的线稿本地服务（保存/读取/删除，独立于历史作品）。
+    let customLineArtService: KCCustomLineArtService
     /// 内容选择 Feature（色盘 / 最近色 / 贴纸分类），从 contentCatalog 构造，T022 抽出。
     private(set) lazy var contentPicker: KCContentPickerFeature = {
         KCContentPickerFeature(contentCatalog: self.contentCatalog)
@@ -120,6 +122,8 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
     var contentLibraryPanelView: KCContentLibraryPanelView?
     /// T098：内嵌在内容库“官方线稿”分区的线稿选择控制器。
     var contentLibraryLineArtPicker: KCLineArtPickerViewController?
+    /// T099：内容库“我的线稿”分区网格视图。
+    var myLineArtGridView: KCMyLineArtGridView?
     /// T098/T102：迁入内容库历史分区的历史面板视图引用（用于空态切换）。
     var historyPanelView: UIView!
     var toolStateChip: UIView!
@@ -180,18 +184,20 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
         sessionService: KCSessionService,
         contentCatalog: KCBundledContentCatalog,
         drawingEngine: KCDrawingEngineProviding,
-        photoLibraryService: KCPhotoLibraryServicing
+        photoLibraryService: KCPhotoLibraryServicing,
+        customLineArtService: KCCustomLineArtService
     ) {
         self.sessionStore = sessionService
         self.contentCatalog = contentCatalog
         self.drawingEngine = drawingEngine
         self.photoLibraryService = photoLibraryService
+        self.customLineArtService = customLineArtService
         super.init(nibName: nil, bundle: nil)
     }
 
-    @available(*, unavailable, message: "Use init(sessionService:contentCatalog:drawingEngine:photoLibraryService:) via KCAppCompositionRoot")
+    @available(*, unavailable, message: "Use init(sessionService:contentCatalog:drawingEngine:photoLibraryService:customLineArtService:) via KCAppCompositionRoot")
     required init?(coder: NSCoder) {
-        fatalError("Use init(sessionService:contentCatalog:drawingEngine:photoLibraryService:)")
+        fatalError("Use init(sessionService:contentCatalog:drawingEngine:photoLibraryService:customLineArtService:)")
     }
 
     override func viewDidLoad() {
@@ -1226,6 +1232,8 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
             self.view.bringSubviewToFront(panel)
             panel.alpha = 0.0
             UIView.animate(withDuration: 0.18) { panel.alpha = 1.0 }
+            // 打开时刷新我的线稿（数据可能在关闭期间变化）。
+            self.refreshCustomLineArt()
         } else {
             UIView.animate(withDuration: 0.15, animations: { panel.alpha = 0.0 }) { _ in
                 panel.isHidden = true
@@ -1259,9 +1267,10 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
         for (index, partition) in KCContentLibraryPartition.defaultOrder.enumerated() {
             panel.setSegmentTitle(self.contentLibrarySegmentTitle(for: partition), forPartitionAt: index)
         }
-        panel.setMyLineArtEmptyText(KCL10n.libraryMyLineArtEmptyTitle)
 
         self.embedLineArtPickerInContentLibrary(panel: panel)
+        self.embedMyLineArtGridInContentLibrary(panel: panel)
+        self.refreshCustomLineArt()
 
         panel.onPartitionChange = { [weak self, weak panel] index in
             guard let self, let panel,
@@ -1314,6 +1323,111 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
         case .history: return KCL10n.libraryHistoryTitle
         case .imports: return KCL10n.libraryImportsTitle
         }
+    }
+
+    // MARK: - 我的线稿（T099）
+
+    /// 装配“我的线稿”分区网格（保存入口 + 缩略图网格 + 空态），装入 `myLineArtContainer`。
+    private func embedMyLineArtGridInContentLibrary(panel: KCContentLibraryPanelView) {
+        let grid = KCMyLineArtGridView()
+        grid.translatesAutoresizingMaskIntoConstraints = false
+        panel.myLineArtContainer.addSubview(grid)
+        NSLayoutConstraint.activate([
+            grid.topAnchor.constraint(equalTo: panel.myLineArtContainer.topAnchor),
+            grid.leadingAnchor.constraint(equalTo: panel.myLineArtContainer.leadingAnchor),
+            grid.trailingAnchor.constraint(equalTo: panel.myLineArtContainer.trailingAnchor),
+            grid.bottomAnchor.constraint(equalTo: panel.myLineArtContainer.bottomAnchor)
+        ])
+        grid.onSaveAsLineArt = { [weak self] in self?.didTapSaveAsLineArt() }
+        grid.onOpen = { [weak self] identifier in self?.loadCustomLineArt(withIdentifier: identifier) }
+        grid.onDelete = { [weak self] identifier, title in
+            self?.confirmDeleteCustomLineArt(withIdentifier: identifier, title: title)
+        }
+        self.myLineArtGridView = grid
+    }
+
+    /// 刷新“我的线稿”分区：读取列表、配置网格、后台预热缩略图后回主线程再刷新一次。
+    func refreshCustomLineArt() {
+        let items = self.customLineArtService.loadAll()
+        let provider: (String) -> UIImage? = { [weak self] id in
+            self?.customLineArtService.cachedThumbnailImage(forId: id)
+        }
+        let saveTitle = KCL10n.saveAsLineArtTitle
+        let emptyText = KCL10n.libraryMyLineArtEmptyTitle
+        self.myLineArtGridView?.configure(items: items, saveTitle: saveTitle, emptyText: emptyText, thumbnailProvider: provider)
+        let ids = items.map { $0.identifier }
+        guard !ids.isEmpty else { return }
+        self.customLineArtService.preloadThumbnailImages(forIds: ids) { [weak self] in
+            self?.myLineArtGridView?.configure(items: items, saveTitle: saveTitle, emptyText: emptyText, thumbnailProvider: provider)
+        }
+    }
+
+    /// “保存当前为线稿”：先做最小笔画与数量上限校验，再把用户笔画线稿化后保存。
+    @objc func didTapSaveAsLineArt() {
+        let minStrokes = 3
+        guard self.canvasView.hasVisibleContent(), self.canvasView.strokeCount >= minStrokes else {
+            self.showCustomLineArtToast(title: KCL10n.saveAsLineArtTooFewStrokesTitle,
+                                        symbol: "hand.draw.fill",
+                                        tint: .systemOrange)
+            return
+        }
+        guard !self.customLineArtService.hasReachedCap() else {
+            self.showCustomLineArtToast(title: KCL10n.saveAsLineArtCapReachedTitle,
+                                        symbol: "exclamationmark.triangle.fill",
+                                        tint: .systemOrange)
+            return
+        }
+        let image = self.canvasView.lineArtImage()
+        let activeId = (self.activeSession as KCSessionMetadata?)?.identifier
+        self.setContentLibraryPanelVisible(false)
+        self.customLineArtService.saveLineArt(image: image, sourceKind: 0, sourceSessionId: activeId) { [weak self] saved in
+            guard let self else { return }
+            if saved != nil {
+                self.showCustomLineArtToast(title: KCL10n.saveAsLineArtSuccessTitle,
+                                            symbol: "checkmark.circle.fill",
+                                            tint: .systemGreen)
+            } else {
+                self.showSaveToastWithSuccess(false)
+            }
+            self.refreshCustomLineArt()
+        }
+    }
+
+    /// 打开一条我的线稿：加载位图并替换画布（按需确认替换），切到填色工具。
+    func loadCustomLineArt(withIdentifier identifier: String) {
+        guard let image = self.customLineArtService.lineArtImage(forId: identifier) else { return }
+        self.setContentLibraryPanelVisible(false)
+        self.performCanvasReplacementAfterUserConfirmation { [weak self] in
+            self?.finishLoadingLineArtImage(image, completion: nil)
+        }
+    }
+
+    /// 删除一条我的线稿（二次确认）。只删线稿库条目，不影响历史作品。
+    func confirmDeleteCustomLineArt(withIdentifier identifier: String, title: String) {
+        let alert = UIAlertController(title: KCL10n.deleteCustomLineArtAlertTitle,
+                                      message: KCL10n.deleteCustomLineArtAlertMessage,
+                                      preferredStyle: .alert)
+        alert.addAction(UIAlertAction(title: KCL10n.cancelTitle, style: .cancel))
+        alert.addAction(UIAlertAction(title: KCL10n.deleteTitle, style: .destructive) { [weak self] _ in
+            self?.customLineArtService.deleteLineArt(withIdentifier: identifier)
+            self?.refreshCustomLineArt()
+        })
+        self.present(alert, animated: true)
+    }
+
+    /// 我的线稿相关通用文案 toast（锚定内容库入口按钮）。
+    func showCustomLineArtToast(title: String, symbol: String, tint: UIColor) {
+#if DEBUG
+        self.runtimeAcceptanceLastSaveToastTitle = title
+#endif
+        self.toastPresenter.dismiss(self.saveToastView)
+        self.saveToastView = self.toastPresenter.showMessageToast(
+            title: title,
+            symbolName: symbol,
+            tintColor: tint,
+            in: self.view,
+            anchorView: self.contentLibraryButton
+        )
     }
 
     /// T102：内容库历史分区空态。历史真正为空（无已保存会话且无草稿）时显示“还没有历史作品”引导，

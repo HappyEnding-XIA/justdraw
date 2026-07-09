@@ -43,6 +43,23 @@ final class KCToastPresenter {
         )
     }
 
+    /// 通用文案 toast（T099+：保存为线稿反馈、线条过少/达上限提示等）。
+    func showMessageToast(
+        title: String,
+        symbolName: String,
+        tintColor: UIColor,
+        in view: UIView,
+        anchorView: UIView
+    ) -> UIView {
+        self.showToast(
+            title: title,
+            symbolName: symbolName,
+            tintColor: tintColor,
+            in: view,
+            anchorView: anchorView
+        )
+    }
+
     private func showToast(
         title: String,
         symbolName: String,

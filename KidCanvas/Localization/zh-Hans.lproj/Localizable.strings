@@ -173,3 +173,24 @@
 
 /* 内容库：导入结果分区空态（预留，T100/T101 接入） */
 "library.empty.imports" = "还没有导入内容。";
+
+/* T099：我的线稿自动命名（稳定可读，不用时间戳） */
+"library.my-line-art.title.n" = "我的线稿 %d";
+
+/* T099：内容库“保存当前为线稿”入口 */
+"library.save-as-line-art.title" = "保存为线稿";
+
+/* T099：线条过少、不适合保存为线稿的轻提示 */
+"library.save-as-line-art.too-few-strokes" = "线条太少啦，再多画几笔就能保存为线稿了";
+
+/* T099：我的线稿已达数量上限 */
+"library.save-as-line-art.cap-reached" = "我的线稿已满，删掉一些再保存吧";
+
+/* T099：保存为线稿成功 */
+"library.save-as-line-art.success" = "已保存到我的线稿";
+
+/* T099：删除我的线稿确认弹层标题 */
+"alert.delete-custom-line-art.title" = "删除这张线稿？";
+
+/* T099：删除我的线稿确认弹层消息（只删线稿，不影响历史作品） */
+"alert.delete-custom-line-art.message" = "删除后不影响已经保存的画作。";

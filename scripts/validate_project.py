@@ -42,9 +42,11 @@ APP_FILE_PATHS = {
     "KCHistoryFeature.swift": APP_ROOT / "Features" / "History" / "KCHistoryFeature.swift",
     "KCContentLibraryFeature.swift": APP_ROOT / "Features" / "ContentLibrary" / "KCContentLibraryFeature.swift",
     "KCContentLibraryPanelView.swift": APP_ROOT / "Features" / "ContentLibrary" / "KCContentLibraryPanelView.swift",
+    "KCMyLineArtGridView.swift": APP_ROOT / "Features" / "ContentLibrary" / "KCMyLineArtGridView.swift",
     "KCDrawingEngineAdapter.swift": APP_ROOT / "Infrastructure" / "KCDrawingEngineAdapter.swift",
     "KCSessionService.swift": APP_ROOT / "Infrastructure" / "KCSessionService.swift",
     "KCPhotoLibraryService.swift": APP_ROOT / "Infrastructure" / "KCPhotoLibraryService.swift",
+    "KCCustomLineArtService.swift": APP_ROOT / "Infrastructure" / "KCCustomLineArtService.swift",
     "LegacyArchiveMigrator.swift": APP_ROOT / "Infrastructure" / "LegacyArchiveMigrator.swift",
     "KCEditorUIFactory.swift": APP_ROOT / "DesignSystem" / "KCEditorUIFactory.swift",
     "KCPressFeedbackController.swift": APP_ROOT / "DesignSystem" / "KCPressFeedbackController.swift",
@@ -808,6 +810,96 @@ def content_library_checks():
         doc_text = module_doc.read_text(encoding="utf-8")
         checks.append(require_text(doc_text, "## 1. 职责", "KCContentLibraryFeature doc documents responsibilities"))
         checks.append(require_text(doc_text, "## 4. 禁止回流规则", "KCContentLibraryFeature doc documents anti-backflow rules"))
+    return checks
+
+
+def custom_line_art_checks():
+    """T099：我的线稿本地存储与生命周期防回流校验。"""
+    checks = []
+    domain_model = ROOT / "Packages" / "KidCanvasModules" / "Sources" / "KCDomain" / "KCCustomLineArt.swift"
+    store_file = ROOT / "Packages" / "KidCanvasModules" / "Sources" / "KCSessionPersistence" / "KCCustomLineArtStore.swift"
+    store_test = ROOT / "Packages" / "KidCanvasModules" / "Tests" / "KCSessionPersistenceTests" / "KCCustomLineArtStoreTests.swift"
+    service_file = APP_FILE_PATHS["KCCustomLineArtService.swift"]
+    grid_file = APP_FILE_PATHS["KCMyLineArtGridView.swift"]
+    module_doc = ROOT / "docs" / "modules" / "KCCustomLineArtStore.md"
+
+    for path, label in [
+        (domain_model, "KCCustomLineArt.swift"),
+        (store_file, "KCCustomLineArtStore.swift"),
+        (store_test, "KCCustomLineArtStoreTests.swift"),
+        (service_file, "KCCustomLineArtService.swift"),
+        (grid_file, "KCMyLineArtGridView.swift"),
+        (module_doc, "KCCustomLineArtStore.md"),
+    ]:
+        if not path.exists():
+            checks.append(fail(f"T099 custom line art file exists: {label}"))
+        else:
+            checks.append(ok(f"T099 custom line art file exists: {label}"))
+
+    if domain_model.exists():
+        text = domain_model.read_text(encoding="utf-8")
+        checks.append(require_text(text, "public struct KCCustomLineArt", "KCCustomLineArt declares the metadata model"))
+        checks.append(require_text(text, "sequenceNumber", "KCCustomLineArt uses a stable sequenceNumber (not a timestamp/Chinese title)"))
+        checks.append(require_text(text, "public protocol KCCustomLineArtRepository", "KCCustomLineArtRepository contract is UIKit-free"))
+        checks.append(forbid_text(text, "import UIKit", "KCCustomLineArt model stays UIKit-free in KCDomain"))
+
+    if store_file.exists():
+        text = store_file.read_text(encoding="utf-8")
+        checks.append(require_text(text, "maxItemCount = 50", "Custom line art store enforces a 50-item soft cap"))
+        checks.append(require_text(text, "defaultDirectoryName = \"KidCanvasCustomLineArt\"", "Custom line art uses an independent directory (not history)"))
+        checks.append(require_text(text, "nextSequenceNumber", "Custom line art auto-naming derives a stable sequence number"))
+        checks.append(require_text(text, "schemaVersion", "Custom line art metadata is schema-versioned"))
+
+    if store_test.exists():
+        text = store_test.read_text(encoding="utf-8")
+        checks.append(require_count_at_least(text, r"func test", 5, "KCCustomLineArtStore has unit-test coverage"))
+
+    if service_file.exists():
+        text = service_file.read_text(encoding="utf-8")
+        checks.append(require_text(text, "final class KCCustomLineArtService", "KCCustomLineArtService is the App adapter"))
+        checks.append(require_text(text, "KCL10n.customLineArtTitle", "Service formats the title via localization (not a hardcoded Chinese literal)"))
+        checks.append(require_text(text, "hasReachedCap", "Service exposes the soft-cap check"))
+
+    if grid_file.exists():
+        text = grid_file.read_text(encoding="utf-8")
+        checks.append(require_text(text, "final class KCMyLineArtGridView", "KCMyLineArtGridView is the my-line-art grid"))
+        checks.append(require_text(text, "onSaveAsLineArt", "Grid exposes a save-as-line-art entry"))
+        checks.append(require_text(text, "onOpen", "Grid exposes an open callback"))
+        checks.append(require_text(text, "onDelete", "Grid exposes a delete callback (long-press)"))
+
+    canvas_text = APP_FILE_PATHS["KCDrawingCanvasView.swift"].read_text(encoding="utf-8")
+    checks.append(require_text(canvas_text, "var strokeCount", "Canvas exposes strokeCount for save-as-line-art validation"))
+    checks.append(require_text(canvas_text, "func lineArtImage", "Canvas can render a black-on-white line-art image from user strokes"))
+
+    main_text = APP_FILE_PATHS["KCMainViewController.swift"].read_text(encoding="utf-8")
+    checks.append(require_text(main_text, "func didTapSaveAsLineArt", "Editor handles save-as-line-art"))
+    checks.append(require_text(main_text, "func refreshCustomLineArt", "Editor refreshes the my-line-art grid"))
+    checks.append(require_text(main_text, "func loadCustomLineArt", "Editor opens a custom line art onto the canvas"))
+    checks.append(require_text(main_text, "func confirmDeleteCustomLineArt", "Editor confirms before deleting a custom line art"))
+    checks.append(require_text(main_text, "strokeCount >= minStrokes", "Save-as-line-art gates on a minimum stroke count"))
+
+    runtime_text = APP_FILE_PATHS["KCMainViewController+RuntimeAcceptance.swift"].read_text(encoding="utf-8")
+    checks.append(require_text(runtime_text, "runtimeAcceptanceSaveSynchronously", "Runtime acceptance exercises a synchronous custom-line-art save"))
+    checks.append(require_text(runtime_text, "historyUnaffectedBySave", "Runtime acceptance verifies custom line art does not affect history"))
+
+    zh_text = (ROOT / "KidCanvas" / "Localization" / "zh-Hans.lproj" / "Localizable.strings").read_text(encoding="utf-8")
+    en_text = (ROOT / "KidCanvas" / "Localization" / "en.lproj" / "Localizable.strings").read_text(encoding="utf-8")
+    for key in [
+        "library.my-line-art.title.n",
+        "library.save-as-line-art.title",
+        "library.save-as-line-art.too-few-strokes",
+        "library.save-as-line-art.cap-reached",
+        "library.save-as-line-art.success",
+        "alert.delete-custom-line-art.title",
+        "alert.delete-custom-line-art.message",
+    ]:
+        checks.append(require_text(zh_text, f'"{key}"', f"Custom line art zh localization: {key}"))
+        checks.append(require_text(en_text, f'"{key}"', f"Custom line art en localization: {key}"))
+
+    if module_doc.exists():
+        doc_text = module_doc.read_text(encoding="utf-8")
+        checks.append(require_text(doc_text, "## 1. 职责", "KCCustomLineArtStore doc documents responsibilities"))
+        checks.append(require_text(doc_text, "## 4. 禁止回流规则", "KCCustomLineArtStore doc documents anti-backflow rules"))
     return checks
 
 
@@ -2234,6 +2326,7 @@ def main():
     checks.extend(architecture_reality_checks())
     checks.extend(canvas_viewport_checks())
     checks.extend(content_library_checks())
+    checks.extend(custom_line_art_checks())
     checks.extend(module_documentation_checks())
     checks.extend(delivery_acceptance_checks())
     checks.extend(product_stamp_naming_checks())

@@ -276,6 +276,38 @@ extension KCMainViewController {
         let historyEmptyExpected = self.sessions.isEmpty && !self.sessionStore.hasDraft()
         let historyEmptyMatches = (self.contentLibraryPanelView?.isHistoryEmptyVisible ?? false) == historyEmptyExpected
 
+        // T099：我的线稿保存/删除（同步 Debug 钩子；store 异步路径与上限/命名已由单测覆盖）。
+        let myLineArtGridEmbedded = self.myLineArtGridView != nil
+        let customLineArtCountBefore = self.customLineArtService.count()
+        let historyCountBefore = self.sessions.count
+
+        // 空画布保存为线稿 → “线条过少”校验门拦截，计数不变。
+        self.canvasView.startBlankCanvas()
+        self.runtimeAcceptanceLastSaveToastTitle = nil
+        self.didTapSaveAsLineArt()
+        let tooFewStrokesToastShown = self.runtimeAcceptanceLastSaveToastTitle == KCL10n.saveAsLineArtTooFewStrokesTitle
+        let gateBlockedSave = self.customLineArtService.count() == customLineArtCountBefore
+
+        // 画 3 笔后保存为线稿 → 计数 +1、分配编号、历史作品不受影响。
+        self.canvasView.currentToolMode = .brush
+        self.canvasView.currentLineWidth = 20.0
+        self.canvasView.insertRuntimeAcceptanceStroke()
+        self.canvasView.insertRuntimeAcceptanceStroke()
+        self.canvasView.insertRuntimeAcceptanceStroke()
+        let lineArtImage = self.canvasView.lineArtImage()
+        let saved = self.customLineArtService.runtimeAcceptanceSaveSynchronously(image: lineArtImage, sourceSessionId: nil)
+        let saveSucceeded = saved != nil
+        let sequenceNumberAssigned = (saved?.sequenceNumber ?? 0) >= 1
+        let countIncreased = self.customLineArtService.count() == customLineArtCountBefore + 1
+        let historyUnaffectedBySave = self.sessions.count == historyCountBefore
+
+        // 删除刚保存的线稿 → 计数回到保存前；历史仍不受影响。
+        if let savedId = saved?.identifier {
+            self.customLineArtService.runtimeAcceptanceDeleteSynchronously(identifier: savedId)
+        }
+        let deleteRestoredCount = self.customLineArtService.count() == customLineArtCountBefore
+        let historyUnaffectedByDelete = self.sessions.count == historyCountBefore
+
         // 关闭内容库。
         self.setContentLibraryPanelVisible(false)
 
@@ -298,6 +330,15 @@ extension KCMainViewController {
             && mainPartitionOrderIsFixed
             && importsReserved
             && historyEmptyMatches
+            && myLineArtGridEmbedded
+            && tooFewStrokesToastShown
+            && gateBlockedSave
+            && saveSucceeded
+            && sequenceNumberAssigned
+            && countIncreased
+            && historyUnaffectedBySave
+            && deleteRestoredCount
+            && historyUnaffectedByDelete
 
         let result: [String: Any] = [
             "probe": "content-library",
@@ -322,7 +363,17 @@ extension KCMainViewController {
             "mainPartitionOrderIsFixed": mainPartitionOrderIsFixed,
             "importsReserved": importsReserved,
             "historyEmptyExpected": historyEmptyExpected,
-            "historyEmptyMatches": historyEmptyMatches
+            "historyEmptyMatches": historyEmptyMatches,
+            "myLineArtGridEmbedded": myLineArtGridEmbedded,
+            "tooFewStrokesToastShown": tooFewStrokesToastShown,
+            "gateBlockedSave": gateBlockedSave,
+            "saveSucceeded": saveSucceeded,
+            "sequenceNumberAssigned": sequenceNumberAssigned,
+            "customLineArtCountBefore": customLineArtCountBefore,
+            "countIncreased": countIncreased,
+            "historyUnaffectedBySave": historyUnaffectedBySave,
+            "deleteRestoredCount": deleteRestoredCount,
+            "historyUnaffectedByDelete": historyUnaffectedByDelete
         ]
         self.writeRuntimeAcceptanceResult(result, fileName: "kc_runtime_acceptance_content_library.json")
     }

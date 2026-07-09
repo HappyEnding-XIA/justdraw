@@ -1668,6 +1668,34 @@ final class KCDrawingCanvasView: UIView, UIGestureRecognizerDelegate {
         canvasHasVisibleContent
     }
 
+    /// 已提交的用户笔画数量（不含底图、填色、印章）。供“保存为线稿”最小笔画校验。
+    @objc var strokeCount: Int {
+        strokes.count
+    }
+
+    /// T099：把用户笔画以黑色重绘在白底，生成位图线稿。排除底图、flood fill 填色与印章，
+    /// 使结果适合作为可再次填色的线稿。笔画过少时应由调用方先做 `strokeCount` 校验。
+    @objc func lineArtImage() -> UIImage {
+        guard bounds.width > 0.0, bounds.height > 0.0 else { return UIImage() }
+        let scale = self.window?.screen.scale ?? UIScreen.main.scale
+        let format = UIGraphicsImageRendererFormat()
+        format.scale = scale
+        format.opaque = true
+        let renderer = UIGraphicsImageRenderer(bounds: bounds, format: format)
+        return renderer.image { _ in
+            UIColor.white.setFill()
+            UIRectFill(bounds)
+            UIColor.black.setStroke()
+            for stroke in self.strokes {
+                let path = stroke.path.copy() as! UIBezierPath
+                path.lineWidth = max(stroke.lineWidth, 2.0)
+                path.lineCapStyle = .round
+                path.lineJoinStyle = .round
+                path.stroke()
+            }
+        }
+    }
+
     private func notifyContentChanged() {
         delegate?.drawingCanvasViewContentDidChange?(self)
     }
