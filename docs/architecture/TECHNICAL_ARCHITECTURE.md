@@ -279,14 +279,14 @@ CanvasEngine
 - 恢复视图按钮仅在 `KCCanvasViewportState.isDefault == false` 时显示，不新增“缩放模式 / 平移模式”按钮。
 - MVP 不要求把 viewport 持久化进历史作品；当前会话内可保留，新建/打开历史/清空/线稿载入时重置为默认视图。详见 `docs/modules/KCCanvasViewportState.md`。
 
-### 4.3.1 Content Library / Line Art 系统（规划中）
+### 4.3.1 Content Library / Line Art 系统
 
-PRD 已把线稿从“官方线稿弹窗”升级为“官方线稿 + 我的线稿 + 照片生成线稿”的内容体系。下一阶段按以下边界实现：
+PRD 已把线稿从“官方线稿弹窗”升级为“官方线稿 + 我的线稿 + 照片生成线稿”的内容体系。按以下边界实现：
 
 - `KCContentCatalog` 继续只负责官方内容元数据，不负责用户生成内容。
-- `KCContentLibraryFeature` 规划为 App 层内容库入口，组合官方线稿、我的线稿和历史作品，不直接写文件。
-- `KCCustomLineArt` / `KCCustomLineArtStore` 规划为我的线稿生命周期，独立于历史作品；删除我的线稿不得影响已保存历史作品。
-- 图片生成线稿输出先作为位图线稿接入，不做矢量化，不上传图片。
+- `KCContentLibraryFeature`（T098 已落地）为 App 层内容库按需浮层入口，组合官方线稿、我的线稿和历史作品；不直接读写会话文件、不生成线稿、不持有系统 picker。顶栏右收敛为「内容库 / 导入 / 保存」；线稿弹窗并入官方线稿分区（内嵌 `KCLineArtPickerViewController`）；历史面板从右侧常驻 `rightStack` 迁入历史分区。详见 `docs/modules/KCContentLibraryFeature.md`。
+- `KCCustomLineArt` / `KCCustomLineArtStore` 规划为我的线稿生命周期（T099），独立于历史作品；删除我的线稿不得影响已保存历史作品。当前内容库“我的线稿”分区为预留空态。
+- 图片生成线稿输出先作为位图线稿接入，不做矢量化，不上传图片（T101）；导入结果分区本轮预留。
 - AI/Core ML 不是 T101 MVP 的前置条件；只有离线图像处理无法达到产品目标时再进入增强评估。
 
 ### 4.4 Tool State

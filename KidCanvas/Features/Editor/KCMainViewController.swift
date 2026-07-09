@@ -77,6 +77,8 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
     private(set) lazy var lineArtFeature: KCLineArtFeature = {
         KCLineArtFeature(contentCatalog: self.contentCatalog, drawingEngine: self.drawingEngine)
     }()
+    /// 内容库 Feature（面板可见性 + 分区切换决策），T098 抽出。
+    private(set) lazy var contentLibrary: KCContentLibraryFeature = KCContentLibraryFeature()
     /// 画笔 Dock Feature（底部画笔项配置），T042 抽出。
     private(set) lazy var brushDockFeature: KCBrushDockFeature = KCBrushDockFeature()
     /// 橡皮擦控件 Feature（尺寸预览 + 形状按钮选中态），T044 抽出。
@@ -112,6 +114,12 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
     var collapseToggleButton: UIButton!
     /// T097：画布“恢复视图”按钮，仅在画布偏离默认视图时显示。
     var restoreViewportButton: UIButton!
+    /// T098：顶栏右“内容库”入口按钮，按需展开内容库浮层。
+    var contentLibraryButton: UIButton!
+    /// T098：内容库浮层面板（按需显示）。
+    var contentLibraryPanelView: KCContentLibraryPanelView?
+    /// T098：内嵌在内容库“官方线稿”分区的线稿选择控制器。
+    var contentLibraryLineArtPicker: KCLineArtPickerViewController?
     var toolStateChip: UIView!
     var toolStateSwatch: UIView!
     var toolStateLabel: UILabel!
@@ -280,7 +288,6 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
         rightScrollView.addSubview(rightStack)
         rightStack.addArrangedSubview(colorsPanel)
         rightStack.addArrangedSubview(sizePanel)
-        rightStack.addArrangedSubview(historyPanel)
         self.view.addSubview(bottomDock)
 
         // T097：画布“恢复视图”按钮（右下角），仅在画布缩放/平移偏离默认视图时显示。
@@ -292,10 +299,13 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
         self.view.addSubview(self.restoreViewportButton)
 
         // 收起按钮一起隐藏的 5 组浮动面板，用于在小屏上释放画布空间。
-        //（colorsPanel/sizePanel/historyPanel 都在 rightScrollView 内，
-        // 所以隐藏它即可一并覆盖这三者。）
+        // 右侧 rightScrollView 现仅承载 colorsPanel/sizePanel（工具参数）；
+        // historyPanel 已迁入内容库浮层的“历史作品”分区（T098）。
         self.collapsiblePanels = [topLeft, topRight, leftRail, rightScrollView, bottomDock]
         let safeArea = self.view.safeAreaLayoutGuide
+
+        // T098：内容库浮层（按需显示）。historyPanel 装入其历史分区。
+        self.setupContentLibraryPanel(historyPanel: historyPanel)
 
         NSLayoutConstraint.activate([
             canvasContainer.leadingAnchor.constraint(equalTo: self.view.leadingAnchor),
@@ -332,7 +342,6 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
 
             colorsPanel.widthAnchor.constraint(equalToConstant: self.rightPanelWidth()),
             sizePanel.widthAnchor.constraint(equalToConstant: self.rightPanelWidth()),
-            historyPanel.widthAnchor.constraint(equalToConstant: self.rightPanelWidth()),
 
             bottomDock.centerXAnchor.constraint(equalTo: self.view.centerXAnchor),
             bottomDock.widthAnchor.constraint(equalToConstant: self.bottomDockWidth()),
@@ -445,22 +454,18 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
             stack.bottomAnchor.constraint(equalTo: panel.bottomAnchor, constant: -12.0)
         ])
 
-        let historyButton = self.iconButtonWithSymbolName("clock.arrow.circlepath", accentColor: nil)
-        let lineArtButton = self.iconButtonWithSymbolName("square.on.circle", accentColor: nil)
+        self.contentLibraryButton = self.iconButtonWithSymbolName("books.vertical.fill", accentColor: nil)
         let importButton = self.iconButtonWithSymbolName("photo.on.rectangle", accentColor: nil)
         self.saveButton = self.iconButtonWithSymbolName("square.and.arrow.down.fill", accentColor: UIColor(red: 0.54, green: 0.80, blue: 0.98, alpha: 1.0))
-        self.applyAccessibilityLabel(KCL10n.openLatestTitle, identifier: "top.open-latest", toControl: historyButton)
-        self.applyAccessibilityLabel(KCL10n.lineArtTitle, identifier: "top.line-art", toControl: lineArtButton)
+        self.applyAccessibilityLabel(KCL10n.contentLibraryTitle, identifier: "top.content-library", toControl: self.contentLibraryButton)
         self.applyAccessibilityLabel(KCL10n.importPhotoTitle, identifier: "top.import-photo", toControl: importButton)
         self.applyAccessibilityLabel(KCL10n.saveTitle, identifier: "top.save", toControl: self.saveButton)
 
-        historyButton.addTarget(self, action: #selector(didTapOpenLatestSession), for: .touchUpInside)
-        lineArtButton.addTarget(self, action: #selector(didTapLineArtPicker), for: .touchUpInside)
+        self.contentLibraryButton.addTarget(self, action: #selector(didTapContentLibrary), for: .touchUpInside)
         importButton.addTarget(self, action: #selector(didTapImportImage), for: .touchUpInside)
         self.saveButton.addTarget(self, action: #selector(didTapSaveSession), for: .touchUpInside)
 
-        stack.addArrangedSubview(historyButton)
-        stack.addArrangedSubview(lineArtButton)
+        stack.addArrangedSubview(self.contentLibraryButton)
         stack.addArrangedSubview(importButton)
         stack.addArrangedSubview(self.saveButton)
     }
@@ -1202,7 +1207,75 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
         }
     }
 
-    @objc func didTapLineArtPicker() {
+    // MARK: - 内容库（T098）
+
+    @objc func didTapContentLibrary() {
+        self.setContentLibraryPanelVisible(!self.contentLibrary.isPanelVisible)
+    }
+
+    /// 显示/隐藏内容库浮层（带淡入淡出，置顶）。
+    func setContentLibraryPanelVisible(_ visible: Bool) {
+        guard let panel = self.contentLibraryPanelView else { return }
+        let changed = visible ? self.contentLibrary.show() : self.contentLibrary.hide()
+        guard changed else { return }
+        if visible {
+            panel.isHidden = false
+            self.view.bringSubviewToFront(panel)
+            panel.alpha = 0.0
+            UIView.animate(withDuration: 0.18) { panel.alpha = 1.0 }
+        } else {
+            UIView.animate(withDuration: 0.15, animations: { panel.alpha = 0.0 }) { _ in
+                panel.isHidden = true
+            }
+        }
+    }
+
+    /// 装配内容库浮层：分段标题、官方线稿网格、历史分区容器与回调。
+    func setupContentLibraryPanel(historyPanel: UIView) {
+        let panel = KCContentLibraryPanelView()
+        panel.translatesAutoresizingMaskIntoConstraints = false
+        panel.isHidden = true
+        panel.alpha = 0.0
+        self.view.addSubview(panel)
+        self.contentLibraryPanelView = panel
+
+        historyPanel.translatesAutoresizingMaskIntoConstraints = false
+        panel.historyContainer.addSubview(historyPanel)
+
+        NSLayoutConstraint.activate([
+            panel.topAnchor.constraint(equalTo: self.view.topAnchor),
+            panel.leadingAnchor.constraint(equalTo: self.view.leadingAnchor),
+            panel.trailingAnchor.constraint(equalTo: self.view.trailingAnchor),
+            panel.bottomAnchor.constraint(equalTo: self.view.bottomAnchor),
+            historyPanel.topAnchor.constraint(equalTo: panel.historyContainer.topAnchor),
+            historyPanel.leadingAnchor.constraint(equalTo: panel.historyContainer.leadingAnchor),
+            historyPanel.trailingAnchor.constraint(equalTo: panel.historyContainer.trailingAnchor),
+            historyPanel.bottomAnchor.constraint(equalTo: panel.historyContainer.bottomAnchor)
+        ])
+
+        for (index, partition) in KCContentLibraryPartition.defaultOrder.enumerated() {
+            panel.setSegmentTitle(self.contentLibrarySegmentTitle(for: partition), forPartitionAt: index)
+        }
+        panel.setMyLineArtEmptyText(KCL10n.libraryMyLineArtEmptyTitle)
+
+        self.embedLineArtPickerInContentLibrary(panel: panel)
+
+        panel.onPartitionChange = { [weak self, weak panel] index in
+            guard let self, let panel,
+                  KCContentLibraryPartition.defaultOrder.indices.contains(index) else { return }
+            let partition = KCContentLibraryPartition.defaultOrder[index]
+            if self.contentLibrary.selectPartition(partition) {
+                panel.showPartition(index: index)
+            }
+        }
+        panel.onClose = { [weak self] in
+            self?.setContentLibraryPanelVisible(false)
+        }
+
+        panel.showPartition(index: 0)
+    }
+
+    private func embedLineArtPickerInContentLibrary(panel: KCContentLibraryPanelView) {
         let picker = KCLineArtPickerViewController(
             items: self.currentLineArtItems(),
             lineArtFeature: self.lineArtFeature,
@@ -1211,19 +1284,32 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
             },
             selectionHandler: { [weak self] item in
                 guard let self = self else { return }
-                self.dismiss(animated: true) {
-                    self.performCanvasReplacementAfterUserConfirmation { [weak self] in
-                        self?.loadLineArtItem(item)
-                    }
+                // 选线稿 = 替换画布；先收起内容库，再按需确认替换。
+                self.setContentLibraryPanelVisible(false)
+                self.performCanvasReplacementAfterUserConfirmation { [weak self] in
+                    self?.loadLineArtItem(item)
                 }
             }
         )
+        self.addChild(picker)
+        picker.view.translatesAutoresizingMaskIntoConstraints = false
+        panel.officialLineArtContainer.addSubview(picker.view)
+        NSLayoutConstraint.activate([
+            picker.view.topAnchor.constraint(equalTo: panel.officialLineArtContainer.topAnchor),
+            picker.view.leadingAnchor.constraint(equalTo: panel.officialLineArtContainer.leadingAnchor),
+            picker.view.trailingAnchor.constraint(equalTo: panel.officialLineArtContainer.trailingAnchor),
+            picker.view.bottomAnchor.constraint(equalTo: panel.officialLineArtContainer.bottomAnchor)
+        ])
+        picker.didMove(toParent: self)
+        self.contentLibraryLineArtPicker = picker
+    }
 
-        let popover = picker.popoverPresentationController
-        popover?.sourceView = self.view
-        popover?.sourceRect = CGRect(x: self.view.bounds.midX, y: 104.0, width: 1.0, height: 1.0)
-        popover?.permittedArrowDirections = .up
-        self.present(picker, animated: true, completion: nil)
+    func contentLibrarySegmentTitle(for partition: KCContentLibraryPartition) -> String {
+        switch partition {
+        case .officialLineArt: return KCL10n.libraryOfficialLineArtTitle
+        case .myLineArt: return KCL10n.libraryMyLineArtTitle
+        case .history: return KCL10n.libraryHistoryTitle
+        }
     }
 
     func currentLineArtItems() -> [KCLineArtItem] {

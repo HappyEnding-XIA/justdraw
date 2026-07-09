@@ -30,6 +30,8 @@
 		A1FA010000000000C0A10003 /* KCLocalizedStrings.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1FA110000000000C0A10005 /* KCLocalizedStrings.swift */; };
 		A1FA010000000000C0A10004 /* KCCanvasFeature.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1FA110000000000C0A10006 /* KCCanvasFeature.swift */; };
 		A1FA010000000000C0A10007 /* KCLineArtFeature.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1FA110000000000C0A10007 /* KCLineArtFeature.swift */; };
+		A1FA010000000000C0A10018 /* KCContentLibraryFeature.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1FA110000000000C0A10018 /* KCContentLibraryFeature.swift */; };
+		A1FA010000000000C0A10019 /* KCContentLibraryPanelView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1FA110000000000C0A10019 /* KCContentLibraryPanelView.swift */; };
 		A1FA010000000000C0A10008 /* KCDeviceLayoutMetrics.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1FA110000000000C0A10008 /* KCDeviceLayoutMetrics.swift */; };
 		A1FA010000000000C0A10009 /* KCEditorUIFactory.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1FA110000000000C0A10009 /* KCEditorUIFactory.swift */; };
 		A1FA010000000000C0A10010 /* KCBrushDockFeature.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1FA110000000000C0A10010 /* KCBrushDockFeature.swift */; };
@@ -78,6 +80,8 @@
 		A1FA110000000000C0A10005 /* KCLocalizedStrings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KCLocalizedStrings.swift; sourceTree = "<group>"; };
 		A1FA110000000000C0A10006 /* KCCanvasFeature.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KCCanvasFeature.swift; sourceTree = "<group>"; };
 		A1FA110000000000C0A10007 /* KCLineArtFeature.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KCLineArtFeature.swift; sourceTree = "<group>"; };
+		A1FA110000000000C0A10018 /* KCContentLibraryFeature.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KCContentLibraryFeature.swift; sourceTree = "<group>"; };
+		A1FA110000000000C0A10019 /* KCContentLibraryPanelView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KCContentLibraryPanelView.swift; sourceTree = "<group>"; };
 		A1FA110000000000C0A10008 /* KCDeviceLayoutMetrics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KCDeviceLayoutMetrics.swift; sourceTree = "<group>"; };
 		A1FA110000000000C0A10009 /* KCEditorUIFactory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KCEditorUIFactory.swift; sourceTree = "<group>"; };
 		A1FA110000000000C0A10010 /* KCBrushDockFeature.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KCBrushDockFeature.swift; sourceTree = "<group>"; };
@@ -167,6 +171,7 @@
 				A1FB310000000000D0A10006 /* ContentPicker */,
 				A1FB310000000000D0A10007 /* LineArt */,
 				A1FB310000000000D0A10008 /* History */,
+				A1FB310000000000D0A1000D /* ContentLibrary */,
 			);
 			path = Features;
 			sourceTree = "<group>";
@@ -238,6 +243,15 @@
 				A1000011000000000000001F /* KCHistoryFeature.swift */,
 			);
 			path = History;
+			sourceTree = "<group>";
+		};
+		A1FB310000000000D0A1000D /* ContentLibrary */ = {
+			isa = PBXGroup;
+			children = (
+				A1FA110000000000C0A10018 /* KCContentLibraryFeature.swift */,
+				A1FA110000000000C0A10019 /* KCContentLibraryPanelView.swift */,
+			);
+			path = ContentLibrary;
 			sourceTree = "<group>";
 		};
 		A1FB310000000000D0A10009 /* Infrastructure */ = {
@@ -375,6 +389,8 @@
 				A10000010000000000000013 /* KCHistoryFeature.swift in Sources */,
 				A1FA010000000000C0A10004 /* KCCanvasFeature.swift in Sources */,
 				A1FA010000000000C0A10007 /* KCLineArtFeature.swift in Sources */,
+				A1FA010000000000C0A10018 /* KCContentLibraryFeature.swift in Sources */,
+				A1FA010000000000C0A10019 /* KCContentLibraryPanelView.swift in Sources */,
 				A1FA010000000000C0A10008 /* KCDeviceLayoutMetrics.swift in Sources */,
 				A1FA010000000000C0A10009 /* KCEditorUIFactory.swift in Sources */,
 				A1FA010000000000C0A10010 /* KCBrushDockFeature.swift in Sources */,

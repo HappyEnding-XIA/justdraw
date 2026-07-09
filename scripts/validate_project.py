@@ -40,6 +40,8 @@ APP_FILE_PATHS = {
     "KCLineArtFeature.swift": APP_ROOT / "Features" / "LineArt" / "KCLineArtFeature.swift",
     "KCLineArtPickerViewController.swift": APP_ROOT / "Features" / "LineArt" / "KCLineArtPickerViewController.swift",
     "KCHistoryFeature.swift": APP_ROOT / "Features" / "History" / "KCHistoryFeature.swift",
+    "KCContentLibraryFeature.swift": APP_ROOT / "Features" / "ContentLibrary" / "KCContentLibraryFeature.swift",
+    "KCContentLibraryPanelView.swift": APP_ROOT / "Features" / "ContentLibrary" / "KCContentLibraryPanelView.swift",
     "KCDrawingEngineAdapter.swift": APP_ROOT / "Infrastructure" / "KCDrawingEngineAdapter.swift",
     "KCSessionService.swift": APP_ROOT / "Infrastructure" / "KCSessionService.swift",
     "KCPhotoLibraryService.swift": APP_ROOT / "Infrastructure" / "KCPhotoLibraryService.swift",
@@ -444,6 +446,7 @@ def module_documentation_checks():
         "KCContentPickerFeature.md",
         "KCEditorPanelsFeature.md",
         "KCHistoryFeature.md",
+        "KCContentLibraryFeature.md",
     ]
     for filename in required_docs:
         path = docs_dir / filename
@@ -699,6 +702,85 @@ def canvas_viewport_checks():
         doc_text = module_doc.read_text(encoding="utf-8")
         checks.append(require_text(doc_text, "## 1. 职责", "KCCanvasViewportState doc documents responsibilities"))
         checks.append(require_text(doc_text, "## 4. 禁止回流规则", "KCCanvasViewportState doc documents anti-backflow rules"))
+    return checks
+
+
+def content_library_checks():
+    """T098：内容库框架（官方线稿 / 我的线稿 / 历史作品 / 导入预留）防回流校验。"""
+    checks = []
+    domain_model = ROOT / "Packages" / "KidCanvasModules" / "Sources" / "KCDomain" / "KCContentLibrary.swift"
+    domain_test = ROOT / "Packages" / "KidCanvasModules" / "Tests" / "KCDomainTests" / "KCContentLibraryTests.swift"
+    feature_file = APP_FILE_PATHS["KCContentLibraryFeature.swift"]
+    panel_file = APP_FILE_PATHS["KCContentLibraryPanelView.swift"]
+    module_doc = ROOT / "docs" / "modules" / "KCContentLibraryFeature.md"
+
+    for path, label in [
+        (domain_model, "KCContentLibrary.swift"),
+        (domain_test, "KCContentLibraryTests.swift"),
+        (feature_file, "KCContentLibraryFeature.swift"),
+        (panel_file, "KCContentLibraryPanelView.swift"),
+        (module_doc, "KCContentLibraryFeature.md"),
+    ]:
+        if not path.exists():
+            checks.append(fail(f"T098 content library file exists: {label}"))
+        else:
+            checks.append(ok(f"T098 content library file exists: {label}"))
+
+    if domain_model.exists():
+        text = domain_model.read_text(encoding="utf-8")
+        checks.append(require_text(text, "public enum KCContentLibraryPartition", "Content library declares the partition enum"))
+        checks.append(require_text(text, "case officialLineArt", "Content library has an official-line-art partition"))
+        checks.append(require_text(text, "case myLineArt", "Content library has a my-line-art partition"))
+        checks.append(require_text(text, "case history", "Content library has a history partition"))
+        checks.append(require_text(text, "allowsDelete", "Content library partitions declare delete capability"))
+        checks.append(forbid_text(text, "import UIKit", "KCContentLibrary state model stays UIKit-free in KCDomain"))
+
+    if domain_test.exists():
+        text = domain_test.read_text(encoding="utf-8")
+        checks.append(require_count_at_least(text, r"func test", 6, "KCContentLibrary has unit-test coverage"))
+
+    if feature_file.exists():
+        text = feature_file.read_text(encoding="utf-8")
+        checks.append(require_text(text, "final class KCContentLibraryFeature", "KCContentLibraryFeature is the App-layer decision facade"))
+        checks.append(require_text(text, "isPanelVisible", "KCContentLibraryFeature tracks panel visibility"))
+        checks.append(require_text(text, "currentPartition", "KCContentLibraryFeature tracks the current partition"))
+        checks.append(require_text(text, "func canDelete(in", "KCContentLibraryFeature exposes per-partition delete capability"))
+
+    if panel_file.exists():
+        text = panel_file.read_text(encoding="utf-8")
+        checks.append(require_text(text, "final class KCContentLibraryPanelView", "KCContentLibraryPanelView is the on-demand overlay panel"))
+        checks.append(require_text(text, "officialLineArtContainer", "Panel exposes an official-line-art container"))
+        checks.append(require_text(text, "myLineArtContainer", "Panel exposes a my-line-art container"))
+        checks.append(require_text(text, "historyContainer", "Panel exposes a history container"))
+        checks.append(require_text(text, "UISegmentedControl", "Panel uses a segmented control for partitions"))
+
+    main_text = APP_FILE_PATHS["KCMainViewController.swift"].read_text(encoding="utf-8")
+    checks.append(require_text(main_text, "contentLibraryButton", "Editor exposes the top-right content-library entry"))
+    checks.append(require_text(main_text, "func setupContentLibraryPanel", "Editor assembles the content-library overlay"))
+    checks.append(require_text(main_text, "func setContentLibraryPanelVisible", "Editor can show/hide the content library"))
+    checks.append(require_text(main_text, "func didTapContentLibrary", "Editor toggles the content library from the top-right entry"))
+    # 入口收敛：不再保留独立的线稿弹窗入口与右侧常驻历史面板。
+    checks.append(forbid_text(main_text, "func didTapLineArtPicker()", "Editor no longer presents a standalone line-art popover (folded into the library)"))
+    checks.append(forbid_text(main_text, "rightStack.addArrangedSubview(historyPanel)", "History panel is not in the always-visible right stack (moved into the library)"))
+
+    runtime_text = APP_FILE_PATHS["KCMainViewController+RuntimeAcceptance.swift"].read_text(encoding="utf-8")
+    checks.append(require_text(runtime_text, "--kc-runtime-content-library-check", "Runtime acceptance wires the content-library probe launch arg"))
+    checks.append(require_text(runtime_text, "runContentLibraryAcceptanceProbe", "Runtime acceptance runs the content-library probe"))
+    checks.append(require_text(runtime_text, "kc_runtime_acceptance_content_library.json", "Runtime acceptance writes the content-library result file"))
+
+    script_text = (ROOT / "scripts" / "runtime_acceptance_test.sh").read_text(encoding="utf-8")
+    checks.append(require_text(script_text, "content-library)", "Acceptance script exposes the content-library probe"))
+
+    zh_text = (ROOT / "KidCanvas" / "Localization" / "zh-Hans.lproj" / "Localizable.strings").read_text(encoding="utf-8")
+    en_text = (ROOT / "KidCanvas" / "Localization" / "en.lproj" / "Localizable.strings").read_text(encoding="utf-8")
+    for key in ["top.content-library.title", "library.partition.official-line-art", "library.partition.my-line-art", "library.partition.history", "library.empty.my-line-art"]:
+        checks.append(require_text(zh_text, f'"{key}"', f"Content library zh localization: {key}"))
+        checks.append(require_text(en_text, f'"{key}"', f"Content library en localization: {key}"))
+
+    if module_doc.exists():
+        doc_text = module_doc.read_text(encoding="utf-8")
+        checks.append(require_text(doc_text, "## 1. 职责", "KCContentLibraryFeature doc documents responsibilities"))
+        checks.append(require_text(doc_text, "## 4. 禁止回流规则", "KCContentLibraryFeature doc documents anti-backflow rules"))
     return checks
 
 
@@ -2124,6 +2206,7 @@ def main():
     checks.extend(apple_double_checks())
     checks.extend(architecture_reality_checks())
     checks.extend(canvas_viewport_checks())
+    checks.extend(content_library_checks())
     checks.extend(module_documentation_checks())
     checks.extend(delivery_acceptance_checks())
     checks.extend(product_stamp_naming_checks())

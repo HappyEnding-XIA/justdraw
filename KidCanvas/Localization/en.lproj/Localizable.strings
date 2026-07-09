@@ -149,3 +149,18 @@
 
 /* Canvas navigation: restore-view button (shown only after zoom/pan deviates from the default view) */
 "canvas.restore-viewport.title" = "Restore View";
+
+/* Content library: top-right entry button (T098) */
+"top.content-library.title" = "Library";
+
+/* Content library section: official line art (cannot be deleted) */
+"library.partition.official-line-art" = "Line Art";
+
+/* Content library section: my line art (open + delete) */
+"library.partition.my-line-art" = "My Line Art";
+
+/* Content library section: history (open + delete) */
+"library.partition.history" = "History";
+
+/* Content library: my-line-art empty state (reserved until T099) */
+"library.empty.my-line-art" = "No saved line art yet. Save a drawing you love as line art and it will appear here.";

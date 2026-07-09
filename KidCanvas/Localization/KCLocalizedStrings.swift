@@ -142,6 +142,19 @@ enum KCL10n {
     static var lineArtBadge: String { tr("badge.line-art") }
     /// T097：画布“恢复视图”按钮（仅在画布偏离默认视图时显示）。
     static var restoreViewportTitle: String { tr("canvas.restore-viewport.title") }
+
+    // MARK: - 内容库（T098）
+
+    /// T098：顶栏右“内容库”入口按钮。
+    static var contentLibraryTitle: String { tr("top.content-library.title") }
+    /// 内容库分区：官方线稿。
+    static var libraryOfficialLineArtTitle: String { tr("library.partition.official-line-art") }
+    /// 内容库分区：我的线稿。
+    static var libraryMyLineArtTitle: String { tr("library.partition.my-line-art") }
+    /// 内容库分区：历史作品。
+    static var libraryHistoryTitle: String { tr("library.partition.history") }
+    /// 我的线稿分区空态文案（T099 接入真实数据前为预留）。
+    static var libraryMyLineArtEmptyTitle: String { tr("library.empty.my-line-art") }
     static var hideToolsTitle: String { tr("action.hide-tools.title") }
     static var showToolsTitle: String { tr("action.show-tools.title") }
     static var clearCanvasAlertTitle: String { tr("alert.clear-canvas.title") }

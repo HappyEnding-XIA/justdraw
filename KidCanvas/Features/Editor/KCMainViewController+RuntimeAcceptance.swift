@@ -7,6 +7,7 @@
 
 import UIKit
 import KCDrawingEngine
+import KCDomain
 
 #if DEBUG
 
@@ -29,6 +30,7 @@ extension KCMainViewController {
         let shouldRunBrushSamplesProbe = arguments.contains("--kc-runtime-brush-samples-check")
         let shouldRunBrushPerfProbe = arguments.contains("--kc-runtime-brush-perf-check")
         let shouldRunCanvasViewportProbe = arguments.contains("--kc-runtime-canvas-viewport-check")
+        let shouldRunContentLibraryProbe = arguments.contains("--kc-runtime-content-library-check")
         guard shouldRunEmptySaveProbe
                 || shouldRunLayoutProbe
                 || shouldRunStickerProbe
@@ -38,7 +40,8 @@ extension KCMainViewController {
                 || shouldRunSystemUIProbe
                 || shouldRunBrushSamplesProbe
                 || shouldRunBrushPerfProbe
-                || shouldRunCanvasViewportProbe else {
+                || shouldRunCanvasViewportProbe
+                || shouldRunContentLibraryProbe else {
             return
         }
         self.runtimeAcceptanceProbeDidRun = true
@@ -62,6 +65,8 @@ extension KCMainViewController {
                 self?.runSystemUIPresentationAcceptanceProbe()
             } else if shouldRunCanvasViewportProbe {
                 self?.runCanvasViewportAcceptanceProbe()
+            } else if shouldRunContentLibraryProbe {
+                self?.runContentLibraryAcceptanceProbe()
             } else {
                 self?.runEmptySaveAcceptanceProbe()
             }
@@ -213,6 +218,94 @@ extension KCMainViewController {
             "restoreButtonHiddenAfterRestore": restoreButtonHiddenAfterRestore
         ]
         self.writeRuntimeAcceptanceResult(result, fileName: "kc_runtime_acceptance_canvas_viewport.json")
+    }
+
+    /// T098：内容库运行时验收。验证浮层默认关闭、可打开；分区切换；官方线稿非空且不可删除；
+    /// 历史与我的线稿分区容器按分区显隐；我的线稿为空态；可关闭。
+    private func runContentLibraryAcceptanceProbe() {
+        self.activeSession = nil
+        self.selectedHistorySession = nil
+        self.activeSessionHasUnsavedChanges = false
+        self.invalidateDraftSaveTimer()
+        self.suppressNextDraftSave = true
+        self.canvasView.startBlankCanvas()
+        self.clearDraftAndInvalidateCurrentDraftMarker()
+        self.refreshHistoryUI()
+        self.refreshActionButtons()
+        self.view.layoutIfNeeded()
+
+        let initiallyHidden = self.contentLibraryPanelView?.isHidden ?? true
+        let featureInitiallyHidden = !self.contentLibrary.isPanelVisible
+
+        // 打开内容库（默认官方线稿分区）。
+        self.setContentLibraryPanelVisible(true)
+        let panelShown = !(self.contentLibraryPanelView?.isHidden ?? true)
+        let featureVisible = self.contentLibrary.isPanelVisible
+        let defaultPartitionIsOfficial = self.contentLibrary.currentPartition == .officialLineArt
+        let pickerEmbedded = self.contentLibraryLineArtPicker != nil
+        let officialContainerVisible = !(self.contentLibraryPanelView?.officialLineArtContainer.isHidden ?? true)
+
+        let officialItemCount = self.currentLineArtItems().count
+        let officialNotEmpty = officialItemCount > 0
+        // 官方线稿分区不可删除（分区能力由 KCDomain 守护）。
+        let officialNotDeletable = !self.contentLibrary.canDelete(in: .officialLineArt, itemCount: officialItemCount)
+
+        // 切到历史分区：容器可见、分区选中。
+        let historyIndex = KCContentLibraryPartition.defaultOrder.firstIndex(of: .history) ?? 2
+        self.contentLibraryPanelView?.showPartition(index: historyIndex)
+        self.contentLibrary.selectPartition(.history)
+        let historySelected = self.contentLibrary.currentPartition == .history
+        let historyContainerVisible = !(self.contentLibraryPanelView?.historyContainer.isHidden ?? true)
+
+        // 切到我的线稿分区：空态、容器可见、不可删除（空）。
+        let myIndex = KCContentLibraryPartition.defaultOrder.firstIndex(of: .myLineArt) ?? 1
+        self.contentLibraryPanelView?.showPartition(index: myIndex)
+        self.contentLibrary.selectPartition(.myLineArt)
+        let myLineArtSelected = self.contentLibrary.currentPartition == .myLineArt
+        let myLineArtContainerVisible = !(self.contentLibraryPanelView?.myLineArtContainer.isHidden ?? true)
+        let myLineArtEmpty = self.contentLibrary.isEmpty(partition: .myLineArt, itemCount: 0)
+        let myLineArtNotDeletableWhenEmpty = !self.contentLibrary.canDelete(in: .myLineArt, itemCount: 0)
+
+        // 关闭内容库。
+        self.setContentLibraryPanelVisible(false)
+
+        let passed = initiallyHidden
+            && featureInitiallyHidden
+            && panelShown
+            && featureVisible
+            && defaultPartitionIsOfficial
+            && pickerEmbedded
+            && officialContainerVisible
+            && officialNotEmpty
+            && officialNotDeletable
+            && historySelected
+            && historyContainerVisible
+            && myLineArtSelected
+            && myLineArtContainerVisible
+            && myLineArtEmpty
+            && myLineArtNotDeletableWhenEmpty
+
+        let result: [String: Any] = [
+            "probe": "content-library",
+            "passed": passed,
+            "initiallyHidden": initiallyHidden,
+            "featureInitiallyHidden": featureInitiallyHidden,
+            "panelShown": panelShown,
+            "featureVisible": featureVisible,
+            "defaultPartitionIsOfficial": defaultPartitionIsOfficial,
+            "pickerEmbedded": pickerEmbedded,
+            "officialContainerVisible": officialContainerVisible,
+            "officialItemCount": officialItemCount,
+            "officialNotEmpty": officialNotEmpty,
+            "officialNotDeletable": officialNotDeletable,
+            "historySelected": historySelected,
+            "historyContainerVisible": historyContainerVisible,
+            "myLineArtSelected": myLineArtSelected,
+            "myLineArtContainerVisible": myLineArtContainerVisible,
+            "myLineArtEmpty": myLineArtEmpty,
+            "myLineArtNotDeletableWhenEmpty": myLineArtNotDeletableWhenEmpty
+        ]
+        self.writeRuntimeAcceptanceResult(result, fileName: "kc_runtime_acceptance_content_library.json")
     }
 
     private func runStickerUndoRedoAcceptanceProbe() {

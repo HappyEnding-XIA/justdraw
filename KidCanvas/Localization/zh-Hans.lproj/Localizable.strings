@@ -149,3 +149,18 @@
 
 /* 画布导航：恢复视图按钮（仅在画布缩放/平移偏离默认视图时显示） */
 "canvas.restore-viewport.title" = "恢复视图";
+
+/* 内容库：顶栏右入口按钮（T098） */
+"top.content-library.title" = "内容库";
+
+/* 内容库分区：官方线稿（不可删除） */
+"library.partition.official-line-art" = "官方线稿";
+
+/* 内容库分区：我的线稿（可打开、可删除） */
+"library.partition.my-line-art" = "我的线稿";
+
+/* 内容库分区：历史作品（可打开、可删除） */
+"library.partition.history" = "历史作品";
+
+/* 内容库：我的线稿分区空态（T099 接入真实数据前为预留） */
+"library.empty.my-line-art" = "还没有我的线稿，把喜欢的画保存为线稿后会出现在这里。";

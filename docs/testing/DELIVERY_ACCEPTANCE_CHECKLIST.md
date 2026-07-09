@@ -28,7 +28,7 @@
 | 编号 | 流程 | 交付标准 | 自动验证 | 人工触控 |
 |---|---|---|---|---|
 | N01 | 画布导航 | 默认按安全创作区居中；双指缩放 50%-300%；双指平移不让画布完全移出可视区；恢复视图可回到默认状态 | ✅ 已实现：`KCCanvasViewportState` 单测 + `canvas-viewport` runtime acceptance | iPhone/iPad 双端缩放、平移、恢复视图；确认绘制、填色、取色、印章命中不偏移 |
-| N02 | 内容库 | 当前页面内统一展示官方线稿、我的线稿、历史作品；官方线稿不可删除；历史和我的线稿删除语义区分 | 规划新增 `KCContentLibraryFeature` 单测 + validator | 切换分区、打开官方线稿、打开历史作品、确认入口不遮挡画布 |
+| N02 | 内容库 | 当前页面内统一展示官方线稿、我的线稿、历史作品；官方线稿不可删除；历史和我的线稿删除语义区分 | ✅ 已实现（官方线稿/历史作品分区 + 浮层开关/分区切换/不可删除校验，T098）：`KCContentLibrary` 单测 + `content-library` runtime acceptance。注：我的线稿分区为预留空态，删除语义待 T099 | 切换分区、打开官方线稿、打开历史作品、确认入口不遮挡画布 |
 | N03 | 我的线稿 | 当前画布可保存为自定义线稿；自动命名；可打开和删除；删除不影响历史作品 | 规划新增 store 单测 + runtime acceptance | 保存为线稿、从我的线稿打开、删除我的线稿、再打开历史作品 |
 | N04 | 图片导入 / 拍照 | 顶部右侧和内容库入口复用同一导入服务；相册旧链路不回退；无相机设备给出降级提示 | 规划新增 system-ui / no-camera acceptance | 相册导入、拍照入口、取消、权限失败和模拟器无相机提示 |
 | N05 | 离线图片生成线稿 | 白底卡通图可生成可填色位图线稿；复杂照片失败或质量差时有明确提示；不上传儿童照片 | 规划新增 pipeline 单测 + runtime acceptance 样例图 | 选择相册/拍照图片生成线稿，保存到我的线稿并打开填色 |
@@ -67,6 +67,8 @@ scripts/runtime_acceptance_test.sh "iPhone 17 Pro" drawing-tools
 scripts/runtime_acceptance_test.sh "iPad Pro 11 M4" drawing-tools
 scripts/runtime_acceptance_test.sh "iPhone 17 Pro" canvas-viewport
 scripts/runtime_acceptance_test.sh "iPad Pro 11 M4" canvas-viewport
+scripts/runtime_acceptance_test.sh "iPhone 17 Pro" content-library
+scripts/runtime_acceptance_test.sh "iPad Pro 11 M4" content-library
 scripts/runtime_acceptance_test.sh "iPhone 17 Pro" system-ui
 scripts/runtime_acceptance_test.sh "iPad Pro 11 M4" system-ui
 git diff --check
@@ -116,7 +118,7 @@ git diff --check
 下一阶段需要新增的自动验证：
 
 - `canvas-viewport`（✅ 已实现，T097）：覆盖默认安全创作区、缩放、平移裁剪、恢复视图以及屏幕点到画布点映射；并在非默认视口下验证填色/取色同点一致（不偏移）。
-- `content-library`：覆盖官方线稿、我的线稿、历史作品分区状态和删除能力差异。
+- `content-library`（✅ 已实现，T098）：覆盖内容库浮层开关、三分区切换/容器显隐、官方线稿非空且不可删除、历史与我的线稿分区（我的线稿为预留空态）。
 - `custom-line-art`：覆盖保存为线稿、打开、删除、数量上限和历史作品不受影响。
 - `image-import-camera`：覆盖相册/拍照统一入口、无相机降级和权限失败文案。
 - `line-art-extraction`：覆盖白底卡通图离线生成线稿、复杂图片质量提示和不使用云端服务。

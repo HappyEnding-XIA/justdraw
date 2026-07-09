@@ -27,12 +27,12 @@
 - [KCColorPalettePanelRenderer](./KCColorPalettePanelRenderer.md) — App 层颜色面板 UIKit 渲染与当前色高亮。
 - [KCBrushStickerPanelView](./KCBrushStickerPanelView.md) — App 层画笔、贴纸、橡皮与贴纸编辑面板组装。
 - [KCCanvasViewportState](./KCCanvasViewportState.md) — KCDomain 画布视口纯逻辑：缩放/平移/安全创作区居中/坐标转换（T097）。
+- [KCContentLibraryFeature](./KCContentLibraryFeature.md) — App 层内容库按需浮层：官方线稿/我的线稿/历史作品分区编排（T098）。
 
 ## 下一阶段规划模块
 
-以下条目来自 2026-07-09 PRD 新基线，目前只作为 T098-T101 的设计边界；在对应任务实现和补齐模块文档前，不视为已落地模块。
+以下条目来自 2026-07-09 PRD 新基线，目前只作为 T099-T101 的设计边界；在对应任务实现和补齐模块文档前，不视为已落地模块。
 
-- `KCContentLibraryFeature` — 规划用于统一官方线稿、我的线稿、历史作品和导入结果入口。
-- `KCCustomLineArtStore` — 规划用于我的线稿 PNG、缩略图和 metadata 本地生命周期。
-- `KCImageImportService` — 规划用于统一相册导入、拍照导入、权限失败和取消处理。
-- `KCLineArtExtraction` — 规划用于离线图片生成线稿，MVP 不依赖云端 AI。
+- `KCCustomLineArtStore` — 规划用于我的线稿 PNG、缩略图和 metadata 本地生命周期（T099）。
+- `KCImageImportService` — 规划用于统一相册导入、拍照导入、权限失败和取消处理（T100）。
+- `KCLineArtExtraction` — 规划用于离线图片生成线稿，MVP 不依赖云端 AI（T101）。

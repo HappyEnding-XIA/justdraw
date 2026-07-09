@@ -51,7 +51,7 @@ App 壳工程 + 本地 SPM 聚合包 + 多 target 模块 + 分层依赖约束
 
 - T096 先完成架构、模块文档和验收口径对齐。
 - T097 先建立画布 viewport 边界，避免后续内容库和线稿能力建立在错误坐标体系上。（T097 已完成：`KCCanvasViewportState` 落地 `KCDomain`，画布层接入双指缩放/平移与坐标转换，详见 `docs/modules/KCCanvasViewportState.md`。）
-- T098 再建立内容库框架，收敛官方线稿、我的线稿、历史作品和导入结果入口。
+- T098 再建立内容库框架，收敛官方线稿、我的线稿、历史作品和导入结果入口。（T098 已完成：`KCContentLibraryFeature` + `KCContentLibraryPanelView` 落地，官方线稿/历史作品迁入内容库浮层，线稿弹窗与右侧常驻历史面板已收敛，详见 `docs/modules/KCContentLibraryFeature.md`。）
 - T099 新增我的线稿本地生命周期，独立于历史作品。
 - T100 抽出图片导入服务，统一相册和拍照入口。
 - T101 实现离线图片转线稿 MVP，并复用我的线稿生命周期。
@@ -208,7 +208,7 @@ Feature 拆分进度（App 层 Feature 类型 + KCDomain 纯逻辑）：
 下一阶段 Feature 规划：
 
 - **T097 `KCCanvasViewportState`（已完成）**：承接画布 scale、translation、安全创作区、默认视图判断和位移裁剪的纯逻辑模型，落地在 `KCDomain`（UIKit-free，可单测）。真实 UIKit 手势（双指缩放/平移）与恢复视图按钮在画布 view / 主控制器（App/Canvas 层）处理。该模型服务绘制、填色、取色、印章命中和恢复视图，统一经 `canvasPoint(forViewPoint:)` 做屏幕→内容坐标转换，不得只服务视觉缩放。详见 `docs/modules/KCCanvasViewportState.md`。
-- **T098 `KCContentLibraryFeature`（规划）**：统一内容库分区、条目状态、打开能力、删除能力和空态。它只做 App 层编排，不直接读写会话文件、不生成线稿、不持有系统 picker。
+- **T098 `KCContentLibraryFeature`（已完成）**：统一内容库分区、条目状态、打开能力、删除能力和空态。它只做 App 层编排，不直接读写会话文件、不生成线稿、不持有系统 picker。落地形态：`KCContentLibraryFeature`（决策门面，持有面板可见性与当前分区）+ `KCContentLibraryPanelView`（按需浮层，分段控件切换官方线稿/我的线稿/历史作品）+ KCDomain `KCContentLibraryPartition`/`KCContentLibrarySectionState`（UIKit-free 状态模型）。官方线稿分区内嵌 `KCLineArtPickerViewController` 网格（线稿弹窗并入）；历史分区承载从右侧 `rightStack` 迁出的 `historyPanel`；我的线稿/导入为预留空态。详见 `docs/modules/KCContentLibraryFeature.md`。
 - **T099 `KCCustomLineArt` / `KCCustomLineArtStore`（规划）**：定义我的线稿 metadata、PNG、缩略图和删除生命周期。删除我的线稿只影响线稿库条目，不影响已经保存的历史作品。
 - **T100 `KCImageImportSource` / 图片导入服务（规划）**：统一相册和拍照入口；系统 picker 细节通过服务/协议隔离，主控制器不继续堆系统 UI 回调。
 - **T101 `KCLineArtExtracting`（规划）**：定义离线图片生成线稿协议。MVP 只输出位图线稿，优先 Core Image / Vision / Core Graphics 离线 pipeline，不引入云端 AI。
@@ -257,7 +257,7 @@ Feature 拆分进度（App 层 Feature 类型 + KCDomain 纯逻辑）：
 | `KCSessionPersistence` | Infra | 本地会话存储、缩略图、草稿、元数据 |
 | `KCPhotoLibrary` | Infra | 相册导入导出和权限适配 |
 | `KCContentCatalog` | Infra | 线稿、贴纸、调色板等资源目录 |
-| `KCContentLibraryFeature` | Feature（规划） | 官方线稿、我的线稿、历史作品和导入结果入口编排 |
+| `KCContentLibraryFeature` | Feature | 官方线稿、我的线稿、历史作品和导入结果入口编排（T098 已落地） |
 | `KCCustomLineArtStore` | Infra（规划） | 我的线稿 PNG、缩略图与 metadata 本地存储 |
 | `KCImageImportService` | Infra（规划） | 相册与拍照导入、权限失败和取消处理 |
 | `KCLineArtExtraction` | Core（规划） | 离线图片生成线稿 pipeline |
