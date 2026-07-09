@@ -54,7 +54,11 @@ final class KCMyLineArtGridView: UIView {
         saveButton.layer.cornerRadius = 16.0
         saveButton.layer.cornerCurve = .continuous
         saveButton.backgroundColor = KCEditorVisualStyle.accentColor
-        saveButton.contentEdgeInsets = UIEdgeInsets(top: 12.0, left: 18.0, bottom: 12.0, right: 18.0)
+        if #available(iOS 15.0, *) {
+            var configuration = UIButton.Configuration.plain()
+            configuration.contentInsets = NSDirectionalEdgeInsets(top: 12.0, leading: 18.0, bottom: 12.0, trailing: 18.0)
+            saveButton.configuration = configuration
+        }
         saveButton.addTarget(self, action: #selector(handleSaveAsLineArt), for: .touchUpInside)
         addSubview(saveButton)
 
@@ -64,7 +68,11 @@ final class KCMyLineArtGridView: UIView {
         generateButton.layer.cornerRadius = 16.0
         generateButton.layer.cornerCurve = .continuous
         generateButton.backgroundColor = KCEditorVisualStyle.compactBackgroundColor
-        generateButton.contentEdgeInsets = UIEdgeInsets(top: 12.0, left: 16.0, bottom: 12.0, right: 16.0)
+        if #available(iOS 15.0, *) {
+            var configuration = UIButton.Configuration.plain()
+            configuration.contentInsets = NSDirectionalEdgeInsets(top: 12.0, leading: 16.0, bottom: 12.0, trailing: 16.0)
+            generateButton.configuration = configuration
+        }
         generateButton.addTarget(self, action: #selector(handleGenerateFromPhoto), for: .touchUpInside)
         addSubview(generateButton)
 

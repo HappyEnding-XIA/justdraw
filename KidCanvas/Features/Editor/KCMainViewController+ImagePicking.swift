@@ -83,7 +83,7 @@ extension KCMainViewController {
         self.customLineArtService.saveExtraction(result, sourceSessionId: activeId) { [weak self] saved in
             guard let self else { return }
             self.refreshCustomLineArt()
-            guard let saved, let uiImage = UIImage(data: result.lineArtPNG) else {
+            guard saved != nil, let uiImage = UIImage(data: result.lineArtPNG) else {
                 self.showSaveToastWithSuccess(false)
                 return
             }
