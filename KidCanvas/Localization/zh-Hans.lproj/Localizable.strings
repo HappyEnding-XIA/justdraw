@@ -146,3 +146,6 @@
 "line-art.rocket" = "火箭";
 "line-art.cupcake" = "纸杯蛋糕";
 "line-art.dino" = "恐龙";
+
+/* 画布导航：恢复视图按钮（仅在画布缩放/平移偏离默认视图时显示） */
+"canvas.restore-viewport.title" = "恢复视图";

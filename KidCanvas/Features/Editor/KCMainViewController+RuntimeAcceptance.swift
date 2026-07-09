@@ -28,6 +28,7 @@ extension KCMainViewController {
         let shouldRunSystemUIProbe = arguments.contains("--kc-runtime-system-ui-check")
         let shouldRunBrushSamplesProbe = arguments.contains("--kc-runtime-brush-samples-check")
         let shouldRunBrushPerfProbe = arguments.contains("--kc-runtime-brush-perf-check")
+        let shouldRunCanvasViewportProbe = arguments.contains("--kc-runtime-canvas-viewport-check")
         guard shouldRunEmptySaveProbe
                 || shouldRunLayoutProbe
                 || shouldRunStickerProbe
@@ -36,7 +37,8 @@ extension KCMainViewController {
                 || shouldRunDrawingToolsProbe
                 || shouldRunSystemUIProbe
                 || shouldRunBrushSamplesProbe
-                || shouldRunBrushPerfProbe else {
+                || shouldRunBrushPerfProbe
+                || shouldRunCanvasViewportProbe else {
             return
         }
         self.runtimeAcceptanceProbeDidRun = true
@@ -58,6 +60,8 @@ extension KCMainViewController {
                 self?.runDrawingToolsAcceptanceProbe()
             } else if shouldRunSystemUIProbe {
                 self?.runSystemUIPresentationAcceptanceProbe()
+            } else if shouldRunCanvasViewportProbe {
+                self?.runCanvasViewportAcceptanceProbe()
             } else {
                 self?.runEmptySaveAcceptanceProbe()
             }
@@ -132,6 +136,83 @@ extension KCMainViewController {
             "checks": checks
         ]
         self.writeRuntimeAcceptanceResult(result, fileName: "kc_runtime_acceptance_layout.json")
+    }
+
+    /// T097：画布导航运行时验收。验证默认视图居中、非默认视口下坐标转换非恒等、
+    /// 填色/取色同内容点一致（不偏移）、恢复视图回到默认、恢复按钮按状态显隐。
+    private func runCanvasViewportAcceptanceProbe() {
+        self.activeSession = nil
+        self.selectedHistorySession = nil
+        self.activeSessionHasUnsavedChanges = false
+        self.invalidateDraftSaveTimer()
+        self.suppressNextDraftSave = true
+        self.canvasView.startBlankCanvas()
+        self.clearDraftAndInvalidateCurrentDraftMarker()
+        self.refreshHistoryUI()
+        self.refreshActionButtons()
+        self.view.layoutIfNeeded()
+        // 先注入面板感知安全创作区，让默认视图按创作区居中。
+        self.canvasView.applyViewportRect(self.canvasCreationRect())
+
+        let defaultIsDefault = self.canvasView.viewportIsAtDefault
+        let restoreButtonHiddenAtDefault = self.restoreViewportButton.isHidden
+
+        // 设非默认视口：放大 2 倍并平移。
+        self.canvasView.runtimeAcceptanceSetViewport(scale: 2.0, translation: CGPoint(x: 120.0, y: -80.0))
+        let afterSetIsDefault = self.canvasView.viewportIsAtDefault
+        let restoreButtonShownAfterSet = self.restoreViewportButton.isHidden == false
+        let scaleAfterSet = self.canvasView.currentViewportScale
+
+        // 屏幕中心经 viewport 反变换得到内容点，验证转换非恒等（缩放下内容点应与屏幕点不同）。
+        let canvasBounds = self.canvasView.bounds
+        let screenCenter = CGPoint(x: canvasBounds.midX, y: canvasBounds.midY)
+        let contentPoint = self.canvasView.runtimeAcceptanceCanvasPoint(forScreenPoint: screenCenter)
+        let conversionNonIdentity = abs(contentPoint.x - screenCenter.x) > 1.0
+            || abs(contentPoint.y - screenCenter.y) > 1.0
+
+        // 同一内容点先填色再取色，验证填色与取色解析到同一内容像素（缩放/平移不偏移）。
+        let contentSize = CGSize(width: max(canvasBounds.width, 1.0), height: max(canvasBounds.height, 1.0))
+        let normalized = CGPoint(x: contentPoint.x / contentSize.width, y: contentPoint.y / contentSize.height)
+        let fillColor = UIColor(red: 0.20, green: 0.60, blue: 0.30, alpha: 1.0)
+        self.canvasView.currentColor = fillColor
+        let fillSucceeded = self.canvasView.performRuntimeAcceptanceFloodFill(atNormalizedPoint: normalized)
+        self.canvasView.currentToolMode = .picker
+        let pickedColor = self.canvasView.runtimeAcceptancePickedColor(atNormalizedPoint: normalized)
+        let pickedMatchesFill = self.color(pickedColor, matchesColor: fillColor)
+
+        // 恢复视图。
+        self.canvasView.restoreDefaultViewport()
+        let afterRestoreIsDefault = self.canvasView.viewportIsAtDefault
+        let restoreButtonHiddenAfterRestore = self.restoreViewportButton.isHidden
+
+        let passed = defaultIsDefault
+            && restoreButtonHiddenAtDefault
+            && !afterSetIsDefault
+            && restoreButtonShownAfterSet
+            && abs(scaleAfterSet - 2.0) < 0.01
+            && conversionNonIdentity
+            && fillSucceeded
+            && pickedMatchesFill
+            && afterRestoreIsDefault
+            && restoreButtonHiddenAfterRestore
+
+        let result: [String: Any] = [
+            "probe": "canvas-viewport",
+            "passed": passed,
+            "defaultIsDefault": defaultIsDefault,
+            "restoreButtonHiddenAtDefault": restoreButtonHiddenAtDefault,
+            "afterSetIsDefault": afterSetIsDefault,
+            "restoreButtonShownAfterSet": restoreButtonShownAfterSet,
+            "scaleAfterSet": scaleAfterSet,
+            "screenCenter": self.dictionary(for: CGRect(origin: screenCenter, size: .zero)),
+            "contentPoint": self.dictionary(for: CGRect(origin: contentPoint, size: .zero)),
+            "conversionNonIdentity": conversionNonIdentity,
+            "fillSucceeded": fillSucceeded,
+            "pickedMatchesFill": pickedMatchesFill,
+            "afterRestoreIsDefault": afterRestoreIsDefault,
+            "restoreButtonHiddenAfterRestore": restoreButtonHiddenAfterRestore
+        ]
+        self.writeRuntimeAcceptanceResult(result, fileName: "kc_runtime_acceptance_canvas_viewport.json")
     }
 
     private func runStickerUndoRedoAcceptanceProbe() {

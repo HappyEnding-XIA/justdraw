@@ -17,6 +17,8 @@ protocol KDDrawingCanvasViewDelegate: AnyObject {
     @objc optional func drawingCanvasViewDidInsertSticker(_ canvasView: KCDrawingCanvasView)
     @objc optional func drawingCanvasViewSelectionDidChange(_ canvasView: KCDrawingCanvasView)
     @objc optional func drawingCanvasViewContentDidChange(_ canvasView: KCDrawingCanvasView)
+    /// 画布视口（缩放/平移）发生变化。主控制器据此显隐“恢复视图”按钮。
+    @objc optional func drawingCanvasViewportDidChange(_ canvasView: KCDrawingCanvasView)
 }
 
 /// 原 Objective-C `KDDrawingCanvasView` 的忠实 Swift 移植。行为保持 1:1 一致
@@ -55,16 +57,44 @@ final class KCDrawingCanvasView: UIView, UIGestureRecognizerDelegate {
     private var nonStickerRasterCacheScale: CGFloat = 0.0
     private weak var selectedStickerView: KDStickerView?
 
+    // MARK: - 画布视口（T097）
+
+    /// 画布视口状态（缩放/平移/安全创作区）。内容坐标空间尺寸等于 `bounds.size`，
+    /// 由 `layoutSubviews` 与 `applyViewportRect(_:)` 维护。
+    private var viewportState = KCCanvasViewportState(contentSize: .zero, viewportRect: .zero)
+    /// 双指捏合缩放手势。
+    private lazy var canvasPinchGestureRecognizer: UIPinchGestureRecognizer = {
+        UIPinchGestureRecognizer(target: self, action: #selector(handleCanvasPinch(_:)))
+    }()
+    /// 双指拖拽平移手势（与 pinch 同时识别，实现边缩放边平移）。
+    private lazy var canvasTwoFingerPanGestureRecognizer: UIPanGestureRecognizer = {
+        let pan = UIPanGestureRecognizer(target: self, action: #selector(handleCanvasTwoFingerPan(_:)))
+        pan.minimumNumberOfTouches = 2
+        pan.maximumNumberOfTouches = 2
+        return pan
+    }()
+
     override init(frame: CGRect) {
         super.init(frame: frame)
         backgroundColor = .white
         isMultipleTouchEnabled = true
+        installCanvasViewportGestures()
     }
 
     required init?(coder: NSCoder) {
         super.init(coder: coder)
         backgroundColor = .white
         isMultipleTouchEnabled = true
+        installCanvasViewportGestures()
+    }
+
+    /// 安装双指缩放/平移手势。单指与 Apple Pencil 仍走 `touchesBegan/Moved/Ended` 绘制；
+    /// 两指落在印章子视图上时让位给印章自身的缩放/旋转/拖拽手势（见 `shouldBegin`）。
+    private func installCanvasViewportGestures() {
+        canvasPinchGestureRecognizer.delegate = self
+        canvasTwoFingerPanGestureRecognizer.delegate = self
+        addGestureRecognizer(canvasPinchGestureRecognizer)
+        addGestureRecognizer(canvasTwoFingerPanGestureRecognizer)
     }
 
     override func layoutSubviews() {
@@ -72,26 +102,61 @@ final class KCDrawingCanvasView: UIView, UIGestureRecognizerDelegate {
         if nonStickerRasterCacheImage != nil && !nonStickerRasterCacheBounds.equalTo(bounds) {
             invalidateNonStickerRasterCache()
         }
+        syncViewportWithBoundsIfNeeded()
+    }
+
+    /// 画布尺寸变化时同步 viewport 内容尺寸。若当前处于默认视图则跟随新的安全创作区
+    /// 重新居中；若用户已缩放/平移，则在新的边界内重新钳制并保留其视图。
+    private func syncViewportWithBoundsIfNeeded() {
+        guard bounds.width > 0.0, bounds.height > 0.0 else { return }
+        let newContentSize = bounds.size
+        guard newContentSize != viewportState.contentSize || viewportState.viewportRect.isEmpty else { return }
+
+        let wasDefault = viewportState.isDefault || viewportState.viewportRect.isEmpty
+        viewportState.contentSize = newContentSize
+        if wasDefault {
+            viewportState = viewportState.defaultState
+        } else {
+            viewportState = viewportState.clamped
+        }
+        applyViewportToStickerViews()
+        setNeedsDisplay()
     }
 
     override func draw(_ rect: CGRect) {
         super.draw(rect)
 
+        // 视图背景：内容平面之外的区域（缩放/平移后露出的画布外区域）保持白色，
+        // 与 PRD“纯白背景”一致。该填充在屏幕坐标下完成，不随 viewport 变换。
         UIColor.white.setFill()
         UIRectFill(bounds)
-        drawImage(backgroundImage, aspectFitIn: bounds)
 
+        guard let ctx = UIGraphicsGetCurrentContext() else { return }
+
+        ctx.saveGState()
+        ctx.concatenate(viewportState.affineTransform)
+
+        // 内容平面：在内容坐标空间（0,0 ~ contentSize）绘制白色画布平面、底图、笔画。
+        let contentPlane = CGRect(origin: .zero, size: viewportState.contentSize)
+        UIColor.white.setFill()
+        ctx.fill(contentPlane)
+        drawImage(backgroundImage, aspectFitIn: contentPlane)
+
+        // 把屏幕坐标的脏区域反变换到内容坐标，再做笔画裁剪，避免缩放后漏绘/重绘。
+        let contentDirtyRect = rect.applying(viewportState.affineTransform.inverted())
         for stroke in strokes {
-            if strokeRenderBounds(stroke).intersects(rect) {
+            if strokeRenderBounds(stroke).intersects(contentDirtyRect) {
                 drawStroke(stroke)
             }
         }
 
         if let activeStroke {
-            if strokeRenderBounds(activeStroke).intersects(rect) {
+            if strokeRenderBounds(activeStroke).intersects(contentDirtyRect) {
                 drawStroke(activeStroke)
             }
         }
+
+        ctx.restoreGState()
     }
 
     private func drawStroke(_ stroke: KDStroke) {
@@ -565,7 +630,9 @@ final class KCDrawingCanvasView: UIView, UIGestureRecognizerDelegate {
             return
         }
 
-        let clippedBounds = redrawBounds.intersection(bounds)
+        // 笔画脏区在内容坐标空间，经 viewport 变换到屏幕坐标后再裁剪到视图 bounds。
+        let viewBounds = redrawBounds.applying(viewportState.affineTransform)
+        let clippedBounds = viewBounds.intersection(bounds)
         if clippedBounds.isNull || clippedBounds.isEmpty {
             return
         }
@@ -581,27 +648,30 @@ final class KCDrawingCanvasView: UIView, UIGestureRecognizerDelegate {
         }
 
         guard let touch = touches.first else { return }
-        let point = touch.location(in: self)
+        // 屏幕点用于印章命中测试（印章子视图按屏幕坐标定位）；
+        // 内容点用于绘制、填色、取色、印章插入，确保缩放/平移后不偏移。
+        let screenPoint = touch.location(in: self)
+        let contentPoint = canvasPoint(forViewPoint: screenPoint)
 
-        if hitTestSticker(at: point) {
+        if hitTestSticker(at: screenPoint) {
             return
         }
 
         if currentToolMode == .picker {
-            let pickedColor = colorAtPoint(point)
+            let pickedColor = colorAtPoint(contentPoint)
             currentColor = pickedColor ?? currentColor
             delegate?.drawingCanvasView(self, didPickColor: currentColor)
             return
         }
 
         if currentToolMode == .fill {
-            beginFloodFill(at: point, color: currentColor)
+            beginFloodFill(at: contentPoint, color: currentColor)
             return
         }
 
         if currentToolMode == .sticker {
-            let normalized = CGPoint(x: point.x / max(bounds.width, 1.0),
-                                     y: point.y / max(bounds.height, 1.0))
+            let normalized = CGPoint(x: contentPoint.x / max(viewportState.contentSize.width, 1.0),
+                                     y: contentPoint.y / max(viewportState.contentSize.height, 1.0))
             insertStickerSymbol(currentStickerSymbol, atNormalizedPoint: normalized)
             delegate?.drawingCanvasViewDidInsertSticker?(self)
             return
@@ -617,10 +687,10 @@ final class KCDrawingCanvasView: UIView, UIGestureRecognizerDelegate {
         stroke.eraserShape = currentEraserShape
         stroke.path = UIBezierPath()
         stroke.path.lineWidth = stroke.lineWidth
-        stroke.startPoint = point
+        stroke.startPoint = contentPoint
         addPressureSample(from: touch, to: stroke)
-        appendDabSample(from: touch, to: stroke)
-        stroke.path.move(to: point)
+        appendDabSample(contentPoint: contentPoint, isPencil: touch.type == .pencil, touch: touch, to: stroke)
+        stroke.path.move(to: contentPoint)
         activeStroke = stroke
 
         deselectSticker()
@@ -648,16 +718,19 @@ final class KCDrawingCanvasView: UIView, UIGestureRecognizerDelegate {
         let coalescedTouches = event?.coalescedTouches(for: touch) ?? [touch]
         var didAppendPoint = false
         for coalescedTouch in coalescedTouches {
-            let point = coalescedTouch.location(in: self)
-            let dx = point.x - activeStroke.startPoint.x
-            let dy = point.y - activeStroke.startPoint.y
+            let contentPoint = canvasPoint(forViewPoint: coalescedTouch.location(in: self))
+            let dx = contentPoint.x - activeStroke.startPoint.x
+            let dy = contentPoint.y - activeStroke.startPoint.y
             if !activeStrokeDidMutate && hypot(dx, dy) < 2.0 {
                 continue
             }
 
-            activeStroke.path.addLine(to: point)
+            activeStroke.path.addLine(to: contentPoint)
             addPressureSample(from: coalescedTouch, to: activeStroke)
-            appendDabSample(from: coalescedTouch, to: activeStroke)
+            appendDabSample(contentPoint: contentPoint,
+                            isPencil: coalescedTouch.type == .pencil,
+                            touch: coalescedTouch,
+                            to: activeStroke)
             activeStrokeDidMutate = true
             didAppendPoint = true
         }
@@ -673,11 +746,14 @@ final class KCDrawingCanvasView: UIView, UIGestureRecognizerDelegate {
 
         guard let touch = touches.first else { return }
         let previousStrokeBounds = strokeRenderBounds(activeStroke)
-        let point = touch.location(in: self)
+        let contentPoint = canvasPoint(forViewPoint: touch.location(in: self))
         if activeStrokeDidMutate {
-            activeStroke.path.addLine(to: point)
+            activeStroke.path.addLine(to: contentPoint)
             addPressureSample(from: touch, to: activeStroke)
-            appendDabSample(from: touch, to: activeStroke)
+            appendDabSample(contentPoint: contentPoint,
+                            isPencil: touch.type == .pencil,
+                            touch: touch,
+                            to: activeStroke)
             invalidateStrokeRenderBounds(activeStroke)
         } else {
             let dotRadius = max(1.0, activeStroke.lineWidth * 0.5)
@@ -689,7 +765,10 @@ final class KCDrawingCanvasView: UIView, UIGestureRecognizerDelegate {
             activeStroke.dotStroke = true
             activeStrokeDidMutate = true
             addPressureSample(from: touch, to: activeStroke)
-            appendDabSample(from: touch, to: activeStroke)
+            appendDabSample(contentPoint: contentPoint,
+                            isPencil: touch.type == .pencil,
+                            touch: touch,
+                            to: activeStroke)
             invalidateStrokeRenderBounds(activeStroke)
         }
         commitUndoStateSnapshot(pendingStrokeState)
@@ -721,12 +800,12 @@ final class KCDrawingCanvasView: UIView, UIGestureRecognizerDelegate {
 
     /// 为铅笔/蜡笔采集一个高保真 dab 输入采样（含倾角），存入 `stroke.samples`。
     /// 其余工具（钢笔、橡皮等）不采集，drawStroke 会回落到 path 渲染。
-    private func appendDabSample(from touch: UITouch, to stroke: KDStroke) {
+    /// `contentPoint` 必须已经是内容坐标（经 viewport 反变换）。
+    private func appendDabSample(contentPoint: CGPoint, isPencil: Bool, touch: UITouch, to stroke: KDStroke) {
         guard stroke.toolMode == .brush,
               stroke.brushStyle == .pencil || stroke.brushStyle == .crayon else { return }
-        let isPencil = touch.type == .pencil
         let sample = KCBrushInputSample(
-            point: touch.location(in: self),
+            point: contentPoint,
             timestamp: touch.timestamp,
             pressure: normalizedPressure(for: touch),
             velocity: 0,
@@ -777,6 +856,7 @@ final class KCDrawingCanvasView: UIView, UIGestureRecognizerDelegate {
     @objc func startBlankCanvas() {
         resetCanvasContents()
         clearHistoryStacks()
+        restoreDefaultViewport()
         setNeedsDisplay()
         notifyContentChanged()
     }
@@ -870,6 +950,21 @@ final class KCDrawingCanvasView: UIView, UIGestureRecognizerDelegate {
                             y: drawingBounds.minY + drawingBounds.height * normalizedPoint.y)
         return colorAtPoint(point)
     }
+
+    /// T097 runtime acceptance：直接设置 viewport 缩放/平移（自动钳制），用于在非默认视口下验收。
+    @objc func runtimeAcceptanceSetViewport(scale: CGFloat, translation: CGPoint) {
+        viewportState.scale = KCCanvasViewportState.clampedScale(scale)
+        viewportState.translation = translation
+        viewportState = viewportState.clamped
+        applyViewportToStickerViews()
+        setNeedsDisplay()
+        notifyViewportChanged()
+    }
+
+    /// T097 runtime acceptance：返回屏幕点经 viewport 反变换后的内容点，用于验证坐标转换非恒等。
+    @objc func runtimeAcceptanceCanvasPoint(forScreenPoint screenPoint: CGPoint) -> CGPoint {
+        canvasPoint(forViewPoint: screenPoint)
+    }
 #endif
 
     @objc func snapshotImage() -> UIImage {
@@ -934,12 +1029,17 @@ final class KCDrawingCanvasView: UIView, UIGestureRecognizerDelegate {
         for sticker in stickers {
             guard !sticker.isHidden, sticker.alpha > 0.0 else { continue }
 
+            // 快照在内容坐标空间渲染（不含 viewport）；用 canvasCenter/canvasTransform 定位，
+            // 并临时把视图的屏幕变换置为恒等，避免 layer.render 叠加 viewport 派生的变换。
+            let savedTransform = sticker.transform
+            sticker.transform = .identity
             context.saveGState()
-            context.translateBy(x: sticker.center.x, y: sticker.center.y)
-            context.concatenate(sticker.transform)
+            context.translateBy(x: sticker.canvasCenter.x, y: sticker.canvasCenter.y)
+            context.concatenate(sticker.canvasTransform)
             context.translateBy(x: -sticker.bounds.width / 2.0, y: -sticker.bounds.height / 2.0)
             sticker.layer.render(in: context)
             context.restoreGState()
+            sticker.transform = savedTransform
         }
     }
 
@@ -964,6 +1064,7 @@ final class KCDrawingCanvasView: UIView, UIGestureRecognizerDelegate {
         resetCanvasContents()
         clearHistoryStacks()
         backgroundImage = image
+        restoreDefaultViewport()
         setNeedsDisplay()
         notifyContentChanged()
     }
@@ -972,6 +1073,7 @@ final class KCDrawingCanvasView: UIView, UIGestureRecognizerDelegate {
         resetCanvasContents()
         clearHistoryStacks()
         backgroundImage = image
+        restoreDefaultViewport()
         setNeedsDisplay()
         notifyContentChanged()
     }
@@ -979,8 +1081,13 @@ final class KCDrawingCanvasView: UIView, UIGestureRecognizerDelegate {
     @objc func insertStickerSymbol(_ symbol: String, atNormalizedPoint normalizedPoint: CGPoint) {
         commitCurrentStateForUndo()
         let sticker = makeStickerView(withSymbol: symbol.count > 0 ? symbol : "star.fill", color: currentColor)
-        sticker.center = CGPoint(x: normalizedPoint.x * bounds.width, y: normalizedPoint.y * bounds.height)
+        let contentSize = viewportState.contentSize
+        // 印章以内容坐标存储中心点；屏幕显示位置由 viewport 派生，保证缩放/平移后命中不偏移。
+        sticker.canvasCenter = CGPoint(x: normalizedPoint.x * contentSize.width,
+                                       y: normalizedPoint.y * contentSize.height)
+        sticker.canvasTransform = .identity
         constrainStickerView(sticker)
+        applyViewport(to: sticker)
         stickers.append(sticker)
         addSubview(sticker)
         bringSubviewToFront(sticker)
@@ -1019,6 +1126,7 @@ final class KCDrawingCanvasView: UIView, UIGestureRecognizerDelegate {
         resetCanvasContents()
         clearHistoryStacks()
         backgroundImage = image
+        restoreDefaultViewport()
         setNeedsDisplay()
         notifyContentChanged()
     }
@@ -1110,16 +1218,17 @@ final class KCDrawingCanvasView: UIView, UIGestureRecognizerDelegate {
         let state = KDStickerState()
         state.symbolName = sticker.symbolName
         state.symbolColor = sticker.symbolColor
-        state.center = sticker.center
-        state.transform = sticker.transform
+        state.center = sticker.canvasCenter
+        state.transform = sticker.canvasTransform
         return state
     }
 
     private func stickerViewFromState(_ state: KDStickerState) -> KDStickerView {
         let sticker = makeStickerView(withSymbol: state.symbolName, color: state.symbolColor)
-        sticker.center = state.center
-        sticker.transform = state.transform
+        sticker.canvasCenter = state.center
+        sticker.canvasTransform = state.transform
         constrainStickerView(sticker)
+        applyViewport(to: sticker)
         return sticker
     }
 
@@ -1310,13 +1419,17 @@ final class KCDrawingCanvasView: UIView, UIGestureRecognizerDelegate {
         }
     }
 
-    private func pixelImage(at point: CGPoint) -> UIImage {
-        if point.x < 0.0 || point.y < 0.0 || point.x >= bounds.width || point.y >= bounds.height {
+    private func pixelImage(at contentPoint: CGPoint) -> UIImage {
+        let contentSize = viewportState.contentSize
+        if contentPoint.x < 0.0 || contentPoint.y < 0.0
+            || contentPoint.x >= contentSize.width || contentPoint.y >= contentSize.height {
             return UIImage()
         }
 
-        if sticker(at: point) == nil {
-            return pixelImageExcludingStickers(at: point)
+        // 印章按屏幕坐标命中测试；命中时连带印章采样，需在屏幕点处渲染整层。
+        let screenPoint = viewportState.viewPoint(forCanvasPoint: contentPoint)
+        if sticker(at: screenPoint) == nil {
+            return pixelImageExcludingStickers(at: contentPoint)
         }
 
         let selectedSticker = self.selectedStickerView
@@ -1331,7 +1444,7 @@ final class KCDrawingCanvasView: UIView, UIGestureRecognizerDelegate {
         let pixelSize = CGSize(width: 1.0 / scale, height: 1.0 / scale)
         let renderer = UIGraphicsImageRenderer(size: pixelSize, format: format)
         let image = renderer.image { context in
-            context.cgContext.translateBy(x: -point.x, y: -point.y)
+            context.cgContext.translateBy(x: -screenPoint.x, y: -screenPoint.y)
             self.layer.render(in: context.cgContext)
         }
 
@@ -1397,8 +1510,14 @@ final class KCDrawingCanvasView: UIView, UIGestureRecognizerDelegate {
             beginStickerTransformIfNeeded(for: sticker)
         }
         let translation = recognizer.translation(in: self)
-        sticker.center = CGPoint(x: sticker.center.x + translation.x, y: sticker.center.y + translation.y)
+        let scale = viewportState.scale
+        // 屏幕位移除以 viewport 缩放得到内容坐标位移，保证缩放下拖拽跟手且命中正确。
+        sticker.canvasCenter = CGPoint(
+            x: sticker.canvasCenter.x + translation.x / scale,
+            y: sticker.canvasCenter.y + translation.y / scale
+        )
         constrainStickerCenter(sticker)
+        applyViewport(to: sticker)
         recognizer.setTranslation(.zero, in: self)
         stickerTransformDidMutate = true
         if recognizer.state == .ended {
@@ -1415,9 +1534,10 @@ final class KCDrawingCanvasView: UIView, UIGestureRecognizerDelegate {
         if recognizer.state == .began {
             beginStickerTransformIfNeeded(for: sticker)
         }
-        sticker.transform = sticker.transform.scaledBy(x: recognizer.scale, y: recognizer.scale)
+        sticker.canvasTransform = sticker.canvasTransform.scaledBy(x: recognizer.scale, y: recognizer.scale)
         constrainStickerScale(sticker)
         constrainStickerCenter(sticker)
+        applyViewport(to: sticker)
         recognizer.scale = 1.0
         stickerTransformDidMutate = true
         if recognizer.state == .ended {
@@ -1434,8 +1554,9 @@ final class KCDrawingCanvasView: UIView, UIGestureRecognizerDelegate {
         if recognizer.state == .began {
             beginStickerTransformIfNeeded(for: sticker)
         }
-        sticker.transform = sticker.transform.rotated(by: recognizer.rotation)
+        sticker.canvasTransform = sticker.canvasTransform.rotated(by: recognizer.rotation)
         constrainStickerView(sticker)
+        applyViewport(to: sticker)
         recognizer.rotation = 0.0
         stickerTransformDidMutate = true
         if recognizer.state == .ended {
@@ -1458,14 +1579,18 @@ final class KCDrawingCanvasView: UIView, UIGestureRecognizerDelegate {
     }
 
     private func constrainStickerScale(_ sticker: KDStickerView) {
-        sticker.transform = self.drawingEngine.stickerTransformByClampingScale(sticker.transform)
+        sticker.canvasTransform = self.drawingEngine.stickerTransformByClampingScale(sticker.canvasTransform)
     }
 
     private func constrainStickerCenter(_ sticker: KDStickerView) {
-        sticker.center = self.drawingEngine.clampStickerCenter(
-            sticker.center,
-            frame: sticker.frame,
-            canvasBounds: bounds
+        let canvasBounds = CGRect(origin: .zero, size: viewportState.contentSize)
+        guard !canvasBounds.isEmpty else { return }
+        // 印章自身变换后的内容坐标外接矩形，用于把中心点约束在画布内容范围内。
+        let contentFrame = CGRect(origin: .zero, size: sticker.bounds.size).applying(sticker.canvasTransform)
+        sticker.canvasCenter = self.drawingEngine.clampStickerCenter(
+            sticker.canvasCenter,
+            frame: contentFrame,
+            canvasBounds: canvasBounds
         )
     }
 
@@ -1545,6 +1670,111 @@ final class KCDrawingCanvasView: UIView, UIGestureRecognizerDelegate {
 
     private func notifyContentChanged() {
         delegate?.drawingCanvasViewContentDidChange?(self)
+    }
+
+    // MARK: - 画布视口（T097：缩放 / 平移 / 恢复视图）
+
+    /// 屏幕坐标 → 内容坐标。所有绘制、填色、取色、印章命中统一经此转换，
+    /// 确保缩放/平移后落点不偏移。viewport 未配置（contentSize 为 0）时近似恒等。
+    private func canvasPoint(forViewPoint point: CGPoint) -> CGPoint {
+        viewportState.canvasPoint(forViewPoint: point)
+    }
+
+    /// 把单个印章按当前 viewport 派生到屏幕显示位置/变换。
+    private func applyViewport(to sticker: KDStickerView) {
+        let scale = viewportState.scale
+        sticker.center = CGPoint(
+            x: sticker.canvasCenter.x * scale + viewportState.translation.x,
+            y: sticker.canvasCenter.y * scale + viewportState.translation.y
+        )
+        sticker.transform = sticker.canvasTransform.scaledBy(x: scale, y: scale)
+    }
+
+    /// 全量刷新所有印章的屏幕显示位置（viewport 变化或 layout 后调用）。
+    private func applyViewportToStickerViews() {
+        for sticker in stickers {
+            applyViewport(to: sticker)
+        }
+    }
+
+    private func notifyViewportChanged() {
+        delegate?.drawingCanvasViewportDidChange?(self)
+    }
+
+    /// 当前是否处于默认视图（缩放 1、按安全创作区居中）。控制器据此显隐“恢复视图”按钮。
+    @objc var viewportIsAtDefault: Bool {
+        viewportState.isDefault
+    }
+
+    /// 当前 viewport 缩放系数，供印章手势增量换算与运行时验收读取。
+    @objc var currentViewportScale: CGFloat {
+        viewportState.scale
+    }
+
+    /// 控制器注入屏幕坐标下的“安全创作区”矩形，并同步内容尺寸。仅初始或创作区变化时调用。
+    @objc func applyViewportRect(_ rect: CGRect) {
+        guard bounds.width > 0.0, bounds.height > 0.0 else { return }
+        let wasDefault = viewportState.isDefault || viewportState.viewportRect.isEmpty
+        viewportState.contentSize = bounds.size
+        viewportState.viewportRect = rect
+        if wasDefault {
+            viewportState = viewportState.defaultState
+        } else {
+            viewportState = viewportState.clamped
+        }
+        applyViewportToStickerViews()
+        setNeedsDisplay()
+        notifyViewportChanged()
+    }
+
+    /// 一键恢复默认视图（缩放 1、内容中心对齐安全创作区中心）。
+    @objc func restoreDefaultViewport() {
+        guard viewportState.contentSize.width > 0.0 else { return }
+        if viewportState.viewportRect.isEmpty {
+            viewportState.scale = 1.0
+            viewportState.translation = .zero
+        } else {
+            viewportState = viewportState.defaultState
+        }
+        applyViewportToStickerViews()
+        setNeedsDisplay()
+        notifyViewportChanged()
+    }
+
+    /// 双指捏合缩放：围绕双指中点缩放，焦点下的内容点保持不动。
+    @objc private func handleCanvasPinch(_ recognizer: UIPinchGestureRecognizer) {
+        let focus = recognizer.location(in: self)
+        viewportState = viewportState.applyingScale(recognizer.scale, aroundViewPoint: focus)
+        recognizer.scale = 1.0
+        applyViewportToStickerViews()
+        setNeedsDisplay()
+        notifyViewportChanged()
+    }
+
+    /// 双指拖拽平移：屏幕位移直接施加到 viewport 平移，再按创作区边界钳制。
+    @objc private func handleCanvasTwoFingerPan(_ recognizer: UIPanGestureRecognizer) {
+        let translation = recognizer.translation(in: self)
+        guard translation.x != 0.0 || translation.y != 0.0 else { return }
+        viewportState = viewportState.translating(by: translation)
+        recognizer.setTranslation(.zero, in: self)
+        applyViewportToStickerViews()
+        setNeedsDisplay()
+        notifyViewportChanged()
+    }
+
+    /// 双指缩放/平移手势开始前判断：任一触点落在印章子视图上则让位给印章自身手势，
+    /// 避免“在印章上双指”同时触发画布缩放与印章缩放。
+    override func gestureRecognizerShouldBegin(_ gestureRecognizer: UIGestureRecognizer) -> Bool {
+        if gestureRecognizer === canvasPinchGestureRecognizer
+            || gestureRecognizer === canvasTwoFingerPanGestureRecognizer {
+            for index in 0..<gestureRecognizer.numberOfTouches {
+                let touchPoint = gestureRecognizer.location(ofTouch: index, in: self)
+                if sticker(at: touchPoint) != nil {
+                    return false
+                }
+            }
+        }
+        return true
     }
 
     @objc(eraserShapePathForShape:center:size:)

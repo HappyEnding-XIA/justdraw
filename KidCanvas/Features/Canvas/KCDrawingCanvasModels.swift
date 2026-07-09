@@ -63,7 +63,9 @@ final class KDStroke: NSObject {
 final class KDStickerState: NSObject {
     var symbolName: String = ""
     var symbolColor: UIColor = .black
+    /// 印章在“内容坐标空间”的中心点（与 viewport 缩放/平移无关）。
     var center: CGPoint = .zero
+    /// 印章自身（旋转/缩放）在“内容坐标空间”的变换，不含 viewport。
     var transform: CGAffineTransform = .identity
 }
 
@@ -78,4 +80,10 @@ final class KDCanvasState: NSObject {
 final class KDStickerView: UIImageView {
     var symbolName: String = ""
     var symbolColor: UIColor = .black
+
+    /// T097：印章在“内容坐标空间”的中心点。视图的 `.center` / `.transform` 仅用于
+    /// 屏幕显示，由 `KCDrawingCanvasView.applyViewport` 根据 viewport 派生。
+    var canvasCenter: CGPoint = .zero
+    /// T097：印章自身（旋转/缩放）在内容坐标空间的变换，不含 viewport 缩放。
+    var canvasTransform: CGAffineTransform = .identity
 }

@@ -140,6 +140,8 @@ enum KCL10n {
 
     static var canvasBadge: String { tr("badge.canvas") }
     static var lineArtBadge: String { tr("badge.line-art") }
+    /// T097：画布“恢复视图”按钮（仅在画布偏离默认视图时显示）。
+    static var restoreViewportTitle: String { tr("canvas.restore-viewport.title") }
     static var hideToolsTitle: String { tr("action.hide-tools.title") }
     static var showToolsTitle: String { tr("action.show-tools.title") }
     static var clearCanvasAlertTitle: String { tr("alert.clear-canvas.title") }

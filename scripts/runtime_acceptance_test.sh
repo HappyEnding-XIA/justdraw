@@ -64,6 +64,10 @@ case "$PROBE" in
     LAUNCH_ARG="--kc-runtime-drawing-tools-check"
     RESULT_FILE="kc_runtime_acceptance_drawing_tools.json"
     ;;
+  canvas-viewport)
+    LAUNCH_ARG="--kc-runtime-canvas-viewport-check"
+    RESULT_FILE="kc_runtime_acceptance_canvas_viewport.json"
+    ;;
   system-ui)
     LAUNCH_ARG="--kc-runtime-system-ui-check"
     RESULT_FILE="kc_runtime_acceptance_system_ui.json"
@@ -77,7 +81,7 @@ case "$PROBE" in
     RESULT_FILE="kc_runtime_brush_perf.json"
     ;;
   *)
-    red "错误：未知验收探针 '$PROBE'，可选：empty-save / layout-safe-area / sticker-undo-redo / save-history-restore / photo-export-failure / drawing-tools / system-ui / brush-samples / brush-perf"
+    red "错误：未知验收探针 '$PROBE'，可选：empty-save / layout-safe-area / sticker-undo-redo / save-history-restore / photo-export-failure / drawing-tools / system-ui / brush-samples / brush-perf / canvas-viewport"
     exit 8
     ;;
 esac

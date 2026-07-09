@@ -271,12 +271,13 @@ CanvasEngine
 - flood fill、取色、线稿几何、蜡笔纹理等算法继续沉入 `KCDrawingEngine` 并补单测。
 - 如果后续引入 SwiftUI 面板，只通过状态、action 或协议与画布交互，不直接操纵底层绘图细节。
 
-下一阶段画布导航边界（T097）：
+下一阶段画布导航边界（T097，已完成）：
 
-- 新增 viewport 状态时，必须把屏幕坐标到画布坐标的转换集中在画布或画布协调层，绘制、填色、取色和印章命中不得各自重复换算。
-- 双指缩放/平移只改变 viewport，不改变作品像素数据、历史存储格式或已保存作品尺寸。
-- 默认居中必须基于安全创作区，而不是整屏几何中心。
-- MVP 不要求把 viewport 持久化进历史作品；当前会话内可保留，打开历史作品可先恢复默认视图。
+- 新增 viewport 状态时，必须把屏幕坐标到画布坐标的转换集中在画布或画布协调层，绘制、填色、取色和印章命中不得各自重复换算。当前实现：`KCDomain.KCCanvasViewportState` 提供纯逻辑转换（`canvasPoint(forViewPoint:)` / `affineTransform`），`KCDrawingCanvasView` 在触摸、填色、取色、印章命中入口统一调用。
+- 双指缩放/平移只改变 viewport，不改变作品像素数据、历史存储格式或已保存作品尺寸。`UIPinchGestureRecognizer` + 双指 `UIPanGestureRecognizer` 挂在画布 view；单指与 Apple Pencil 仍走绘制 touch pipeline，落在印章上的双指手势让位给印章自身手势。
+- 默认居中必须基于安全创作区，而不是整屏几何中心。`KCMainViewController.canvasCreationRect()` 按系统安全区 + 可见浮动面板并集计算创作区，注入画布 viewport 作为默认居中锚点与平移钳制边界。
+- 恢复视图按钮仅在 `KCCanvasViewportState.isDefault == false` 时显示，不新增“缩放模式 / 平移模式”按钮。
+- MVP 不要求把 viewport 持久化进历史作品；当前会话内可保留，新建/打开历史/清空/线稿载入时重置为默认视图。详见 `docs/modules/KCCanvasViewportState.md`。
 
 ### 4.3.1 Content Library / Line Art 系统（规划中）
 

@@ -50,7 +50,7 @@ App 壳工程 + 本地 SPM 聚合包 + 多 target 模块 + 分层依赖约束
 下一阶段模块化策略保持“一个本地 package，多 target / 多 App Feature”的原则：
 
 - T096 先完成架构、模块文档和验收口径对齐。
-- T097 先建立画布 viewport 边界，避免后续内容库和线稿能力建立在错误坐标体系上。
+- T097 先建立画布 viewport 边界，避免后续内容库和线稿能力建立在错误坐标体系上。（T097 已完成：`KCCanvasViewportState` 落地 `KCDomain`，画布层接入双指缩放/平移与坐标转换，详见 `docs/modules/KCCanvasViewportState.md`。）
 - T098 再建立内容库框架，收敛官方线稿、我的线稿、历史作品和导入结果入口。
 - T099 新增我的线稿本地生命周期，独立于历史作品。
 - T100 抽出图片导入服务，统一相册和拍照入口。
@@ -207,7 +207,7 @@ Feature 拆分进度（App 层 Feature 类型 + KCDomain 纯逻辑）：
 
 下一阶段 Feature 规划：
 
-- **T097 `KCCanvasViewportState`（规划）**：承接画布 scale、translation、安全创作区、默认视图判断和位移裁剪。先放在 App 层或 `KCDomain` 纯模型中，真实 UIKit 手势仍由画布/页面协调层处理。该模型必须服务绘制、填色、取色、印章命中和恢复视图，不得只服务视觉缩放。
+- **T097 `KCCanvasViewportState`（已完成）**：承接画布 scale、translation、安全创作区、默认视图判断和位移裁剪的纯逻辑模型，落地在 `KCDomain`（UIKit-free，可单测）。真实 UIKit 手势（双指缩放/平移）与恢复视图按钮在画布 view / 主控制器（App/Canvas 层）处理。该模型服务绘制、填色、取色、印章命中和恢复视图，统一经 `canvasPoint(forViewPoint:)` 做屏幕→内容坐标转换，不得只服务视觉缩放。详见 `docs/modules/KCCanvasViewportState.md`。
 - **T098 `KCContentLibraryFeature`（规划）**：统一内容库分区、条目状态、打开能力、删除能力和空态。它只做 App 层编排，不直接读写会话文件、不生成线稿、不持有系统 picker。
 - **T099 `KCCustomLineArt` / `KCCustomLineArtStore`（规划）**：定义我的线稿 metadata、PNG、缩略图和删除生命周期。删除我的线稿只影响线稿库条目，不影响已经保存的历史作品。
 - **T100 `KCImageImportSource` / 图片导入服务（规划）**：统一相册和拍照入口；系统 picker 细节通过服务/协议隔离，主控制器不继续堆系统 UI 回调。

@@ -635,6 +635,73 @@ def architecture_reality_checks():
     return checks
 
 
+def canvas_viewport_checks():
+    """T097：画布导航（安全创作区 / 双指缩放 / 双指平移 / 恢复视图）防回流校验。"""
+    checks = []
+    domain_state = ROOT / "Packages" / "KidCanvasModules" / "Sources" / "KCDomain" / "KCCanvasViewportState.swift"
+    domain_test = ROOT / "Packages" / "KidCanvasModules" / "Tests" / "KCDomainTests" / "KCCanvasViewportStateTests.swift"
+    module_doc = ROOT / "docs" / "modules" / "KCCanvasViewportState.md"
+
+    for path, label in [
+        (domain_state, "KCCanvasViewportState.swift"),
+        (domain_test, "KCCanvasViewportStateTests.swift"),
+        (module_doc, "KCCanvasViewportState.md"),
+    ]:
+        if not path.exists():
+            checks.append(fail(f"T097 canvas viewport file exists: {label}"))
+        else:
+            checks.append(ok(f"T097 canvas viewport file exists: {label}"))
+
+    if domain_state.exists():
+        text = domain_state.read_text(encoding="utf-8")
+        checks.append(require_text(text, "public struct KCCanvasViewportState", "KCCanvasViewportState declares the viewport value type"))
+        checks.append(require_text(text, "minimumScale", "KCCanvasViewportState clamps a minimum scale (50%)"))
+        checks.append(require_text(text, "maximumScale", "KCCanvasViewportState clamps a maximum scale (300%)"))
+        checks.append(require_text(text, "func canvasPoint(forViewPoint", "KCCanvasViewportState converts screen points to content points"))
+        checks.append(forbid_text(text, "import UIKit", "KCCanvasViewportState stays UIKit-free in KCDomain"))
+
+    if domain_test.exists():
+        text = domain_test.read_text(encoding="utf-8")
+        checks.append(require_count_at_least(text, r"func test", 8, "KCCanvasViewportState has unit-test coverage"))
+
+    canvas_view_text = APP_FILE_PATHS["KCDrawingCanvasView.swift"].read_text(encoding="utf-8")
+    checks.append(require_text(canvas_view_text, "var viewportState = KCCanvasViewportState", "Canvas view owns a KCCanvasViewportState"))
+    checks.append(require_text(canvas_view_text, "func applyViewportRect", "Canvas view exposes applyViewportRect for the safe creation rect"))
+    checks.append(require_text(canvas_view_text, "func restoreDefaultViewport", "Canvas view exposes restoreDefaultViewport"))
+    checks.append(require_text(canvas_view_text, "handleCanvasPinch", "Canvas view handles two-finger pinch for zoom"))
+    checks.append(require_text(canvas_view_text, "handleCanvasTwoFingerPan", "Canvas view handles two-finger pan"))
+    checks.append(require_text(canvas_view_text, "canvasPoint(forViewPoint:", "Canvas view converts touch points to content coordinates"))
+    checks.append(forbid_text(canvas_view_text, "import SwiftUI", "Canvas core is not rewritten as SwiftUI"))
+    checks.append(forbid_text(canvas_view_text, "UIScrollView", "Canvas viewport uses custom state + conversion, not a UIScrollView wrapper"))
+
+    main_text = APP_FILE_PATHS["KCMainViewController.swift"].read_text(encoding="utf-8")
+    checks.append(require_text(main_text, "restoreViewportButton", "Editor exposes the restore-view button"))
+    checks.append(require_text(main_text, "func canvasCreationRect", "Editor computes a panel-aware safe creation rect"))
+    checks.append(require_text(main_text, "applyViewportRect(self.canvasCreationRect())", "Editor pushes the safe creation rect into the canvas viewport"))
+    checks.append(require_text(main_text, "func drawingCanvasViewportDidChange", "Editor reacts to viewport changes to toggle the restore button"))
+    checks.append(forbid_text(main_text, "缩放模式", "Editor does not add a zoom-mode button (canvas nav via gestures only)"))
+    checks.append(forbid_text(main_text, "平移模式", "Editor does not add a pan-mode button (canvas nav via gestures only)"))
+
+    runtime_text = APP_FILE_PATHS["KCMainViewController+RuntimeAcceptance.swift"].read_text(encoding="utf-8")
+    checks.append(require_text(runtime_text, "--kc-runtime-canvas-viewport-check", "Runtime acceptance wires the canvas-viewport probe launch arg"))
+    checks.append(require_text(runtime_text, "runCanvasViewportAcceptanceProbe", "Runtime acceptance runs the canvas-viewport probe"))
+    checks.append(require_text(runtime_text, "kc_runtime_acceptance_canvas_viewport.json", "Runtime acceptance writes the canvas-viewport result file"))
+
+    script_text = (ROOT / "scripts" / "runtime_acceptance_test.sh").read_text(encoding="utf-8")
+    checks.append(require_text(script_text, "canvas-viewport)", "Acceptance script exposes the canvas-viewport probe"))
+
+    zh_text = (ROOT / "KidCanvas" / "Localization" / "zh-Hans.lproj" / "Localizable.strings").read_text(encoding="utf-8")
+    en_text = (ROOT / "KidCanvas" / "Localization" / "en.lproj" / "Localizable.strings").read_text(encoding="utf-8")
+    checks.append(require_text(zh_text, '"canvas.restore-viewport.title"', "Restore-view button has zh localization"))
+    checks.append(require_text(en_text, '"canvas.restore-viewport.title"', "Restore-view button has en localization"))
+
+    if module_doc.exists():
+        doc_text = module_doc.read_text(encoding="utf-8")
+        checks.append(require_text(doc_text, "## 1. 职责", "KCCanvasViewportState doc documents responsibilities"))
+        checks.append(require_text(doc_text, "## 4. 禁止回流规则", "KCCanvasViewportState doc documents anti-backflow rules"))
+    return checks
+
+
 def project_file_references_exist(pbx_text):
     missing = []
     for match in re.finditer(r"/\* ([^*]+) \*/ = \{isa = PBXFileReference; [^;]+; path = ([^;]+); sourceTree = \"?<group>\"?;", pbx_text):
@@ -1332,8 +1399,8 @@ def app_feature_checks(
     checks.append(require_regex(main_text, r"deinit[\s\S]*self\.contentPicker\.flushRecentColorSave\(\)[\s\S]*self\.invalidateDraftSaveTimer\(\)", "Controller deinit flushes pending recent colors"))
     checks.append(require_text(canvas_models_text, "case picker", "Eyedropper tool mode exists"))
     checks.append(require_text(canvas_text, "sampleColorFromImage(", "Eyedropper delegates pixel sampling to Swift"))
-    checks.append(require_text(canvas_text, "private func pixelImage(at point: CGPoint) -> UIImage", "Eyedropper renders only a one-pixel canvas image before sampling"))
-    checks.append(require_regex(canvas_text, r"func pixelImage\(at point: CGPoint\)[\s\S]*if sticker\(at: point\) == nil \{[\s\S]*return pixelImageExcludingStickers\(at: point\)[\s\S]*\}", "Eyedropper skips layer rendering when the sampled point misses stickers"))
+    checks.append(require_text(canvas_text, "private func pixelImage(at contentPoint: CGPoint) -> UIImage", "Eyedropper renders only a one-pixel canvas image before sampling"))
+    checks.append(require_regex(canvas_text, r"func pixelImage\(at contentPoint: CGPoint\)[\s\S]*if sticker\(at: screenPoint\) == nil \{[\s\S]*return pixelImageExcludingStickers\(at: contentPoint\)[\s\S]*\}", "Eyedropper skips layer rendering when the sampled point misses stickers"))
     checks.append(require_text(canvas_text, "let pixelSize = CGSize(width: 1.0 / scale, height: 1.0 / scale)", "Eyedropper one-pixel render uses device scale"))
     checks.append(require_regex(canvas_text, r"func colorAtPoint[\s\S]*let image = pixelImage\(at: point\)[\s\S]*sampleColorFromImage", "Eyedropper colorAtPoint samples from the one-pixel render"))
     checks.append(forbid_text(canvas_text, "let image = snapshotImage()", "Eyedropper colorAtPoint does not snapshot the full canvas"))
@@ -1407,7 +1474,7 @@ def app_feature_checks(
     checks.append(require_text(canvas_text, "private var nonStickerRasterCacheImage: UIImage?", "Flood fill caches the non-sticker raster input image"))
     checks.append(require_text(canvas_text, "private var nonStickerRasterCacheBounds: CGRect = .null", "Flood fill raster cache tracks canvas bounds"))
     checks.append(require_text(canvas_text, "private var nonStickerRasterCacheScale: CGFloat = 0.0", "Flood fill raster cache tracks screen scale"))
-    checks.append(require_regex(canvas_text, r"if currentToolMode == \.fill \{[\s\S]*beginFloodFill\(at: point, color: currentColor\)[\s\S]*return", "Touch fill path starts the asynchronous flood-fill pipeline"))
+    checks.append(require_regex(canvas_text, r"if currentToolMode == \.fill \{[\s\S]*beginFloodFill\(at: contentPoint, color: currentColor\)[\s\S]*return", "Touch fill path starts the asynchronous flood-fill pipeline"))
     checks.append(require_text(canvas_text, "private func fillColorAlreadyMatchesCanvas(at point: CGPoint, fillColor: UIColor) -> Bool", "Flood fill has a one-pixel no-op preflight"))
     checks.append(require_text(canvas_text, "private func pixelImageExcludingStickers(at point: CGPoint) -> UIImage", "Flood fill preflight samples the non-sticker canvas only"))
     checks.append(require_regex(canvas_text, r"func hitTestSticker\(at point: CGPoint\)[\s\S]*if let sticker = sticker\(at: point\)[\s\S]*selectStickerView\(sticker\)", "Sticker hit testing reuses the side-effect-free sampled-point lookup"))
@@ -1691,8 +1758,8 @@ def app_feature_checks(
     checks.append(require_regex(main_text, r"(?:private )?func deleteSavedHistorySession\(_ session: KCSessionMetadata\)[\s\S]*let deletingActiveSession = self\.activeSession\?\.identifier == session\.identifier[\s\S]*self\.suppressNextDraftSave = true[\s\S]*self\.canvasView\.startBlankCanvas\(\)[\s\S]*self\.clearDraftAndInvalidateCurrentDraftMarker\(\)", "Deleting the open saved session clears the canvas without creating a draft"))
     checks.append(require_text(canvas_text, "coalescedTouches", "Coalesced touch drawing exists"))
     checks.append(require_text(canvas_text, "touch.type == .pencil", "Apple Pencil pressure handling exists"))
-    checks.append(require_regex(canvas_text, r"override func draw\(_ rect: CGRect\)[\s\S]*for stroke in strokes[\s\S]*strokeRenderBounds\(stroke\)\.intersects\(rect\)[\s\S]*drawStroke\(stroke\)", "Canvas draw skips stored strokes outside the dirty rect"))
-    checks.append(require_regex(canvas_text, r"override func draw\(_ rect: CGRect\)[\s\S]*if let activeStroke[\s\S]*strokeRenderBounds\(activeStroke\)\.intersects\(rect\)[\s\S]*drawStroke\(activeStroke\)", "Canvas draw skips active stroke work outside the dirty rect"))
+    checks.append(require_regex(canvas_text, r"override func draw\(_ rect: CGRect\)[\s\S]*for stroke in strokes[\s\S]*strokeRenderBounds\(stroke\)\.intersects\(contentDirtyRect\)[\s\S]*drawStroke\(stroke\)", "Canvas draw skips stored strokes outside the dirty rect"))
+    checks.append(require_regex(canvas_text, r"override func draw\(_ rect: CGRect\)[\s\S]*if let activeStroke[\s\S]*strokeRenderBounds\(activeStroke\)\.intersects\(contentDirtyRect\)[\s\S]*drawStroke\(activeStroke\)", "Canvas draw skips active stroke work outside the dirty rect"))
     checks.append(require_text(canvas_models_text, "var cachedRenderBounds: CGRect?", "Canvas strokes cache their conservative render bounds"))
     checks.append(require_text(canvas_models_text, "var cachedCrayonGrainDashPoints: [NSValue]?", "Canvas strokes cache crayon grain dash points"))
     # T094：铅笔/蜡笔 dab 渲染接入
@@ -2056,6 +2123,7 @@ def main():
     checks.extend(app_structure_checks())
     checks.extend(apple_double_checks())
     checks.extend(architecture_reality_checks())
+    checks.extend(canvas_viewport_checks())
     checks.extend(module_documentation_checks())
     checks.extend(delivery_acceptance_checks())
     checks.extend(product_stamp_naming_checks())

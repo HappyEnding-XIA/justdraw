@@ -110,6 +110,8 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
     var historyThumbnailRefreshGeneration: Int = 0
     var collapsiblePanels: [UIView] = []
     var collapseToggleButton: UIButton!
+    /// T097：画布“恢复视图”按钮，仅在画布偏离默认视图时显示。
+    var restoreViewportButton: UIButton!
     var toolStateChip: UIView!
     var toolStateSwatch: UIView!
     var toolStateLabel: UILabel!
@@ -218,6 +220,10 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
     override func viewDidLayoutSubviews() {
         super.viewDidLayoutSubviews()
         self.refreshSizePreview()
+        // 把面板感知的“安全创作区”注入画布 viewport，使默认视图按创作区居中、
+        // 缩放/平移按创作区边界钳制。每次布局（含面板收起/展开）都重新计算。
+        self.canvasView.applyViewportRect(self.canvasCreationRect())
+        self.refreshRestoreViewportButton()
     }
 
     override func viewDidAppear(_ animated: Bool) {
@@ -277,6 +283,14 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
         rightStack.addArrangedSubview(historyPanel)
         self.view.addSubview(bottomDock)
 
+        // T097：画布“恢复视图”按钮（右下角），仅在画布缩放/平移偏离默认视图时显示。
+        self.restoreViewportButton = self.iconButtonWithSymbolName("viewfinder", accentColor: KCEditorVisualStyle.saveActionColor)
+        self.restoreViewportButton.translatesAutoresizingMaskIntoConstraints = false
+        self.restoreViewportButton.isHidden = true
+        self.applyAccessibilityLabel(KCL10n.restoreViewportTitle, identifier: "canvas.restore-viewport", toControl: self.restoreViewportButton)
+        self.restoreViewportButton.addTarget(self, action: #selector(didTapRestoreViewport), for: .touchUpInside)
+        self.view.addSubview(self.restoreViewportButton)
+
         // 收起按钮一起隐藏的 5 组浮动面板，用于在小屏上释放画布空间。
         //（colorsPanel/sizePanel/historyPanel 都在 rightScrollView 内，
         // 所以隐藏它即可一并覆盖这三者。）
@@ -323,7 +337,12 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
             bottomDock.centerXAnchor.constraint(equalTo: self.view.centerXAnchor),
             bottomDock.widthAnchor.constraint(equalToConstant: self.bottomDockWidth()),
             bottomDock.bottomAnchor.constraint(equalTo: safeArea.bottomAnchor, constant: self.bottomDockBottomInset()),
-            bottomDock.heightAnchor.constraint(equalToConstant: self.bottomDockHeight())
+            bottomDock.heightAnchor.constraint(equalToConstant: self.bottomDockHeight()),
+
+            self.restoreViewportButton.trailingAnchor.constraint(equalTo: safeArea.trailingAnchor, constant: -24.0),
+            self.restoreViewportButton.bottomAnchor.constraint(equalTo: safeArea.bottomAnchor, constant: -24.0),
+            self.restoreViewportButton.widthAnchor.constraint(equalToConstant: 52.0),
+            self.restoreViewportButton.heightAnchor.constraint(equalToConstant: 52.0)
         ])
 
         self.buildTopLeftPanel(topLeft)
@@ -1430,6 +1449,65 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
             self.activeSessionHasUnsavedChanges = true
         }
         self.scheduleDraftSave()
+    }
+
+    func drawingCanvasViewportDidChange(_ canvasView: KCDrawingCanvasView) {
+        self.refreshRestoreViewportButton()
+    }
+
+    // MARK: - 画布视口（T097）
+
+    /// 计算“安全创作区”矩形：`view.bounds` 扣除系统安全区与可见浮动面板
+    /// （顶栏、左工具轨、右侧面板、底部 Dock）的遮挡范围。面板收起后不计入，
+    /// 创作区随之扩大；该矩形作为画布 viewport 的默认居中锚点与平移钳制边界。
+    func canvasCreationRect() -> CGRect {
+        let bounds = self.view.bounds
+        guard !bounds.isEmpty else { return .zero }
+
+        let insets = self.view.safeAreaInsets
+        var topInset = insets.top
+        var leftInset = insets.left
+        var rightInset = insets.right
+        var bottomInset = insets.bottom
+
+        func extendInsets(for panel: UIView) {
+            guard !panel.isHidden, panel.alpha > 0.0 else { return }
+            let frame = panel.convert(panel.bounds, to: self.view)
+            guard !frame.isEmpty, frame.intersects(bounds) else { return }
+            // 仅按面板在 bounds 内的遮挡边扩展对应内边距。
+            leftInset = max(leftInset, frame.maxX - bounds.minX)
+            rightInset = max(rightInset, bounds.maxX - frame.minX)
+            topInset = max(topInset, frame.maxY - bounds.minY)
+            bottomInset = max(bottomInset, bounds.maxY - frame.minY)
+        }
+
+        for panel in self.collapsiblePanels {
+            extendInsets(for: panel)
+        }
+        if let toggle = self.collapseToggleButton {
+            extendInsets(for: toggle)
+        }
+
+        let horizontal = leftInset + rightInset
+        let vertical = topInset + bottomInset
+        guard horizontal < bounds.width, vertical < bounds.height else { return bounds }
+
+        let creationRect = CGRect(
+            x: bounds.minX + leftInset,
+            y: bounds.minY + topInset,
+            width: bounds.width - horizontal,
+            height: bounds.height - vertical
+        )
+        return creationRect.isEmpty ? bounds : creationRect
+    }
+
+    /// “恢复视图”按钮仅在画布偏离默认视图时显示。
+    func refreshRestoreViewportButton() {
+        self.restoreViewportButton?.isHidden = self.canvasView.viewportIsAtDefault
+    }
+
+    @objc func didTapRestoreViewport() {
+        self.canvasView.restoreDefaultViewport()
     }
 
     // MARK: - 刷新辅助方法

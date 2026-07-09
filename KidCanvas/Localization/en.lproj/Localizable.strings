@@ -146,3 +146,6 @@
 "line-art.rocket" = "Rocket";
 "line-art.cupcake" = "Cupcake";
 "line-art.dino" = "Dino";
+
+/* Canvas navigation: restore-view button (shown only after zoom/pan deviates from the default view) */
+"canvas.restore-viewport.title" = "Restore View";
