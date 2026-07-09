@@ -35,6 +35,20 @@ final class KCContentLibraryTests: XCTestCase {
                        [.officialLineArt, .myLineArt, .history])
     }
 
+    func testImportsPartitionIsReservedAndNotInDefaultOrder() {
+        // 导入结果为预留分区，不得打乱三个主分区的固定顺序（T102）。
+        XCTAssertFalse(KCContentLibraryPartition.defaultOrder.contains(.imports))
+        XCTAssertTrue(KCContentLibraryPartition.officialLineArt.isMainPartition)
+        XCTAssertTrue(KCContentLibraryPartition.myLineArt.isMainPartition)
+        XCTAssertTrue(KCContentLibraryPartition.history.isMainPartition)
+        XCTAssertFalse(KCContentLibraryPartition.imports.isMainPartition)
+    }
+
+    func testImportsPartitionIsDeletableButReserved() {
+        XCTAssertTrue(KCContentLibraryPartition.imports.allowsDelete)
+        XCTAssertTrue(KCContentLibraryPartition.imports.allowsOpen)
+    }
+
     func testPartitionLocalizationKeysAreStable() {
         XCTAssertEqual(KCContentLibraryPartition.officialLineArt.localizationKey,
                        "library.partition.official-line-art")
@@ -42,6 +56,8 @@ final class KCContentLibraryTests: XCTestCase {
                        "library.partition.my-line-art")
         XCTAssertEqual(KCContentLibraryPartition.history.localizationKey,
                        "library.partition.history")
+        XCTAssertEqual(KCContentLibraryPartition.imports.localizationKey,
+                       "library.partition.imports")
     }
 
     // MARK: - 分区展示状态
@@ -78,5 +94,7 @@ final class KCContentLibraryTests: XCTestCase {
                        "library.empty.my-line-art")
         XCTAssertEqual(KCContentLibrarySectionState(partition: .history, itemCount: 0).emptyStateLocalizationKey,
                        "library.empty.history")
+        XCTAssertEqual(KCContentLibrarySectionState(partition: .imports, itemCount: 0).emptyStateLocalizationKey,
+                       "library.empty.imports")
     }
 }

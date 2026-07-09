@@ -120,6 +120,8 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
     var contentLibraryPanelView: KCContentLibraryPanelView?
     /// T098：内嵌在内容库“官方线稿”分区的线稿选择控制器。
     var contentLibraryLineArtPicker: KCLineArtPickerViewController?
+    /// T098/T102：迁入内容库历史分区的历史面板视图引用（用于空态切换）。
+    var historyPanelView: UIView!
     var toolStateChip: UIView!
     var toolStateSwatch: UIView!
     var toolStateLabel: UILabel!
@@ -268,6 +270,7 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
         let bottomDock = self.floatingPanel()
         let rightScrollView = UIScrollView()
         let rightStack = UIStackView()
+        self.historyPanelView = historyPanel
 
         topLeft.translatesAutoresizingMaskIntoConstraints = false
         topRight.translatesAutoresizingMaskIntoConstraints = false
@@ -1309,7 +1312,16 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
         case .officialLineArt: return KCL10n.libraryOfficialLineArtTitle
         case .myLineArt: return KCL10n.libraryMyLineArtTitle
         case .history: return KCL10n.libraryHistoryTitle
+        case .imports: return KCL10n.libraryImportsTitle
         }
+    }
+
+    /// T102：内容库历史分区空态。历史真正为空（无已保存会话且无草稿）时显示“还没有历史作品”引导，
+    /// 并隐藏 historyPanel 栅格；非空时恢复栅格。空态文案走本地化，可见性由数据驱动。
+    func refreshContentLibraryHistoryEmpty(hasDraft: Bool) {
+        let empty = self.sessions.isEmpty && !hasDraft
+        self.contentLibraryPanelView?.setHistoryEmptyVisible(empty, text: KCL10n.libraryHistoryEmptyTitle)
+        self.historyPanelView?.isHidden = empty
     }
 
     func currentLineArtItems() -> [KCLineArtItem] {

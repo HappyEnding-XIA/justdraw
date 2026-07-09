@@ -34,6 +34,8 @@ extension KCMainViewController {
 
         let draftImage = loadDraftThumbnail ? self.sessionStore.draftThumbnailImage() : self.sessionStore.cachedDraftThumbnailImage()
         let hasDraft = draftImage != nil || (checkDraftExistence && self.sessionStore.hasDraft())
+        // T102：同步内容库历史分区空态（无已保存会话且无草稿时显示“还没有历史作品”）。
+        self.refreshContentLibraryHistoryEmpty(hasDraft: hasDraft)
         let selectedSession = self.currentSelectedHistorySession()
         let canDeleteHistoryItem = self.history.canDeleteHistory(
             hasSelectedSession: selectedSession != nil,

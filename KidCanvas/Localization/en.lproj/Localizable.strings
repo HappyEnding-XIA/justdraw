@@ -162,5 +162,14 @@
 /* Content library section: history (open + delete) */
 "library.partition.history" = "History";
 
+/* Content library section: imports (reserved, T100/T101; not a visible main section yet) */
+"library.partition.imports" = "Imports";
+
 /* Content library: my-line-art empty state (reserved until T099) */
 "library.empty.my-line-art" = "No saved line art yet. Save a drawing you love as line art and it will appear here.";
+
+/* Content library: history empty state (no saved sessions and no draft) */
+"library.empty.history" = "No saved drawings yet. Save one and it will appear here.";
+
+/* Content library: imports empty state (reserved, T100/T101) */
+"library.empty.imports" = "No imported content yet.";

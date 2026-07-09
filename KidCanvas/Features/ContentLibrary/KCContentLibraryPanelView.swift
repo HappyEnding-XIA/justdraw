@@ -50,6 +50,7 @@ final class KCContentLibraryPanelView: UIView {
     private let segmentedControl = UISegmentedControl()
     private let closeButton = UIButton(type: .system)
     private let myLineArtEmptyLabel = UILabel()
+    private let historyEmptyLabel = UILabel()
     private var suppressSegmentCallback = false
 
     override init(frame: CGRect) {
@@ -116,6 +117,14 @@ final class KCContentLibraryPanelView: UIView {
         myLineArtEmptyLabel.numberOfLines = 0
         myLineArtContainer.addSubview(myLineArtEmptyLabel)
 
+        historyEmptyLabel.translatesAutoresizingMaskIntoConstraints = false
+        historyEmptyLabel.textColor = KCEditorVisualStyle.mutedInkColor
+        historyEmptyLabel.font = .systemFont(ofSize: 16.0, weight: .medium)
+        historyEmptyLabel.textAlignment = .center
+        historyEmptyLabel.numberOfLines = 0
+        historyEmptyLabel.isHidden = true
+        historyContainer.addSubview(historyEmptyLabel)
+
         NSLayoutConstraint.activate([
             backdropView.topAnchor.constraint(equalTo: topAnchor),
             backdropView.leadingAnchor.constraint(equalTo: leadingAnchor),
@@ -159,7 +168,11 @@ final class KCContentLibraryPanelView: UIView {
 
             myLineArtEmptyLabel.centerYAnchor.constraint(equalTo: myLineArtContainer.centerYAnchor),
             myLineArtEmptyLabel.leadingAnchor.constraint(equalTo: myLineArtContainer.leadingAnchor, constant: 20.0),
-            myLineArtEmptyLabel.trailingAnchor.constraint(equalTo: myLineArtContainer.trailingAnchor, constant: -20.0)
+            myLineArtEmptyLabel.trailingAnchor.constraint(equalTo: myLineArtContainer.trailingAnchor, constant: -20.0),
+
+            historyEmptyLabel.centerYAnchor.constraint(equalTo: historyContainer.centerYAnchor),
+            historyEmptyLabel.leadingAnchor.constraint(equalTo: historyContainer.leadingAnchor, constant: 20.0),
+            historyEmptyLabel.trailingAnchor.constraint(equalTo: historyContainer.trailingAnchor, constant: -20.0)
         ])
 
         showPartition(index: 0)
@@ -175,6 +188,16 @@ final class KCContentLibraryPanelView: UIView {
     func setMyLineArtEmptyText(_ text: String) {
         myLineArtEmptyLabel.text = text
     }
+
+    /// 设置历史作品空态显隐与文案。历史真正为空（无已保存、无草稿）时显示引导，
+    /// 控制器同时隐藏 `historyPanel` 栅格；非空时恢复栅格显示。
+    func setHistoryEmptyVisible(_ visible: Bool, text: String) {
+        historyEmptyLabel.text = text
+        historyEmptyLabel.isHidden = !visible
+    }
+
+    /// 历史空态当前是否可见（供运行时验收读取）。
+    var isHistoryEmptyVisible: Bool { !historyEmptyLabel.isHidden }
 
     /// 切换可见分区（不触发 `onPartitionChange` 回调）。
     func showPartition(index: Int) {

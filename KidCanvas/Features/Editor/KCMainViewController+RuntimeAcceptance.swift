@@ -266,6 +266,16 @@ extension KCMainViewController {
         let myLineArtEmpty = self.contentLibrary.isEmpty(partition: .myLineArt, itemCount: 0)
         let myLineArtNotDeletableWhenEmpty = !self.contentLibrary.canDelete(in: .myLineArt, itemCount: 0)
 
+        // T102：分区顺序固定为 官方/我的/历史（3 个可见主分区），imports 为预留且不在 defaultOrder。
+        let mainPartitionCount = KCContentLibraryPartition.defaultOrder.count
+        let mainPartitionOrderIsFixed = KCContentLibraryPartition.defaultOrder == [.officialLineArt, .myLineArt, .history]
+        let importsReserved = !KCContentLibraryPartition.defaultOrder.contains(.imports)
+            && !KCContentLibraryPartition.imports.isMainPartition
+
+        // T102：历史空态与实际数据一致（无已保存会话且无草稿时显示“还没有历史作品”）。
+        let historyEmptyExpected = self.sessions.isEmpty && !self.sessionStore.hasDraft()
+        let historyEmptyMatches = (self.contentLibraryPanelView?.isHistoryEmptyVisible ?? false) == historyEmptyExpected
+
         // 关闭内容库。
         self.setContentLibraryPanelVisible(false)
 
@@ -284,6 +294,10 @@ extension KCMainViewController {
             && myLineArtContainerVisible
             && myLineArtEmpty
             && myLineArtNotDeletableWhenEmpty
+            && mainPartitionCount == 3
+            && mainPartitionOrderIsFixed
+            && importsReserved
+            && historyEmptyMatches
 
         let result: [String: Any] = [
             "probe": "content-library",
@@ -303,7 +317,12 @@ extension KCMainViewController {
             "myLineArtSelected": myLineArtSelected,
             "myLineArtContainerVisible": myLineArtContainerVisible,
             "myLineArtEmpty": myLineArtEmpty,
-            "myLineArtNotDeletableWhenEmpty": myLineArtNotDeletableWhenEmpty
+            "myLineArtNotDeletableWhenEmpty": myLineArtNotDeletableWhenEmpty,
+            "mainPartitionCount": mainPartitionCount,
+            "mainPartitionOrderIsFixed": mainPartitionOrderIsFixed,
+            "importsReserved": importsReserved,
+            "historyEmptyExpected": historyEmptyExpected,
+            "historyEmptyMatches": historyEmptyMatches
         ]
         self.writeRuntimeAcceptanceResult(result, fileName: "kc_runtime_acceptance_content_library.json")
     }

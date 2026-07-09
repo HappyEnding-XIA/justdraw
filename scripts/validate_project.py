@@ -732,6 +732,10 @@ def content_library_checks():
         checks.append(require_text(text, "case officialLineArt", "Content library has an official-line-art partition"))
         checks.append(require_text(text, "case myLineArt", "Content library has a my-line-art partition"))
         checks.append(require_text(text, "case history", "Content library has a history partition"))
+        checks.append(require_text(text, "case imports", "Content library has a reserved imports partition (T102)"))
+        checks.append(require_text(text, "isMainPartition", "Content library distinguishes main vs reserved partitions (T102)"))
+        checks.append(require_regex(text, r"defaultOrder.*\[.*officialLineArt.*myLineArt.*history.*\]", "Content library fixes main partition order: official > my > history (T102)", re.S))
+        checks.append(forbid_text(text, ".imports]", "Content library defaultOrder does not include the reserved imports partition (T102)"))
         checks.append(require_text(text, "allowsDelete", "Content library partitions declare delete capability"))
         checks.append(forbid_text(text, "import UIKit", "KCContentLibrary state model stays UIKit-free in KCDomain"))
 
@@ -753,27 +757,50 @@ def content_library_checks():
         checks.append(require_text(text, "myLineArtContainer", "Panel exposes a my-line-art container"))
         checks.append(require_text(text, "historyContainer", "Panel exposes a history container"))
         checks.append(require_text(text, "UISegmentedControl", "Panel uses a segmented control for partitions"))
+        checks.append(require_text(text, "historyEmptyLabel", "Panel has a history empty-state label (T102)"))
+        checks.append(require_text(text, "func setHistoryEmptyVisible", "Panel can toggle the history empty state (T102)"))
+        checks.append(require_text(text, "var isHistoryEmptyVisible", "Panel exposes history empty-state visibility for acceptance (T102)"))
 
     main_text = APP_FILE_PATHS["KCMainViewController.swift"].read_text(encoding="utf-8")
     checks.append(require_text(main_text, "contentLibraryButton", "Editor exposes the top-right content-library entry"))
     checks.append(require_text(main_text, "func setupContentLibraryPanel", "Editor assembles the content-library overlay"))
     checks.append(require_text(main_text, "func setContentLibraryPanelVisible", "Editor can show/hide the content library"))
     checks.append(require_text(main_text, "func didTapContentLibrary", "Editor toggles the content library from the top-right entry"))
+    checks.append(require_text(main_text, "func refreshContentLibraryHistoryEmpty", "Editor drives the content-library history empty state from data (T102)"))
+    checks.append(require_text(main_text, "historyPanelView", "Editor retains the history panel view reference for empty-state toggling (T102)"))
     # 入口收敛：不再保留独立的线稿弹窗入口与右侧常驻历史面板。
     checks.append(forbid_text(main_text, "func didTapLineArtPicker()", "Editor no longer presents a standalone line-art popover (folded into the library)"))
     checks.append(forbid_text(main_text, "rightStack.addArrangedSubview(historyPanel)", "History panel is not in the always-visible right stack (moved into the library)"))
+
+    # T102：历史作品默认按最近修改时间倒序（KCSessionStore 落实产品口径）。
+    session_store_path = ROOT / "Packages" / "KidCanvasModules" / "Sources" / "KCSessionPersistence" / "KCSessionStore.swift"
+    if session_store_path.exists():
+        store_text = session_store_path.read_text(encoding="utf-8")
+        checks.append(require_regex(store_text, r"sorted\s*\{[^}]*modifiedAt[^}]*>[^}]*modifiedAt", "History sessions sort newest-first by modifiedAt (T102)"))
 
     runtime_text = APP_FILE_PATHS["KCMainViewController+RuntimeAcceptance.swift"].read_text(encoding="utf-8")
     checks.append(require_text(runtime_text, "--kc-runtime-content-library-check", "Runtime acceptance wires the content-library probe launch arg"))
     checks.append(require_text(runtime_text, "runContentLibraryAcceptanceProbe", "Runtime acceptance runs the content-library probe"))
     checks.append(require_text(runtime_text, "kc_runtime_acceptance_content_library.json", "Runtime acceptance writes the content-library result file"))
+    checks.append(require_text(runtime_text, "mainPartitionOrderIsFixed", "Runtime acceptance verifies the fixed main partition order (T102)"))
+    checks.append(require_text(runtime_text, "importsReserved", "Runtime acceptance verifies the imports partition stays reserved (T102)"))
+    checks.append(require_text(runtime_text, "historyEmptyMatches", "Runtime acceptance verifies the history empty state matches actual data (T102)"))
 
     script_text = (ROOT / "scripts" / "runtime_acceptance_test.sh").read_text(encoding="utf-8")
     checks.append(require_text(script_text, "content-library)", "Acceptance script exposes the content-library probe"))
 
     zh_text = (ROOT / "KidCanvas" / "Localization" / "zh-Hans.lproj" / "Localizable.strings").read_text(encoding="utf-8")
     en_text = (ROOT / "KidCanvas" / "Localization" / "en.lproj" / "Localizable.strings").read_text(encoding="utf-8")
-    for key in ["top.content-library.title", "library.partition.official-line-art", "library.partition.my-line-art", "library.partition.history", "library.empty.my-line-art"]:
+    for key in [
+        "top.content-library.title",
+        "library.partition.official-line-art",
+        "library.partition.my-line-art",
+        "library.partition.history",
+        "library.partition.imports",
+        "library.empty.my-line-art",
+        "library.empty.history",
+        "library.empty.imports",
+    ]:
         checks.append(require_text(zh_text, f'"{key}"', f"Content library zh localization: {key}"))
         checks.append(require_text(en_text, f'"{key}"', f"Content library en localization: {key}"))
 

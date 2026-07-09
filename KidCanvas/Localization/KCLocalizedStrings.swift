@@ -153,8 +153,12 @@ enum KCL10n {
     static var libraryMyLineArtTitle: String { tr("library.partition.my-line-art") }
     /// 内容库分区：历史作品。
     static var libraryHistoryTitle: String { tr("library.partition.history") }
+    /// 内容库分区：导入结果（预留，T100/T101 接入；暂不作为可见主分区）。
+    static var libraryImportsTitle: String { tr("library.partition.imports") }
     /// 我的线稿分区空态文案（T099 接入真实数据前为预留）。
     static var libraryMyLineArtEmptyTitle: String { tr("library.empty.my-line-art") }
+    /// 历史作品分区空态文案（无已保存会话且无草稿时显示）。
+    static var libraryHistoryEmptyTitle: String { tr("library.empty.history") }
     static var hideToolsTitle: String { tr("action.hide-tools.title") }
     static var showToolsTitle: String { tr("action.show-tools.title") }
     static var clearCanvasAlertTitle: String { tr("alert.clear-canvas.title") }
