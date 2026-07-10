@@ -443,11 +443,11 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
             stack.bottomAnchor.constraint(equalTo: panel.bottomAnchor, constant: -12.0)
         ])
 
-        let brandButton = self.iconButtonWithSymbolName("paintpalette.fill", accentColor: UIColor(red: 0.96, green: 0.85, blue: 0.48, alpha: 1.0))
+        let paletteButton = self.iconButtonWithSymbolName("paintpalette.fill", accentColor: UIColor(red: 0.96, green: 0.85, blue: 0.48, alpha: 1.0))
         let newButton = self.iconButtonWithSymbolName("plus", accentColor: nil)
         self.undoButton = self.iconButtonWithSymbolName("arrow.uturn.backward", accentColor: nil)
         self.redoButton = self.iconButtonWithSymbolName("arrow.uturn.forward", accentColor: nil)
-        self.applyAccessibilityLabel(KCL10n.paletteTitle, identifier: "top.palette", toControl: brandButton)
+        self.applyAccessibilityLabel(KCL10n.paletteTitle, identifier: "top.palette", toControl: paletteButton)
         self.applyAccessibilityLabel(KCL10n.newCanvasTitle, identifier: "top.new-canvas", toControl: newButton)
         self.applyAccessibilityLabel(KCL10n.undoTitle, identifier: "top.undo", toControl: self.undoButton)
         self.applyAccessibilityLabel(KCL10n.redoTitle, identifier: "top.redo", toControl: self.redoButton)
@@ -456,7 +456,7 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
         self.undoButton.addTarget(self, action: #selector(didTapUndo), for: .touchUpInside)
         self.redoButton.addTarget(self, action: #selector(didTapRedo), for: .touchUpInside)
 
-        stack.addArrangedSubview(brandButton)
+        stack.addArrangedSubview(paletteButton)
         stack.addArrangedSubview(newButton)
         stack.addArrangedSubview(self.undoButton)
         stack.addArrangedSubview(self.redoButton)
@@ -496,10 +496,9 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
     func buildLeftRail(_ panel: UIView) {
         let toolScrollView = UIScrollView()
         toolScrollView.translatesAutoresizingMaskIntoConstraints = false
-        toolScrollView.showsVerticalScrollIndicator = self.isCompactPhoneLayout
+        toolScrollView.showsVerticalScrollIndicator = false
         toolScrollView.alwaysBounceVertical = true
         toolScrollView.clipsToBounds = true
-        toolScrollView.indicatorStyle = .black
         panel.addSubview(toolScrollView)
 
         let stack = UIStackView()

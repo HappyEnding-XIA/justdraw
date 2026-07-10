@@ -1279,7 +1279,8 @@ extension KCMainViewController {
             let start = CFAbsoluteTimeGetCurrent()
             for _ in 0..<strokeCount {
                 _ = self.canvasView.drawingEngine.brushDabs(for: samples, canvasScale: 1.0,
-                                                            brushStyle: KDBrushStyle.pencil.rawValue)
+                                                            brushStyle: KDBrushStyle.pencil.rawValue,
+                                                            lineWidth: KCBrushPreset.preset(for: .pencil).referenceLineWidth)
             }
             return (CFAbsoluteTimeGetCurrent() - start) * 1000.0
         }

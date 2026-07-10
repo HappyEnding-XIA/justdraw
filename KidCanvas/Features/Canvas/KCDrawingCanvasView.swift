@@ -408,12 +408,22 @@ final class KCDrawingCanvasView: UIView, UIGestureRecognizerDelegate {
         }
     }
 
+    /// 样张/基线渲染用的默认画笔尺寸（= 各风格 `referenceLineWidth`），保证样张以 1.0 倍缩放呈现（T111）。
+    private func dabReferenceLineWidth(for style: KDBrushStyle) -> Double {
+        switch style {
+        case .pencil: return KCBrushPreset.preset(for: .pencil).referenceLineWidth
+        case .pen: return KCBrushPreset.preset(for: .pen).referenceLineWidth
+        case .crayon: return KCBrushPreset.preset(for: .crayon).referenceLineWidth
+        }
+    }
+
     private func resolvedDabs(for stroke: KDStroke) -> [KCBrushDab] {
         if let cached = stroke.cachedDabs { return cached }
         let dabs = self.drawingEngine.brushDabs(
             for: stroke.samples,
             canvasScale: 1.0,
-            brushStyle: stroke.brushStyle.rawValue
+            brushStyle: stroke.brushStyle.rawValue,
+            lineWidth: Double(stroke.lineWidth)
         )
         stroke.cachedDabs = dabs
         return dabs
@@ -545,7 +555,12 @@ final class KCDrawingCanvasView: UIView, UIGestureRecognizerDelegate {
                     Self.brushSamplePressureGradient(y: rowTop + 230)
                 ]
                 for samples in strokes {
-                    let dabs = drawingEngine.brushDabs(for: samples, canvasScale: 1.0, brushStyle: style.rawValue)
+                    let dabs = drawingEngine.brushDabs(
+                        for: samples,
+                        canvasScale: 1.0,
+                        brushStyle: style.rawValue,
+                        lineWidth: dabReferenceLineWidth(for: style)
+                    )
                     drawDabs(dabs, brushStyle: style, textureSeed: seed, color: color)
                 }
             }

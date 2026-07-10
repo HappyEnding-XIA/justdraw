@@ -180,8 +180,8 @@ final class KCMyLineArtGridView: UIView {
         button.accessibilityLabel = item.title
         button.accessibilityIdentifier = "library.my-line-art.\(item.identifier)"
         if let image = thumbnailProvider?(item.identifier) {
-            button.setImage(image, for: .normal)
-            button.tintColor = UIColor.darkText
+            button.setImage(image.withRenderingMode(.alwaysOriginal), for: .normal)
+            button.imageView?.contentMode = .scaleAspectFit
             button.contentVerticalAlignment = .fill
             button.contentHorizontalAlignment = .fill
         }

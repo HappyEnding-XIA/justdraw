@@ -52,6 +52,9 @@ public struct KCBrushPreset: Sendable, Equatable {
     public var velocityToSpacing: Double
     /// 速度对流量的削弱系数（velT 0…1）。
     public var velocityToFlow: Double
+    /// 用户画笔尺寸（lineWidth，点）的参考值：当 lineWidth == referenceLineWidth 时，
+    /// `scaledForLineWidth(_:)` 的缩放为 1.0（即 preset 原始半径）。各风格取产品默认 slider 值。
+    public var referenceLineWidth: Double
 
     public init(
         radiusMin: Double,
@@ -67,7 +70,8 @@ public struct KCBrushPreset: Sendable, Equatable {
         textureSeed: UInt64,
         tiltResponse: KCBrushTiltResponse,
         velocityToSpacing: Double,
-        velocityToFlow: Double
+        velocityToFlow: Double,
+        referenceLineWidth: Double = 12.0
     ) {
         self.radiusMin = radiusMin
         self.radiusMax = radiusMax
@@ -83,6 +87,19 @@ public struct KCBrushPreset: Sendable, Equatable {
         self.tiltResponse = tiltResponse
         self.velocityToSpacing = velocityToSpacing
         self.velocityToFlow = velocityToFlow
+        self.referenceLineWidth = referenceLineWidth
+    }
+
+    /// 按「用户画笔尺寸（lineWidth）」缩放本预设的半径（`radiusMin`/`radiusMax`），
+    /// 让铅笔/蜡笔的尺寸 slider 真正生效（T111）。缩放比例 = `lineWidth / referenceLineWidth`，
+    /// 钳制到 `[0.2, 3.0]`；半径下限 `0.15`，避免退化。其余属性（间距/流量/纹理/曲线…）保持不变。
+    public func scaledForLineWidth(_ lineWidth: Double) -> KCBrushPreset {
+        let safeReference = max(1.0, referenceLineWidth)
+        let scale = min(3.0, max(0.2, lineWidth / safeReference))
+        var scaled = self
+        scaled.radiusMin = max(0.15, radiusMin * scale)
+        scaled.radiusMax = max(0.15, radiusMax * scale)
+        return scaled
     }
 
     /// 按画笔风格返回产品化预设。
@@ -107,7 +124,8 @@ public struct KCBrushPreset: Sendable, Equatable {
                 textureSeed: 0x4F3C_2D11_8A77_B5E0,
                 tiltResponse: .pencil,
                 velocityToSpacing: 0.6,
-                velocityToFlow: 0.25
+                velocityToFlow: 0.25,
+                referenceLineWidth: 12.0
             )
         case .pen:
             return KCBrushPreset(
@@ -124,7 +142,8 @@ public struct KCBrushPreset: Sendable, Equatable {
                 textureSeed: 0x91B2_4E07_D330_A6F5,
                 tiltResponse: .none,
                 velocityToSpacing: 0.15,
-                velocityToFlow: 0.05
+                velocityToFlow: 0.05,
+                referenceLineWidth: 9.0
             )
         case .crayon:
             return KCBrushPreset(
@@ -141,7 +160,8 @@ public struct KCBrushPreset: Sendable, Equatable {
                 textureSeed: 0x1C7A_55E0_BB19_4023,
                 tiltResponse: .mild,
                 velocityToSpacing: 0.4,
-                velocityToFlow: 0.15
+                velocityToFlow: 0.15,
+                referenceLineWidth: 18.0
             )
         }
     }

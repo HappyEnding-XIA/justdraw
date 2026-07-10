@@ -37,9 +37,9 @@ T038 后，内置线稿的程序化几何不再放在 `KCMainViewController`。
 T093 引入纯 Swift、UIKit-free 的画笔采样与 dab 引擎，作为专业画笔质感的基础；UIKit/CoreGraphics 光栅化接入在 T094，本节类型不接触 UIKit。
 
 - `KCBrushInputSample`：单次高保真输入采样（`point`、`timestamp`、`pressure`、`velocity`、`altitude`、`azimuth`、`isPencil`）；`pressure` 已由 `KCPressureModel.normalized(...)` 上游归一化。
-- `KCBrushPreset`：按 `KCBrushStyle` 描述间距、半径曲线、不透明度、流量、硬度、抖动、纸纹强度、纹理种子、倾角行为与速度影响；`KCBrushPreset.preset(for:)` 提供铅笔/钢笔/蜡笔三种产品化预设。
+- `KCBrushPreset`：按 `KCBrushStyle` 描述间距、半径曲线、不透明度、流量、硬度、抖动、纸纹强度、纹理种子、倾角行为与速度影响；`KCBrushPreset.preset(for:)` 提供铅笔/钢笔/蜡笔三种产品化预设。**T111 起**新增 `referenceLineWidth`（铅笔 12 / 钢笔 9 / 蜡笔 18，对应 App `clampedBrushWidth` 默认 slider 值）与 `scaledForLineWidth(_:)`：按 `lineWidth / referenceLineWidth`（钳到 `[0.2, 3.0]`、半径下限 0.15）缩放 `radiusMin`/`radiusMax`，让铅笔/蜡笔的尺寸 slider 真正生效（其余间距/流量/纹理/曲线不变）。
 - `KCBrushDab`：单个绘制单元输出（中心、半径、alpha、flow、旋转、纵横比、硬度、纸纹强度、确定性 `seed`）。
-- `KCBrushDabGenerator`：把连续采样变成稳定 dab 序列——逐采样压力按曲线算半径（不再是整条 `averagePressure`），速度参与间距与流量，Pencil 倾角参与椭圆侧锋，手指输入回退为垂直正圆。
+- `KCBrushDabGenerator`：把连续采样变成稳定 dab 序列——逐采样压力按曲线算半径（不再是整条 `averagePressure`），速度参与间距与流量，Pencil 倾角参与椭圆侧锋，手指输入回退为垂直正圆。**T111 起**：上层 App adapter `brushDabs(for:canvasScale:brushStyle:lineWidth:)` 传入用户 `lineWidth`，preset 先经 `scaledForLineWidth(lineWidth)` 再生成 dab，故半径与间距随用户尺寸缩放；样张/性能基线探针按各风格 `referenceLineWidth` 渲染（1.0 倍）。
 
 确定性约束（T094 undo/redo 重绘不闪烁的前提）：
 

@@ -32,10 +32,12 @@ protocol KCDrawingEngineProviding: AnyObject {
     ) -> KCStrokeRenderMath.RenderProfile?
     /// 由连续高保真采样生成 dab 序列，供 UIKit 侧光栅化（铅笔/蜡笔）。
     /// `brushStyle` 为 `KDBrushStyle` raw 值：0 = 铅笔、1 = 钢笔、2 = 蜡笔。
+    /// `lineWidth` 为用户当前画笔尺寸（点），preset 会据此缩放半径（T111）。
     func brushDabs(
         for samples: [KCBrushInputSample],
         canvasScale: Double,
-        brushStyle: Int
+        brushStyle: Int,
+        lineWidth: Double
     ) -> [KCBrushDab]
     func eraserStampPath(shape: Int, center: CGPoint, size: CGFloat) -> UIBezierPath?
     func eraserStampPointsAlongPath(_ path: CGPath, lineWidth: CGFloat) -> [NSValue]
@@ -173,13 +175,15 @@ final class KCDrawingEngineAdapter: NSObject, KCDrawingEngineProviding {
 
     /// 由连续采样 + 画笔预设生成稳定 dab 序列。内部用 `KCBrushPreset.preset(for:)`
     /// 与 `KCBrushDabGenerator`，是纯引擎的薄桥接；UIKit 光栅化仍在画布视图完成。
+    /// `lineWidth` 经 `scaledForLineWidth` 缩放 preset 半径，让铅笔/蜡笔尺寸 slider 生效（T111）。
     func brushDabs(
         for samples: [KCBrushInputSample],
         canvasScale: Double,
-        brushStyle: Int
+        brushStyle: Int,
+        lineWidth: Double
     ) -> [KCBrushDab] {
         guard let style = Self.brushStyleFromOC(brushStyle) else { return [] }
-        let preset = KCBrushPreset.preset(for: style)
+        let preset = KCBrushPreset.preset(for: style).scaledForLineWidth(lineWidth)
         return KCBrushDabGenerator(preset: preset, canvasScale: canvasScale).dabs(for: samples)
     }
 

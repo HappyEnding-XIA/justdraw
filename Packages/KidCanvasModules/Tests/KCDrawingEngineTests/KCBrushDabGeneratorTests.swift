@@ -225,6 +225,58 @@ final class KCBrushDabGeneratorTests: XCTestCase {
         let r2 = large.dabs(for: [sample(x: 0, y: 0, pressure: 1.0)]).first!.radius
         XCTAssertEqual(r2, r1 * 2.0, accuracy: 1e-9)
     }
+
+    // MARK: - 尺寸（T111：铅笔/蜡笔尺寸 slider 生效）
+
+    func testScaledForLineWidthScalesRadiusProportionally() {
+        let base = KCBrushPreset.preset(for: .pencil)
+        // referenceLineWidth 时缩放为 1.0，半径不变。
+        let atReference = base.scaledForLineWidth(base.referenceLineWidth)
+        XCTAssertEqual(atReference.radiusMax, base.radiusMax, accuracy: 1e-9)
+        XCTAssertEqual(atReference.radiusMin, base.radiusMin, accuracy: 1e-9)
+        // 更大尺寸 → 更大半径；更小尺寸 → 更小半径。
+        let bigger = base.scaledForLineWidth(base.referenceLineWidth * 2.0)
+        let smaller = base.scaledForLineWidth(base.referenceLineWidth / 2.0)
+        XCTAssertGreaterThan(bigger.radiusMax, base.radiusMax)
+        XCTAssertLessThan(smaller.radiusMax, base.radiusMax)
+        // 半径以外的属性（间距/纹理/曲线…）不随尺寸变化。
+        XCTAssertEqual(bigger.spacingFactor, base.spacingFactor)
+        XCTAssertEqual(bigger.textureStrength, base.textureStrength)
+        XCTAssertEqual(bigger.radiusCurve, base.radiusCurve)
+    }
+
+    func testScaledForLineWidthClampsExtremes() {
+        let base = KCBrushPreset.preset(for: .crayon)
+        // 过大 → 钳到 3.0 倍；过小 → 钳到 0.2 倍；半径下限 0.15。
+        let huge = base.scaledForLineWidth(1_000_000)
+        let tiny = base.scaledForLineWidth(0.0)
+        XCTAssertEqual(huge.radiusMax, base.radiusMax * 3.0, accuracy: 1e-9)
+        XCTAssertEqual(tiny.radiusMax, base.radiusMax * 0.2, accuracy: 1e-9)
+        XCTAssertGreaterThanOrEqual(huge.radiusMin, 0.15)
+        XCTAssertGreaterThanOrEqual(tiny.radiusMin, 0.15)
+    }
+
+    func testPencilDabRadiusRespondsToLineWidth() {
+        // 同压力下，大尺寸铅笔的 dab 半径必须明显大于小尺寸（修复点）。
+        let samples = [sample(x: 0, y: 0, pressure: 1.0)]
+        let small = KCBrushDabGenerator(preset: .preset(for: .pencil).scaledForLineWidth(4.0)).dabs(for: samples).first!.radius
+        let large = KCBrushDabGenerator(preset: .preset(for: .pencil).scaledForLineWidth(36.0)).dabs(for: samples).first!.radius
+        XCTAssertGreaterThan(large / max(small, 1e-9), 3.0)
+    }
+
+    func testCrayonDabRadiusRespondsToLineWidth() {
+        let samples = [sample(x: 0, y: 0, pressure: 1.0)]
+        let small = KCBrushDabGenerator(preset: .preset(for: .crayon).scaledForLineWidth(4.0)).dabs(for: samples).first!.radius
+        let large = KCBrushDabGenerator(preset: .preset(for: .crayon).scaledForLineWidth(36.0)).dabs(for: samples).first!.radius
+        XCTAssertGreaterThan(large / max(small, 1e-9), 3.0)
+    }
+
+    func testReferenceLineWidthPerStyleMatchesDefaults() {
+        // 各风格的 referenceLineWidth 对应产品默认 slider 值（App clampedBrushWidth 同口径）。
+        XCTAssertEqual(KCBrushPreset.preset(for: .pencil).referenceLineWidth, 12.0, accuracy: 1e-9)
+        XCTAssertEqual(KCBrushPreset.preset(for: .pen).referenceLineWidth, 9.0, accuracy: 1e-9)
+        XCTAssertEqual(KCBrushPreset.preset(for: .crayon).referenceLineWidth, 18.0, accuracy: 1e-9)
+    }
 }
 
 private extension KCBrushInputSample {
