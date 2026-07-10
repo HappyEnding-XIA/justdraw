@@ -777,6 +777,9 @@ def content_library_checks():
         checks.append(require_text(text, "historyEmptyLabel", "Panel has a history empty-state label (T102)"))
         checks.append(require_text(text, "func setHistoryEmptyVisible", "Panel can toggle the history empty state (T102)"))
         checks.append(require_text(text, "var isHistoryEmptyVisible", "Panel exposes history empty-state visibility for acceptance (T102)"))
+        checks.append(require_text(text, "applyContentLibrarySizeClass", "Content library sizes itself differently on iPhone and iPad"))
+        checks.append(require_text(text, "cardView.widthAnchor.constraint(equalTo: safeAreaLayoutGuide.widthAnchor, multiplier: 0.82)", "Content library iPad card does not occupy the full screen width"))
+        checks.append(require_text(text, "cardView.heightAnchor.constraint(equalTo: safeAreaLayoutGuide.heightAnchor, multiplier: 0.78)", "Content library iPad card does not occupy the full screen height"))
         # T109 G2：内容库卡片由"假玻璃"（实色 + 描边）改为统一玻璃入口。
         checks.append(require_text(text, "KCEditorVisualStyle.makeGlassEffectView", "Content library card uses the unified glass entry (T109 G2)"))
         checks.append(forbid_text(text, "cardView.backgroundColor = UIColor(white: 1.0, alpha: 0.96)", "Content library card no longer uses the old 0.96 fake-glass background (T109 G2)"))
@@ -1944,6 +1947,7 @@ def app_feature_checks(
     checks.append(require_text(line_art_picker_text, "typealias SelectionHandler", "Line-art picker exposes a selection callback"))
     checks.append(require_text(line_art_picker_text, "preferredContentSize = CGSize(width: 450.0, height: 420.0)", "Line-art picker keeps the existing popover size"))
     checks.append(require_text(line_art_picker_text, 'view.accessibilityIdentifier = "line-art.picker"', "Line-art picker keeps the automation identifier"))
+    checks.append(require_text(line_art_picker_text, "panel.isUserInteractionEnabled = true", "Line-art picker glass container keeps preview buttons tappable"))
     checks.append(require_text(line_art_picker_text, "let columns = 2", "Line-art picker keeps the two-column grid"))
     checks.append(require_text(line_art_picker_text, "func lineArtPreviewButton(for item: KCLineArtItem, index: Int) -> UIButton", "Line-art preview button creation lives in the picker view controller"))
     checks.append(require_regex(line_art_picker_text, r"func lineArtPreviewButton\(for item: KCLineArtItem, index: Int\) -> UIButton[\s\S]*cachedThumbnailImage\(for: item\)[\s\S]*loadLineArtThumbnail\(for: item, index: index, button: button\)", "Line-art picker builds buttons from cache and schedules async thumbnail rendering on miss"))

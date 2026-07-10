@@ -46,6 +46,7 @@ final class KCLineArtPickerViewController: UIViewController {
     private func buildInterface() {
         let panel = KCEditorVisualStyle.makeGlassEffectView(contentTint: KCEditorVisualStyle.glassContentTintStrong)
         panel.translatesAutoresizingMaskIntoConstraints = false
+        panel.isUserInteractionEnabled = true
         KCEditorVisualStyle.applyGlassSurface(to: panel, cornerRadius: KCEditorVisualStyle.lineArtPickerCornerRadius)
         self.view.addSubview(panel)
 

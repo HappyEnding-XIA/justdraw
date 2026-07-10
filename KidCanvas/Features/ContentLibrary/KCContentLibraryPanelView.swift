@@ -51,6 +51,16 @@ final class KCContentLibraryPanelView: UIView {
     private let closeButton = UIButton(type: .system)
     private let myLineArtEmptyLabel = UILabel()
     private let historyEmptyLabel = UILabel()
+    private var cardTopConstraint: NSLayoutConstraint?
+    private var cardLeadingConstraint: NSLayoutConstraint?
+    private var cardTrailingConstraint: NSLayoutConstraint?
+    private var cardBottomConstraint: NSLayoutConstraint?
+    private var cardCenterXConstraint: NSLayoutConstraint?
+    private var cardCenterYConstraint: NSLayoutConstraint?
+    private var cardWidthConstraint: NSLayoutConstraint?
+    private var cardHeightConstraint: NSLayoutConstraint?
+    private var cardMaxWidthConstraint: NSLayoutConstraint?
+    private var cardMaxHeightConstraint: NSLayoutConstraint?
     private var suppressSegmentCallback = false
 
     override init(frame: CGRect) {
@@ -139,16 +149,32 @@ final class KCContentLibraryPanelView: UIView {
         historyEmptyLabel.isHidden = true
         historyContainer.addSubview(historyEmptyLabel)
 
+        let cardTopConstraint = cardView.topAnchor.constraint(equalTo: safeAreaLayoutGuide.topAnchor, constant: 16.0)
+        let cardLeadingConstraint = cardView.leadingAnchor.constraint(equalTo: safeAreaLayoutGuide.leadingAnchor, constant: 16.0)
+        let cardTrailingConstraint = cardView.trailingAnchor.constraint(equalTo: safeAreaLayoutGuide.trailingAnchor, constant: -16.0)
+        let cardBottomConstraint = cardView.bottomAnchor.constraint(equalTo: safeAreaLayoutGuide.bottomAnchor, constant: -16.0)
+        let cardCenterXConstraint = cardView.centerXAnchor.constraint(equalTo: safeAreaLayoutGuide.centerXAnchor)
+        let cardCenterYConstraint = cardView.centerYAnchor.constraint(equalTo: safeAreaLayoutGuide.centerYAnchor)
+        let cardWidthConstraint = cardView.widthAnchor.constraint(equalTo: safeAreaLayoutGuide.widthAnchor, multiplier: 0.82)
+        let cardHeightConstraint = cardView.heightAnchor.constraint(equalTo: safeAreaLayoutGuide.heightAnchor, multiplier: 0.78)
+        let cardMaxWidthConstraint = cardView.widthAnchor.constraint(lessThanOrEqualToConstant: 980.0)
+        let cardMaxHeightConstraint = cardView.heightAnchor.constraint(lessThanOrEqualToConstant: 640.0)
+        self.cardTopConstraint = cardTopConstraint
+        self.cardLeadingConstraint = cardLeadingConstraint
+        self.cardTrailingConstraint = cardTrailingConstraint
+        self.cardBottomConstraint = cardBottomConstraint
+        self.cardCenterXConstraint = cardCenterXConstraint
+        self.cardCenterYConstraint = cardCenterYConstraint
+        self.cardWidthConstraint = cardWidthConstraint
+        self.cardHeightConstraint = cardHeightConstraint
+        self.cardMaxWidthConstraint = cardMaxWidthConstraint
+        self.cardMaxHeightConstraint = cardMaxHeightConstraint
+
         NSLayoutConstraint.activate([
             backdropView.topAnchor.constraint(equalTo: topAnchor),
             backdropView.leadingAnchor.constraint(equalTo: leadingAnchor),
             backdropView.trailingAnchor.constraint(equalTo: trailingAnchor),
             backdropView.bottomAnchor.constraint(equalTo: bottomAnchor),
-
-            cardView.topAnchor.constraint(equalTo: safeAreaLayoutGuide.topAnchor, constant: 16.0),
-            cardView.leadingAnchor.constraint(equalTo: safeAreaLayoutGuide.leadingAnchor, constant: 16.0),
-            cardView.trailingAnchor.constraint(equalTo: safeAreaLayoutGuide.trailingAnchor, constant: -16.0),
-            cardView.bottomAnchor.constraint(equalTo: safeAreaLayoutGuide.bottomAnchor, constant: -16.0),
 
             segmentedControl.topAnchor.constraint(equalTo: cardView.topAnchor, constant: 16.0),
             segmentedControl.leadingAnchor.constraint(equalTo: cardView.leadingAnchor, constant: 20.0),
@@ -188,8 +214,29 @@ final class KCContentLibraryPanelView: UIView {
             historyEmptyLabel.leadingAnchor.constraint(equalTo: historyContainer.leadingAnchor, constant: 20.0),
             historyEmptyLabel.trailingAnchor.constraint(equalTo: historyContainer.trailingAnchor, constant: -20.0)
         ])
+        applyContentLibrarySizeClass()
 
         showPartition(index: 0)
+    }
+
+    override func traitCollectionDidChange(_ previousTraitCollection: UITraitCollection?) {
+        super.traitCollectionDidChange(previousTraitCollection)
+        applyContentLibrarySizeClass()
+    }
+
+    private func applyContentLibrarySizeClass() {
+        let compact = traitCollection.userInterfaceIdiom == .phone
+        backdropView.backgroundColor = UIColor(white: 0.0, alpha: compact ? 0.28 : 0.18)
+        cardTopConstraint?.isActive = compact
+        cardLeadingConstraint?.isActive = compact
+        cardTrailingConstraint?.isActive = compact
+        cardBottomConstraint?.isActive = compact
+        cardCenterXConstraint?.isActive = !compact
+        cardCenterYConstraint?.isActive = !compact
+        cardWidthConstraint?.isActive = !compact
+        cardHeightConstraint?.isActive = !compact
+        cardMaxWidthConstraint?.isActive = !compact
+        cardMaxHeightConstraint?.isActive = !compact
     }
 
     /// 设置某分段的标题（控制器传入本地化文案）。
