@@ -143,8 +143,10 @@ extension KCMainViewController {
         self.writeRuntimeAcceptanceResult(result, fileName: "kc_runtime_acceptance_layout.json")
     }
 
-    /// T097：画布导航运行时验收。验证默认视图居中、非默认视口下坐标转换非恒等、
-    /// 填色/取色同内容点一致（不偏移）、恢复视图回到默认、恢复按钮按状态显隐。
+    /// T097/T106/T107：画布导航运行时验收。验证默认视图居中、非默认视口下坐标转换非恒等、
+    /// 放大后双指平移会改变 viewport、填色/取色同内容点一致（不偏移）、
+    /// 缩小态（scale<1）双指平移不被强制吸回中心（T107）、
+    /// 恢复视图回到默认、恢复按钮按状态显隐。
     private func runCanvasViewportAcceptanceProbe() {
         self.activeSession = nil
         self.selectedHistorySession = nil
@@ -167,6 +169,10 @@ extension KCMainViewController {
         let afterSetIsDefault = self.canvasView.viewportIsAtDefault
         let restoreButtonShownAfterSet = self.restoreViewportButton.isHidden == false
         let scaleAfterSet = self.canvasView.currentViewportScale
+        self.view.layoutIfNeeded()
+        let restoreFrameAfterSet = self.restoreViewportButton.convert(self.restoreViewportButton.bounds, to: self.view)
+        let collapseFrameAfterSet = self.collapseToggleButton.convert(self.collapseToggleButton.bounds, to: self.view)
+        let floatingButtonsDoNotOverlap = !restoreFrameAfterSet.intersects(collapseFrameAfterSet)
 
         // 屏幕中心经 viewport 反变换得到内容点，验证转换非恒等（缩放下内容点应与屏幕点不同）。
         let canvasBounds = self.canvasView.bounds
@@ -175,15 +181,50 @@ extension KCMainViewController {
         let conversionNonIdentity = abs(contentPoint.x - screenCenter.x) > 1.0
             || abs(contentPoint.y - screenCenter.y) > 1.0
 
+        // T106：模拟双指平移，验收真实平移入口会改变 translation，且同一屏幕点对应的内容点
+        // 会按手指方向产生反向变化，证明放大状态下画布内容能跟手移动。
+        let translationBeforePan = self.canvasView.currentViewportTranslation
+        let contentPointBeforePan = contentPoint
+        let panDelta = CGPoint(x: -60.0, y: 44.0)
+        self.canvasView.runtimeAcceptanceApplyViewportTranslation(panDelta)
+        let translationAfterPan = self.canvasView.currentViewportTranslation
+        let contentPointAfterPan = self.canvasView.runtimeAcceptanceCanvasPoint(forScreenPoint: screenCenter)
+        let viewportTranslationChanged = abs(translationAfterPan.x - translationBeforePan.x) > 1.0
+            || abs(translationAfterPan.y - translationBeforePan.y) > 1.0
+        let contentPointChangedAfterPan = abs(contentPointAfterPan.x - contentPointBeforePan.x) > 1.0
+            || abs(contentPointAfterPan.y - contentPointBeforePan.y) > 1.0
+        let panContentDirectionMatches = contentPointAfterPan.x > contentPointBeforePan.x
+            && contentPointAfterPan.y < contentPointBeforePan.y
+
         // 同一内容点先填色再取色，验证填色与取色解析到同一内容像素（缩放/平移不偏移）。
         let contentSize = CGSize(width: max(canvasBounds.width, 1.0), height: max(canvasBounds.height, 1.0))
-        let normalized = CGPoint(x: contentPoint.x / contentSize.width, y: contentPoint.y / contentSize.height)
+        let normalized = CGPoint(x: contentPointAfterPan.x / contentSize.width, y: contentPointAfterPan.y / contentSize.height)
         let fillColor = UIColor(red: 0.20, green: 0.60, blue: 0.30, alpha: 1.0)
         self.canvasView.currentColor = fillColor
         let fillSucceeded = self.canvasView.performRuntimeAcceptanceFloodFill(atNormalizedPoint: normalized)
         self.canvasView.currentToolMode = .picker
         let pickedColor = self.canvasView.runtimeAcceptancePickedColor(atNormalizedPoint: normalized)
         let pickedMatchesFill = self.color(pickedColor, matchesColor: fillColor)
+
+        // T107：缩小态（scale < 1.0）也必须允许双指平移，不能强制吸回中心。
+        // 用最低缩放 0.5 保证双端（iPhone/iPad）缩放后内容都小于安全创作区，从而命中新的
+        // “重叠钳制”分支；旧实现会把任何缩小态平移强制吸回居中（translation 不变）。
+        let scaledDownCentered = self.canvasView.runtimeAcceptanceDefaultTranslation(forScale: 0.5)
+        self.canvasView.runtimeAcceptanceSetViewport(scale: 0.5, translation: scaledDownCentered)
+        let scaledDownScaleAfterSet = self.canvasView.currentViewportScale
+        let scaledDownTranslationBeforePan = self.canvasView.currentViewportTranslation
+        let scaledDownContentPointBeforePan = self.canvasView.runtimeAcceptanceCanvasPoint(forScreenPoint: screenCenter)
+        self.canvasView.runtimeAcceptanceApplyViewportTranslation(CGPoint(x: 48.0, y: -36.0))
+        let scaledDownTranslationAfterPan = self.canvasView.currentViewportTranslation
+        let scaledDownContentPointAfterPan = self.canvasView.runtimeAcceptanceCanvasPoint(forScreenPoint: screenCenter)
+        let scaledDownScaleUnderOne = scaledDownScaleAfterSet < 1.0
+        let scaledDownViewportTranslationChanged = abs(scaledDownTranslationAfterPan.x - scaledDownTranslationBeforePan.x) > 1.0
+            || abs(scaledDownTranslationAfterPan.y - scaledDownTranslationBeforePan.y) > 1.0
+        let scaledDownContentPointChangedAfterPan = abs(scaledDownContentPointAfterPan.x - scaledDownContentPointBeforePan.x) > 1.0
+            || abs(scaledDownContentPointAfterPan.y - scaledDownContentPointBeforePan.y) > 1.0
+        // 缩小态平移后 translation 不应等于默认居中（证明未被强制吸回中心）。
+        let scaledDownNotCentered = abs(scaledDownTranslationAfterPan.x - scaledDownCentered.x) > 1.0
+            || abs(scaledDownTranslationAfterPan.y - scaledDownCentered.y) > 1.0
 
         // 恢复视图。
         self.canvasView.restoreDefaultViewport()
@@ -194,10 +235,18 @@ extension KCMainViewController {
             && restoreButtonHiddenAtDefault
             && !afterSetIsDefault
             && restoreButtonShownAfterSet
+            && floatingButtonsDoNotOverlap
             && abs(scaleAfterSet - 2.0) < 0.01
             && conversionNonIdentity
+            && viewportTranslationChanged
+            && contentPointChangedAfterPan
+            && panContentDirectionMatches
             && fillSucceeded
             && pickedMatchesFill
+            && scaledDownScaleUnderOne
+            && scaledDownViewportTranslationChanged
+            && scaledDownContentPointChangedAfterPan
+            && scaledDownNotCentered
             && afterRestoreIsDefault
             && restoreButtonHiddenAfterRestore
 
@@ -208,12 +257,33 @@ extension KCMainViewController {
             "restoreButtonHiddenAtDefault": restoreButtonHiddenAtDefault,
             "afterSetIsDefault": afterSetIsDefault,
             "restoreButtonShownAfterSet": restoreButtonShownAfterSet,
+            "floatingButtonsDoNotOverlap": floatingButtonsDoNotOverlap,
+            "restoreFrameAfterSet": self.dictionary(for: restoreFrameAfterSet),
+            "collapseFrameAfterSet": self.dictionary(for: collapseFrameAfterSet),
             "scaleAfterSet": scaleAfterSet,
             "screenCenter": self.dictionary(for: CGRect(origin: screenCenter, size: .zero)),
             "contentPoint": self.dictionary(for: CGRect(origin: contentPoint, size: .zero)),
             "conversionNonIdentity": conversionNonIdentity,
+            "panDelta": self.dictionary(for: CGRect(origin: panDelta, size: .zero)),
+            "translationBeforePan": self.dictionary(for: CGRect(origin: translationBeforePan, size: .zero)),
+            "translationAfterPan": self.dictionary(for: CGRect(origin: translationAfterPan, size: .zero)),
+            "contentPointBeforePan": self.dictionary(for: CGRect(origin: contentPointBeforePan, size: .zero)),
+            "contentPointAfterPan": self.dictionary(for: CGRect(origin: contentPointAfterPan, size: .zero)),
+            "viewportTranslationChanged": viewportTranslationChanged,
+            "contentPointChangedAfterPan": contentPointChangedAfterPan,
+            "panContentDirectionMatches": panContentDirectionMatches,
             "fillSucceeded": fillSucceeded,
             "pickedMatchesFill": pickedMatchesFill,
+            "scaledDownScaleAfterSet": scaledDownScaleAfterSet,
+            "scaledDownScaleUnderOne": scaledDownScaleUnderOne,
+            "scaledDownCenteredTranslation": self.dictionary(for: CGRect(origin: scaledDownCentered, size: .zero)),
+            "scaledDownTranslationBeforePan": self.dictionary(for: CGRect(origin: scaledDownTranslationBeforePan, size: .zero)),
+            "scaledDownTranslationAfterPan": self.dictionary(for: CGRect(origin: scaledDownTranslationAfterPan, size: .zero)),
+            "scaledDownContentPointBeforePan": self.dictionary(for: CGRect(origin: scaledDownContentPointBeforePan, size: .zero)),
+            "scaledDownContentPointAfterPan": self.dictionary(for: CGRect(origin: scaledDownContentPointAfterPan, size: .zero)),
+            "scaledDownViewportTranslationChanged": scaledDownViewportTranslationChanged,
+            "scaledDownContentPointChangedAfterPan": scaledDownContentPointChangedAfterPan,
+            "scaledDownNotCentered": scaledDownNotCentered,
             "afterRestoreIsDefault": afterRestoreIsDefault,
             "restoreButtonHiddenAfterRestore": restoreButtonHiddenAfterRestore
         ]

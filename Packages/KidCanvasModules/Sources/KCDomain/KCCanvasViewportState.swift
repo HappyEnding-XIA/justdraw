@@ -22,7 +22,8 @@ import CoreGraphics
 /// `viewportRect` 是屏幕坐标下的“安全创作区”（已扣除顶栏、左工具轨、右侧面板、
 /// 底部 Dock 的可连续绘制区域）。默认视图把内容中心对齐到安全创作区中心，
 /// 而不是整屏几何中心；缩放/平移后 `clampedTranslation` 保证画布不会完全移出
-/// 可视区域（缩放后内容大于创作区时不留空隙，小于创作区时居中）。
+/// 可视区域：缩放后内容大于创作区时内容始终覆盖创作区（不留空隙），缩小态（内容小于创作区）
+/// 时画纸完全留在创作区内、可在区内任意滑动但不移出创作区/不压到工具轨（T107）。
 ///
 /// 该类型只做几何与坐标转换，不持有 UIKit 类型；真正的双指手势识别、
 /// `setNeedsDisplay`、按钮显隐等 UIKit 行为由 App/Canvas 层（画布 view、
@@ -140,9 +141,11 @@ public struct KCCanvasViewportState: Equatable, Sendable {
     /// 把当前平移量按“画布不能完全移出可视区”的规则钳制。
     ///
     /// 单轴规则（x、y 各自独立）：
-    /// - 缩放后内容小于创作区：居中，内容完全可见；
-    /// - 缩放后内容大于创作区：平移范围限定为 `[viewportMax - 内容尺寸, viewportMin]`，
+    /// - 缩放后内容大于等于创作区：平移范围限定为 `[viewportMax - 内容尺寸, viewportMin]`，
     ///   保证创作区始终被内容覆盖、不留空隙（等价于 UIScrollView 在内容大于可见区时的边界）。
+    /// - 缩放后内容小于创作区（缩小态）：画纸完全留在创作区内，可在区内任意滑动但不移出创作区、
+    ///   不压到工具轨/面板。平移范围限定为 `[viewportMin, viewportMax - 内容尺寸]`（T107）。
+    ///   默认居中由 `defaultState` / `resettingToDefault()` 显式给出，不依赖本钳制。
     public func clampedTranslation(forScale scale: CGFloat) -> CGPoint {
         guard !viewportRect.isEmpty,
               contentSize.width > 0.0, contentSize.height > 0.0 else {
@@ -210,14 +213,19 @@ public struct KCCanvasViewportState: Equatable, Sendable {
         viewportMax: CGFloat
     ) -> CGFloat {
         let viewportExtent = viewportMax - viewportMin
-        if contentExtent <= viewportExtent {
-            // 内容小于等于创作区：把内容中心对齐到创作区中心。
-            return (viewportMin + viewportMax) / 2.0 - contentExtent / 2.0
+        if contentExtent >= viewportExtent {
+            // 缩放后内容大于等于创作区：平移范围限定为 [viewportMax - 内容尺寸, viewportMin]，
+            // 保证创作区始终被内容完全覆盖，画布边缘不会拖出空隙。
+            let lowerBound = viewportMax - contentExtent
+            let upperBound = viewportMin
+            return min(upperBound, max(lowerBound, translation))
         }
-        // 内容大于创作区：平移范围限定为 [viewportMax - 内容尺寸, viewportMin]，
-        // 保证创作区始终被内容完全覆盖，画布边缘不会拖出空隙。
-        let lowerBound = viewportMax - contentExtent
-        let upperBound = viewportMin
+        // 缩放后内容小于创作区（缩小态）：画纸完全留在创作区内，可在区内任意滑动但不移出
+        // 创作区、不压到工具轨/面板（T107）。范围 [viewportMin, viewportMax - 内容尺寸]：
+        // 内容原点不低于创作区左沿（translation >= viewportMin）、内容末端不超过创作区右沿
+        // （translation + contentExtent <= viewportMax ⟺ translation <= viewportMax - contentExtent）。
+        let lowerBound = viewportMin
+        let upperBound = viewportMax - contentExtent
         return min(upperBound, max(lowerBound, translation))
     }
 }

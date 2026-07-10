@@ -201,6 +201,9 @@
 /* T100：从相册导入 */
 "import.from-photo-library.title" = "从相册导入";
 
+/* T104：相册打开中提示 */
+"import.opening-photo-library.title" = "正在打开相册…";
+
 /* T100：拍照导入 */
 "import.from-camera.title" = "拍照导入";
 

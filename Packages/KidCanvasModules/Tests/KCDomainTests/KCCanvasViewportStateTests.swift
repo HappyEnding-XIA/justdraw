@@ -23,6 +23,22 @@ final class KCCanvasViewportStateTests: XCTestCase {
         XCTAssertEqual(lhs.y, rhs.y, accuracy: accuracy, file: file, line: line)
     }
 
+    /// 断言缩放后的内容矩形完全落在安全创作区内（画纸未移出创作区、未压到工具轨/面板）。
+    /// 内容原点 = `viewPoint(forCanvasPoint: .zero)`，内容末端 = 内容右下角的屏幕投影。
+    private func assertContentInsideViewport(
+        _ state: KCCanvasViewportState,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) {
+        let origin = state.viewPoint(forCanvasPoint: .zero)
+        let far = state.viewPoint(forCanvasPoint: CGPoint(x: state.contentSize.width, y: state.contentSize.height))
+        // 完全在内条件（含边界相切）：内容原点 ≥ 创作区左沿、内容末端 ≤ 创作区右沿。
+        let insideX = origin.x >= state.viewportRect.minX && far.x <= state.viewportRect.maxX
+        let insideY = origin.y >= state.viewportRect.minY && far.y <= state.viewportRect.maxY
+        XCTAssertTrue(insideX, "content must stay inside viewport on x axis", file: file, line: line)
+        XCTAssertTrue(insideY, "content must stay inside viewport on y axis", file: file, line: line)
+    }
+
     /// 画布内容 800×600，安全创作区居中且比内容小（模拟左右面板各占 100）。
     private func centeredState() -> KCCanvasViewportState {
         let contentSize = CGSize(width: 800.0, height: 600.0)
@@ -164,15 +180,82 @@ final class KCCanvasViewportStateTests: XCTestCase {
         XCTAssertEqual(state.translation.y, viewportRect.maxY - contentSize.height * 2.0, accuracy: 1e-6)
     }
 
-    func testPanCentersWhenContentSmallerThanViewport() {
+    func testPanKeepsContentFullyInsideViewportWhenSmaller() {
+        // 缩小态（内容 < 创作区）：T107 后不再强制吸回中心，而是允许用户在创作区内滑动画纸，
+        // 但画纸完全留在创作区内、不移出创作区、不压到工具轨/面板。
+        // 范围 [viewportMin, viewportMax - 内容尺寸]：内容 200，创作区 800×600。
         let contentSize = CGSize(width: 200.0, height: 200.0)
         let viewportRect = CGRect(x: 0.0, y: 0.0, width: 800.0, height: 600.0)
         var state = KCCanvasViewportState(contentSize: contentSize, viewportRect: viewportRect, scale: 1.0)
-        state = state.translating(by: CGPoint(x: 9999.0, y: -9999.0))
-        // 内容 200 < 创作区 800/600 → 居中：内容中心对齐创作区中心。
-        // 创作区中心 (400,300)，内容尺寸 200 → 平移 (400-100, 300-100) = (300,200)。
-        XCTAssertEqual(state.translation.x, 300.0, accuracy: 1e-6)
-        XCTAssertEqual(state.translation.y, 200.0, accuracy: 1e-6)
+        // 向右下大幅平移：x 钳到上界 viewportMax - 内容尺寸 = 800-200 = 600，y 钳到 600-200 = 400。
+        state = state.translating(by: CGPoint(x: 9999.0, y: 9999.0))
+        XCTAssertEqual(state.translation.x, viewportRect.maxX - contentSize.width, accuracy: 1e-6)
+        XCTAssertEqual(state.translation.y, viewportRect.maxY - contentSize.height, accuracy: 1e-6)
+        assertContentInsideViewport(state)
+        // 向左上大幅平移：钳到下界 viewportMin = 0（内容原点对齐创作区左上沿）。
+        state = state.translating(by: CGPoint(x: -99999.0, y: -99999.0))
+        XCTAssertEqual(state.translation.x, viewportRect.minX, accuracy: 1e-6)
+        XCTAssertEqual(state.translation.y, viewportRect.minY, accuracy: 1e-6)
+        assertContentInsideViewport(state)
+    }
+
+    // MARK: - 缩小态平移（T107）
+
+    func testScaledDownPanNotForcedToCenter() {
+        // PRD 最低验收项：scale < 1.0 时也必须允许双指拖拽移动画纸，不能强制吸回中心。
+        // scale=0.75 让缩放后内容（300×225）小于创作区（800×600）。用户主动平移后，
+        // translation 应被保留（非 0、非默认居中），且画纸完全留在创作区内。
+        let contentSize = CGSize(width: 400.0, height: 300.0)
+        let viewportRect = CGRect(x: 0.0, y: 0.0, width: 800.0, height: 600.0)
+        let scale: CGFloat = 0.75
+        let centered = KCCanvasViewportState(contentSize: contentSize, viewportRect: viewportRect)
+            .defaultTranslation(forScale: scale)
+        // 用户主动把画纸向右下平移。
+        var state = KCCanvasViewportState(
+            contentSize: contentSize,
+            viewportRect: viewportRect,
+            scale: scale,
+            translation: CGPoint(x: centered.x + 120.0, y: centered.y + 90.0)
+        ).clamped
+        // 不会被强制吸回中心，也未被归零。
+        XCTAssertFalse(abs(state.translation.x - centered.x) < 1.0 && abs(state.translation.y - centered.y) < 1.0)
+        XCTAssertTrue(abs(state.translation.x) > 1.0 || abs(state.translation.y) > 1.0)
+        assertContentInsideViewport(state)
+
+        // 再模拟一次双指平移：translation 继续变化、仍不吸回中心、画纸仍完全在创作区内。
+        let beforePan = state.translation
+        state = state.translating(by: CGPoint(x: 60.0, y: 40.0))
+        XCTAssertTrue(abs(state.translation.x - beforePan.x) > 1.0 || abs(state.translation.y - beforePan.y) > 1.0)
+        XCTAssertFalse(abs(state.translation.x - centered.x) < 1.0 && abs(state.translation.y - centered.y) < 1.0)
+        assertContentInsideViewport(state)
+    }
+
+    func testDefaultCenteringUnchangedByScaledDownClamp() {
+        // T107 只放宽缩小态的“主动平移”钳制边界，不改变默认居中策略：
+        // defaultState / resettingToDefault() 始终回到 scale 1.0 + 内容中心对齐创作区中心，
+        // 且该路径直接给出居中平移量、不经过缩小态钳制分支。
+        let contentSize = CGSize(width: 400.0, height: 300.0)
+        let viewportRect = CGRect(x: 100.0, y: 80.0, width: 600.0, height: 440.0)
+        let centeredAtOne = KCCanvasViewportState(contentSize: contentSize, viewportRect: viewportRect)
+            .defaultTranslation(forScale: 1.0)
+        // 从一个缩小态 + 已大幅平移的状态恢复默认。
+        let restored = KCCanvasViewportState(
+            contentSize: contentSize,
+            viewportRect: viewportRect,
+            scale: 0.75,
+            translation: CGPoint(x: 9999.0, y: -9999.0)
+        ).resettingToDefault()
+        XCTAssertEqual(restored.scale, 1.0, accuracy: 1e-9)
+        assertPointEqual(restored.translation, centeredAtOne, accuracy: 1e-6)
+        XCTAssertTrue(restored.isDefault)
+        // 缩小态本身不是默认视图（isDefault 要求 scale == 1）。
+        let scaledDown = KCCanvasViewportState(
+            contentSize: contentSize,
+            viewportRect: viewportRect,
+            scale: 0.75,
+            translation: centeredAtOne
+        )
+        XCTAssertFalse(scaledDown.isDefault)
     }
 
     func testContentAlwaysCoversViewportWhenLargerAfterClamp() {

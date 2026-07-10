@@ -49,6 +49,7 @@ extension KCMainViewController {
 
     /// 结果确认：使用这张线稿（保存到我的线稿并打开）/ 重新生成（重选）/ 取消。
     private func presentLineArtExtractionResult(_ result: KCLineArtExtractionResult?, sourceImage: UIImage) {
+        _ = sourceImage
         guard let result else {
             self.showCustomLineArtToast(title: KCL10n.lineArtExtractionFailedTitle,
                                         symbol: "exclamationmark.triangle.fill",
@@ -61,20 +62,35 @@ extension KCMainViewController {
         case .marginal: message = KCL10n.lineArtExtractionMarginalMessage
         case .poor: message = KCL10n.lineArtExtractionPoorMessage
         }
-        let sheet = UIAlertController(title: KCL10n.lineArtExtractionConfirmTitle,
-                                      message: message,
-                                      preferredStyle: .alert)
-        // poor 时不直接“使用”，强制重新生成或取消（适合度低）。
-        if result.quality.isUsable {
-            sheet.addAction(UIAlertAction(title: KCL10n.lineArtExtractionUseTitle, style: .default) { [weak self] _ in
+        let previewImage = UIImage(data: result.thumbnailJPEG) ?? UIImage(data: result.lineArtPNG)
+        let card = KCLineArtExtractionResultCard()
+        card.translatesAutoresizingMaskIntoConstraints = false
+        card.configure(title: KCL10n.lineArtExtractionConfirmTitle,
+                       message: message,
+                       previewImage: previewImage,
+                       canUseResult: result.quality.isUsable)
+        card.onUse = { [weak self, weak card] in
+            card?.dismiss {
                 self?.useGeneratedLineArt(result)
-            })
+            }
         }
-        sheet.addAction(UIAlertAction(title: KCL10n.lineArtExtractionRetryTitle, style: .default) { [weak self] _ in
-            self?.didTapGenerateLineArtFromPhoto()
-        })
-        sheet.addAction(UIAlertAction(title: KCL10n.cancelTitle, style: .cancel))
-        self.present(sheet, animated: true)
+        card.onRetry = { [weak self, weak card] in
+            card?.dismiss {
+                self?.didTapGenerateLineArtFromPhoto()
+            }
+        }
+        card.onCancel = { [weak card] in
+            card?.dismiss(completion: nil)
+        }
+        self.view.addSubview(card)
+        NSLayoutConstraint.activate([
+            card.topAnchor.constraint(equalTo: self.view.topAnchor),
+            card.leadingAnchor.constraint(equalTo: self.view.leadingAnchor),
+            card.trailingAnchor.constraint(equalTo: self.view.trailingAnchor),
+            card.bottomAnchor.constraint(equalTo: self.view.bottomAnchor)
+        ])
+        self.view.bringSubviewToFront(card)
+        card.present()
     }
 
     /// 确认使用：保存到我的线稿（sourceKind=.photoExtraction）并打开。
@@ -182,8 +198,16 @@ extension KCMainViewController {
             return false
         }
 
+        let startedAt = Date()
+        self.showCustomLineArtToast(title: KCL10n.importOpeningPhotoLibraryTitle,
+                                    symbol: "photo.on.rectangle.angled",
+                                    tint: .systemBlue)
         let picker = self.configuredPhotoLibraryPicker()
         self.present(picker, animated: animated) {
+#if DEBUG
+            let elapsed = Date().timeIntervalSince(startedAt)
+            print("[KidCanvas] Photo library picker presented in \(String(format: "%.3f", elapsed))s")
+#endif
             completion?(picker)
         }
         return true
@@ -313,5 +337,180 @@ extension KCMainViewController {
         return renderer.image { (_: UIGraphicsImageRendererContext) in
             image.draw(in: CGRect(origin: .zero, size: targetSize))
         }
+    }
+}
+
+// MARK: - 线稿生成结果确认卡片
+
+/// T103：自有浅色确认卡片，替代 iPad 上表现不稳定的系统 alert。
+private final class KCLineArtExtractionResultCard: UIView {
+    var onUse: (() -> Void)?
+    var onRetry: (() -> Void)?
+    var onCancel: (() -> Void)?
+
+    private let backdropView = UIView()
+    private let cardView = UIView()
+    private let titleLabel = UILabel()
+    private let messageLabel = UILabel()
+    private let previewImageView = UIImageView()
+    private let useButton = UIButton(type: .system)
+    private let retryButton = UIButton(type: .system)
+    private let cancelButton = UIButton(type: .system)
+
+    override init(frame: CGRect) {
+        super.init(frame: frame)
+        buildInterface()
+    }
+
+    required init?(coder: NSCoder) {
+        super.init(coder: coder)
+        buildInterface()
+    }
+
+    func configure(title: String, message: String, previewImage: UIImage?, canUseResult: Bool) {
+        titleLabel.text = title
+        messageLabel.text = message
+        previewImageView.image = previewImage
+        useButton.isHidden = !canUseResult
+    }
+
+    func present() {
+        alpha = 0.0
+        cardView.transform = CGAffineTransform(scaleX: 0.96, y: 0.96)
+        UIView.animate(withDuration: 0.18, delay: 0.0, options: [.curveEaseOut]) {
+            self.alpha = 1.0
+            self.cardView.transform = .identity
+        }
+    }
+
+    func dismiss(completion: (() -> Void)?) {
+        UIView.animate(withDuration: 0.15, delay: 0.0, options: [.curveEaseIn], animations: {
+            self.alpha = 0.0
+            self.cardView.transform = CGAffineTransform(scaleX: 0.98, y: 0.98)
+        }) { _ in
+            self.removeFromSuperview()
+            completion?()
+        }
+    }
+
+    private func buildInterface() {
+        backgroundColor = .clear
+        backdropView.translatesAutoresizingMaskIntoConstraints = false
+        backdropView.backgroundColor = UIColor(white: 0.0, alpha: 0.24)
+        addSubview(backdropView)
+        let tap = UITapGestureRecognizer(target: self, action: #selector(handleCancel))
+        backdropView.addGestureRecognizer(tap)
+
+        cardView.translatesAutoresizingMaskIntoConstraints = false
+        cardView.backgroundColor = UIColor(white: 1.0, alpha: 0.98)
+        cardView.layer.cornerRadius = 24.0
+        cardView.layer.cornerCurve = .continuous
+        cardView.layer.borderColor = KCEditorVisualStyle.borderColor
+        cardView.layer.borderWidth = 1.0
+        cardView.layer.shadowColor = KCEditorVisualStyle.shadowColor
+        cardView.layer.shadowOpacity = 0.22
+        cardView.layer.shadowRadius = 18.0
+        cardView.layer.shadowOffset = CGSize(width: 0.0, height: 8.0)
+        addSubview(cardView)
+
+        titleLabel.translatesAutoresizingMaskIntoConstraints = false
+        titleLabel.font = .systemFont(ofSize: 20.0, weight: .bold)
+        titleLabel.textColor = KCEditorVisualStyle.inkColor
+        titleLabel.textAlignment = .center
+        titleLabel.numberOfLines = 2
+
+        messageLabel.translatesAutoresizingMaskIntoConstraints = false
+        messageLabel.font = .systemFont(ofSize: 15.0, weight: .medium)
+        messageLabel.textColor = KCEditorVisualStyle.mutedInkColor
+        messageLabel.textAlignment = .center
+        messageLabel.numberOfLines = 0
+
+        previewImageView.translatesAutoresizingMaskIntoConstraints = false
+        previewImageView.backgroundColor = UIColor(red: 1.0, green: 0.995, blue: 0.98, alpha: 1.0)
+        previewImageView.contentMode = .scaleAspectFit
+        previewImageView.layer.cornerRadius = 18.0
+        previewImageView.layer.cornerCurve = .continuous
+        previewImageView.layer.borderColor = KCEditorVisualStyle.subtleBorderColor
+        previewImageView.layer.borderWidth = 1.0
+        previewImageView.clipsToBounds = true
+
+        useButton.setTitle(KCL10n.lineArtExtractionUseTitle, for: .normal)
+        retryButton.setTitle(KCL10n.lineArtExtractionRetryTitle, for: .normal)
+        cancelButton.setTitle(KCL10n.cancelTitle, for: .normal)
+        for button in [useButton, retryButton, cancelButton] {
+            button.translatesAutoresizingMaskIntoConstraints = false
+            button.titleLabel?.font = .systemFont(ofSize: 15.0, weight: .bold)
+            button.titleLabel?.adjustsFontSizeToFitWidth = true
+            button.titleLabel?.minimumScaleFactor = 0.78
+            button.layer.cornerRadius = 17.0
+            button.layer.cornerCurve = .continuous
+        }
+        useButton.backgroundColor = KCEditorVisualStyle.accentColor
+        useButton.setTitleColor(KCEditorVisualStyle.accentInkColor, for: .normal)
+        retryButton.backgroundColor = KCEditorVisualStyle.compactBackgroundColor
+        retryButton.setTitleColor(KCEditorVisualStyle.inkColor, for: .normal)
+        cancelButton.backgroundColor = UIColor.clear
+        cancelButton.setTitleColor(KCEditorVisualStyle.mutedInkColor, for: .normal)
+
+        useButton.addTarget(self, action: #selector(handleUse), for: .touchUpInside)
+        retryButton.addTarget(self, action: #selector(handleRetry), for: .touchUpInside)
+        cancelButton.addTarget(self, action: #selector(handleCancel), for: .touchUpInside)
+
+        let buttonStack = UIStackView(arrangedSubviews: [useButton, retryButton, cancelButton])
+        buttonStack.translatesAutoresizingMaskIntoConstraints = false
+        buttonStack.axis = .horizontal
+        buttonStack.alignment = .fill
+        buttonStack.distribution = .fillEqually
+        buttonStack.spacing = 10.0
+
+        for view in [titleLabel, previewImageView, messageLabel, buttonStack] {
+            cardView.addSubview(view)
+        }
+
+        NSLayoutConstraint.activate([
+            backdropView.topAnchor.constraint(equalTo: topAnchor),
+            backdropView.leadingAnchor.constraint(equalTo: leadingAnchor),
+            backdropView.trailingAnchor.constraint(equalTo: trailingAnchor),
+            backdropView.bottomAnchor.constraint(equalTo: bottomAnchor),
+
+            cardView.centerXAnchor.constraint(equalTo: safeAreaLayoutGuide.centerXAnchor),
+            cardView.centerYAnchor.constraint(equalTo: safeAreaLayoutGuide.centerYAnchor),
+            cardView.heightAnchor.constraint(lessThanOrEqualTo: safeAreaLayoutGuide.heightAnchor, multiplier: 0.82),
+
+            titleLabel.topAnchor.constraint(equalTo: cardView.topAnchor, constant: 22.0),
+            titleLabel.leadingAnchor.constraint(equalTo: cardView.leadingAnchor, constant: 22.0),
+            titleLabel.trailingAnchor.constraint(equalTo: cardView.trailingAnchor, constant: -22.0),
+
+            previewImageView.topAnchor.constraint(equalTo: titleLabel.bottomAnchor, constant: 16.0),
+            previewImageView.leadingAnchor.constraint(equalTo: cardView.leadingAnchor, constant: 24.0),
+            previewImageView.trailingAnchor.constraint(equalTo: cardView.trailingAnchor, constant: -24.0),
+            previewImageView.heightAnchor.constraint(equalTo: cardView.heightAnchor, multiplier: 0.38),
+
+            messageLabel.topAnchor.constraint(equalTo: previewImageView.bottomAnchor, constant: 14.0),
+            messageLabel.leadingAnchor.constraint(equalTo: cardView.leadingAnchor, constant: 24.0),
+            messageLabel.trailingAnchor.constraint(equalTo: cardView.trailingAnchor, constant: -24.0),
+
+            buttonStack.topAnchor.constraint(equalTo: messageLabel.bottomAnchor, constant: 18.0),
+            buttonStack.leadingAnchor.constraint(equalTo: cardView.leadingAnchor, constant: 22.0),
+            buttonStack.trailingAnchor.constraint(equalTo: cardView.trailingAnchor, constant: -22.0),
+            buttonStack.heightAnchor.constraint(equalToConstant: 42.0),
+            buttonStack.bottomAnchor.constraint(equalTo: cardView.bottomAnchor, constant: -22.0)
+        ])
+        let widthConstraint = cardView.widthAnchor.constraint(equalTo: safeAreaLayoutGuide.widthAnchor, multiplier: 0.62)
+        widthConstraint.priority = .defaultHigh
+        let maxWidthConstraint = cardView.widthAnchor.constraint(lessThanOrEqualToConstant: 520.0)
+        NSLayoutConstraint.activate([widthConstraint, maxWidthConstraint])
+    }
+
+    @objc private func handleUse() {
+        onUse?()
+    }
+
+    @objc private func handleRetry() {
+        onRetry?()
+    }
+
+    @objc private func handleCancel() {
+        onCancel?()
     }
 }

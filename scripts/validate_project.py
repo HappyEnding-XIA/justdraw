@@ -664,11 +664,15 @@ def canvas_viewport_checks():
         checks.append(require_text(text, "minimumScale", "KCCanvasViewportState clamps a minimum scale (50%)"))
         checks.append(require_text(text, "maximumScale", "KCCanvasViewportState clamps a maximum scale (300%)"))
         checks.append(require_text(text, "func canvasPoint(forViewPoint", "KCCanvasViewportState converts screen points to content points"))
+        checks.append(require_text(text, "完全留在创作区内", "KCCanvasViewportState clamps scaled-down pan to keep content fully inside the creation rect (T107)"))
+        checks.append(forbid_text(text, "viewportMin - contentExtent", "KCCanvasViewportState no longer uses loose overlap clamp for scaled-down pan (T107)"))
         checks.append(forbid_text(text, "import UIKit", "KCCanvasViewportState stays UIKit-free in KCDomain"))
 
     if domain_test.exists():
         text = domain_test.read_text(encoding="utf-8")
         checks.append(require_count_at_least(text, r"func test", 8, "KCCanvasViewportState has unit-test coverage"))
+        checks.append(require_text(text, "testScaledDownPanNotForcedToCenter", "KCCanvasViewportState tests cover scale<1 user pan not snapped to center (T107)"))
+        checks.append(require_text(text, "testPanKeepsContentFullyInsideViewportWhenSmaller", "KCCanvasViewportState tests content stays fully inside the viewport when smaller (T107)"))
 
     canvas_view_text = APP_FILE_PATHS["KCDrawingCanvasView.swift"].read_text(encoding="utf-8")
     checks.append(require_text(canvas_view_text, "var viewportState = KCCanvasViewportState", "Canvas view owns a KCCanvasViewportState"))
@@ -676,6 +680,9 @@ def canvas_viewport_checks():
     checks.append(require_text(canvas_view_text, "func restoreDefaultViewport", "Canvas view exposes restoreDefaultViewport"))
     checks.append(require_text(canvas_view_text, "handleCanvasPinch", "Canvas view handles two-finger pinch for zoom"))
     checks.append(require_text(canvas_view_text, "handleCanvasTwoFingerPan", "Canvas view handles two-finger pan"))
+    checks.append(require_text(canvas_view_text, "applyCanvasViewportTranslation", "Canvas two-finger pan shares a reusable translation path"))
+    checks.append(require_text(canvas_view_text, "workbenchBackgroundColor", "Canvas screen rendering keeps a distinct workbench background"))
+    checks.append(require_text(canvas_view_text, "drawPaperSurface", "Canvas screen rendering draws the white paper surface separately"))
     checks.append(require_text(canvas_view_text, "canvasPoint(forViewPoint:", "Canvas view converts touch points to content coordinates"))
     checks.append(forbid_text(canvas_view_text, "import SwiftUI", "Canvas core is not rewritten as SwiftUI"))
     checks.append(forbid_text(canvas_view_text, "UIScrollView", "Canvas viewport uses custom state + conversion, not a UIScrollView wrapper"))
@@ -691,6 +698,11 @@ def canvas_viewport_checks():
     runtime_text = APP_FILE_PATHS["KCMainViewController+RuntimeAcceptance.swift"].read_text(encoding="utf-8")
     checks.append(require_text(runtime_text, "--kc-runtime-canvas-viewport-check", "Runtime acceptance wires the canvas-viewport probe launch arg"))
     checks.append(require_text(runtime_text, "runCanvasViewportAcceptanceProbe", "Runtime acceptance runs the canvas-viewport probe"))
+    checks.append(require_text(runtime_text, "viewportTranslationChanged", "Runtime acceptance verifies zoomed two-finger pan changes translation"))
+    checks.append(require_text(runtime_text, "panContentDirectionMatches", "Runtime acceptance verifies zoomed pan content direction"))
+    checks.append(require_text(runtime_text, "runtimeAcceptanceDefaultTranslation", "Runtime acceptance can read the default centered translation for a scale (T107)"))
+    checks.append(require_text(runtime_text, "scaledDownViewportTranslationChanged", "Runtime acceptance verifies scaled-down (scale<1) pan changes translation (T107)"))
+    checks.append(require_text(runtime_text, "scaledDownNotCentered", "Runtime acceptance verifies scaled-down pan is not forced back to center (T107)"))
     checks.append(require_text(runtime_text, "kc_runtime_acceptance_canvas_viewport.json", "Runtime acceptance writes the canvas-viewport result file"))
 
     script_text = (ROOT / "scripts" / "runtime_acceptance_test.sh").read_text(encoding="utf-8")

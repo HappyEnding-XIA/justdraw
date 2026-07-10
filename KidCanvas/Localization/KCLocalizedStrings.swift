@@ -180,6 +180,8 @@ enum KCL10n {
     static var importActionSheetTitle: String { tr("import.action-sheet.title") }
     /// T100：从相册导入。
     static var importFromPhotoLibraryTitle: String { tr("import.from-photo-library.title") }
+    /// T104：相册 picker 打开过程中的即时反馈。
+    static var importOpeningPhotoLibraryTitle: String { tr("import.opening-photo-library.title") }
     /// T100：拍照导入。
     static var importFromCameraTitle: String { tr("import.from-camera.title") }
     /// T100：无相机（模拟器/无相机设备）降级提示。

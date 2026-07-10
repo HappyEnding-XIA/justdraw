@@ -57,6 +57,13 @@ final class KCDrawingCanvasView: UIView, UIGestureRecognizerDelegate {
     private var nonStickerRasterCacheScale: CGFloat = 0.0
     private weak var selectedStickerView: KDStickerView?
 
+    /// 工作台背景色：只用于屏幕呈现层，让画布外区域和白色纸张形成低干扰区分。
+    private static let workbenchBackgroundColor = UIColor(red: 0.935, green: 0.945, blue: 0.925, alpha: 1.0)
+    /// 纸张边界描边色：保持轻量，但在 iPad 大屏空白画布下也能识别纸张边缘。
+    private static let paperBorderColor = UIColor(red: 0.77, green: 0.80, blue: 0.75, alpha: 1.0)
+    /// 纸张投影色：仅参与屏幕渲染，不进入保存图片、历史缩略图和草稿数据。
+    private static let paperShadowColor = UIColor(red: 0.22, green: 0.25, blue: 0.20, alpha: 0.18)
+
     // MARK: - 画布视口（T097）
 
     /// 画布视口状态（缩放/平移/安全创作区）。内容坐标空间尺寸等于 `bounds.size`，
@@ -76,14 +83,16 @@ final class KCDrawingCanvasView: UIView, UIGestureRecognizerDelegate {
 
     override init(frame: CGRect) {
         super.init(frame: frame)
-        backgroundColor = .white
+        backgroundColor = Self.workbenchBackgroundColor
+        isOpaque = true
         isMultipleTouchEnabled = true
         installCanvasViewportGestures()
     }
 
     required init?(coder: NSCoder) {
         super.init(coder: coder)
-        backgroundColor = .white
+        backgroundColor = Self.workbenchBackgroundColor
+        isOpaque = true
         isMultipleTouchEnabled = true
         installCanvasViewportGestures()
     }
@@ -126,9 +135,9 @@ final class KCDrawingCanvasView: UIView, UIGestureRecognizerDelegate {
     override func draw(_ rect: CGRect) {
         super.draw(rect)
 
-        // 视图背景：内容平面之外的区域（缩放/平移后露出的画布外区域）保持白色，
-        // 与 PRD“纯白背景”一致。该填充在屏幕坐标下完成，不随 viewport 变换。
-        UIColor.white.setFill()
+        // 工作台背景：内容平面之外的区域（缩放/平移后露出的画布外区域）
+        // 使用低干扰浅色，与白色纸张形成稳定区分；该填充不随 viewport 变换。
+        Self.workbenchBackgroundColor.setFill()
         UIRectFill(bounds)
 
         guard let ctx = UIGraphicsGetCurrentContext() else { return }
@@ -136,10 +145,10 @@ final class KCDrawingCanvasView: UIView, UIGestureRecognizerDelegate {
         ctx.saveGState()
         ctx.concatenate(viewportState.affineTransform)
 
-        // 内容平面：在内容坐标空间（0,0 ~ contentSize）绘制白色画布平面、底图、笔画。
+        // 内容平面：在内容坐标空间（0,0 ~ contentSize）绘制白色纸张、底图、笔画。
         let contentPlane = CGRect(origin: .zero, size: viewportState.contentSize)
-        UIColor.white.setFill()
-        ctx.fill(contentPlane)
+        drawPaperSurface(in: ctx, contentPlane: contentPlane)
+        ctx.clip(to: contentPlane)
         drawImage(backgroundImage, aspectFitIn: contentPlane)
 
         // 把屏幕坐标的脏区域反变换到内容坐标，再做笔画裁剪，避免缩放后漏绘/重绘。
@@ -156,6 +165,25 @@ final class KCDrawingCanvasView: UIView, UIGestureRecognizerDelegate {
             }
         }
 
+        ctx.restoreGState()
+    }
+
+    /// 绘制屏幕呈现层的白色纸张、轻投影和描边；保存/快照路径不调用这里。
+    private func drawPaperSurface(in ctx: CGContext, contentPlane: CGRect) {
+        ctx.saveGState()
+        ctx.setShadow(offset: CGSize(width: 0.0, height: 8.0),
+                      blur: 18.0,
+                      color: Self.paperShadowColor.cgColor)
+        UIColor.white.setFill()
+        ctx.fill(contentPlane)
+        ctx.restoreGState()
+
+        let borderInset = 0.5 / max(viewportState.scale, 0.001)
+        let borderRect = contentPlane.insetBy(dx: borderInset, dy: borderInset)
+        ctx.saveGState()
+        ctx.setLineWidth(1.0 / max(viewportState.scale, 0.001))
+        Self.paperBorderColor.setStroke()
+        ctx.stroke(borderRect)
         ctx.restoreGState()
     }
 
@@ -965,6 +993,12 @@ final class KCDrawingCanvasView: UIView, UIGestureRecognizerDelegate {
     @objc func runtimeAcceptanceCanvasPoint(forScreenPoint screenPoint: CGPoint) -> CGPoint {
         canvasPoint(forViewPoint: screenPoint)
     }
+
+    /// T107 runtime acceptance：返回给定缩放下“内容中心对齐安全创作区中心”的默认平移量，
+    /// 用于在缩小态断言用户平移未被强制吸回默认居中（旧实现会把任何缩小态平移吸回该值）。
+    @objc func runtimeAcceptanceDefaultTranslation(forScale scale: CGFloat) -> CGPoint {
+        viewportState.defaultTranslation(forScale: KCCanvasViewportState.clampedScale(scale))
+    }
 #endif
 
     @objc func snapshotImage() -> UIImage {
@@ -1739,6 +1773,11 @@ final class KCDrawingCanvasView: UIView, UIGestureRecognizerDelegate {
         viewportState.scale
     }
 
+    /// 当前 viewport 平移量，供运行时验收确认双指平移确实改变视图。
+    @objc var currentViewportTranslation: CGPoint {
+        viewportState.translation
+    }
+
     /// 控制器注入屏幕坐标下的“安全创作区”矩形，并同步内容尺寸。仅初始或创作区变化时调用。
     @objc func applyViewportRect(_ rect: CGRect) {
         guard bounds.width > 0.0, bounds.height > 0.0 else { return }
@@ -1782,13 +1821,25 @@ final class KCDrawingCanvasView: UIView, UIGestureRecognizerDelegate {
     /// 双指拖拽平移：屏幕位移直接施加到 viewport 平移，再按创作区边界钳制。
     @objc private func handleCanvasTwoFingerPan(_ recognizer: UIPanGestureRecognizer) {
         let translation = recognizer.translation(in: self)
+        applyCanvasViewportTranslation(translation)
+        recognizer.setTranslation(.zero, in: self)
+    }
+
+    /// 应用画布视口平移。手势和运行时验收共用同一入口，避免验收绕过真实逻辑。
+    private func applyCanvasViewportTranslation(_ translation: CGPoint) {
         guard translation.x != 0.0 || translation.y != 0.0 else { return }
         viewportState = viewportState.translating(by: translation)
-        recognizer.setTranslation(.zero, in: self)
         applyViewportToStickerViews()
         setNeedsDisplay()
         notifyViewportChanged()
     }
+
+#if DEBUG
+    /// T106 运行时验收：模拟一次双指拖拽增量，验证放大状态下平移跟手。
+    @objc func runtimeAcceptanceApplyViewportTranslation(_ translation: CGPoint) {
+        applyCanvasViewportTranslation(translation)
+    }
+#endif
 
     /// 双指缩放/平移手势开始前判断：任一触点落在印章子视图上则让位给印章自身手势，
     /// 避免“在印章上双指”同时触发画布缩放与印章缩放。

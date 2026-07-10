@@ -279,6 +279,24 @@ CanvasEngine
 - 恢复视图按钮仅在 `KCCanvasViewportState.isDefault == false` 时显示，不新增“缩放模式 / 平移模式”按钮。
 - MVP 不要求把 viewport 持久化进历史作品；当前会话内可保留，新建/打开历史/清空/线稿载入时重置为默认视图。详见 `docs/modules/KCCanvasViewportState.md`。
 
+画布视觉分层边界（T105，已完成）：
+
+- 主编辑器不再以整屏纯白作为唯一背景。`KCMainViewController` 的画布容器和 `KCDrawingCanvasView` 的屏幕绘制层使用低干扰浅色工作台背景，白色内容平面作为“纸张”绘制，并增加轻投影与描边。
+- 纸张边界属于屏幕呈现层，只在 `KCDrawingCanvasView.draw(_:)` 中绘制；`snapshotImage()`、历史缩略图、草稿、保存图片仍走内容坐标空间的白底作品渲染，不写入投影、描边和工作台背景。
+- 视觉分层不得改变 `KCCanvasViewportState.contentSize`、笔画坐标、贴纸坐标、历史 schema 或导出尺寸。
+
+放大状态平移验收边界（T106，已完成）：
+
+- `handleCanvasTwoFingerPan(_:)` 与 Debug 运行时验收共用 `applyCanvasViewportTranslation(_:)`，保证自动验收覆盖真实平移路径。
+- `canvas-viewport` 探针在 200% 缩放下施加双指 pan 增量，断言 `translation` 改变、同一屏幕点对应的内容点改变且方向符合“内容跟手”预期。
+- 平移验收仍与填色/取色同点一致性放在同一探针内，防止只修视觉移动却破坏内容坐标转换。
+
+缩小态平移钳制边界（T107，已完成）：
+
+- 缩小态（scale < 1.0，缩放后内容小于安全创作区）也必须允许双指拖拽移动画纸，不能强制吸回安全创作区中心。修复点在 `KCCanvasViewportState` 单轴钳制原语：内容小于创作区时，平移范围从“单一居中点”改为 `[viewportMin, viewportMax - 内容尺寸]`，画纸完全留在安全创作区内、可在区内任意滑动但不移出创作区/不压到工具轨（人工反馈：早期“重叠钳制”范围太大，已收紧为完全在内）；内容大于等于创作区时的“覆盖创作区”钳制不变。
+- 默认居中策略不受影响：`defaultState` / `resettingToDefault()` 仍直接给出“内容中心对齐安全创作区中心”的平移量，不经缩小态钳制分支；恢复视图、新建、打开历史、导入图片、加载线稿仍回到默认居中。
+- `canvas-viewport` 探针在 200% 放大态断言之外，新增 50% 缩小态断言：`scaledDownScaleAfterSet < 1.0`、`scaledDownViewportTranslationChanged == true`、`scaledDownContentPointChangedAfterPan == true`、`scaledDownNotCentered == true`（缩小态平移未被吸回中心）。
+
 ### 4.3.1 Content Library / Line Art 系统
 
 PRD 已把线稿从“官方线稿弹窗”升级为“官方线稿 + 我的线稿 + 照片生成线稿”的内容体系。按以下边界实现：

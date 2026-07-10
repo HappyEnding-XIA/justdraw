@@ -270,7 +270,8 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
     func buildInterface() {
         let canvasContainer = UIView()
         canvasContainer.translatesAutoresizingMaskIntoConstraints = false
-        canvasContainer.backgroundColor = UIColor.white
+        // 工作台底色与画布 view 内部背景保持一致，避免布局切换时露出纯白底。
+        canvasContainer.backgroundColor = UIColor(red: 0.935, green: 0.945, blue: 0.925, alpha: 1.0)
         self.view.addSubview(canvasContainer)
         self.canvasContainerView = canvasContainer
 
@@ -310,7 +311,8 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
         rightStack.addArrangedSubview(sizePanel)
         self.view.addSubview(bottomDock)
 
-        // T097：画布“恢复视图”按钮（右下角），仅在画布缩放/平移偏离默认视图时显示。
+        // T097：画布“恢复视图”按钮，仅在画布缩放/平移偏离默认视图时显示。
+        // 右下角常驻工具隐藏按钮也在此区域，因此恢复按钮固定上移一格，避免触控重叠。
         self.restoreViewportButton = self.iconButtonWithSymbolName("viewfinder", accentColor: KCEditorVisualStyle.saveActionColor)
         self.restoreViewportButton.translatesAutoresizingMaskIntoConstraints = false
         self.restoreViewportButton.isHidden = true
@@ -369,7 +371,7 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
             bottomDock.heightAnchor.constraint(equalToConstant: self.bottomDockHeight()),
 
             self.restoreViewportButton.trailingAnchor.constraint(equalTo: safeArea.trailingAnchor, constant: -24.0),
-            self.restoreViewportButton.bottomAnchor.constraint(equalTo: safeArea.bottomAnchor, constant: -24.0),
+            self.restoreViewportButton.bottomAnchor.constraint(equalTo: safeArea.bottomAnchor, constant: -88.0),
             self.restoreViewportButton.widthAnchor.constraint(equalToConstant: 52.0),
             self.restoreViewportButton.heightAnchor.constraint(equalToConstant: 52.0)
         ])
@@ -629,6 +631,7 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
     }
 
     func buildHistoryPanel(_ panel: UIView) {
+        panel.backgroundColor = .clear
         let titleLabel = self.panelTitleLabel(KCL10n.historyPanelTitle)
         titleLabel.translatesAutoresizingMaskIntoConstraints = false
         panel.addSubview(titleLabel)
@@ -652,12 +655,20 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
         savedLabel.textColor = UIColor(red: 0.47, green: 0.52, blue: 0.58, alpha: 1.0)
         panel.addSubview(savedLabel)
 
+        let savedThumbGrid = UIStackView()
+        savedThumbGrid.translatesAutoresizingMaskIntoConstraints = false
+        savedThumbGrid.axis = .horizontal
+        savedThumbGrid.alignment = .center
+        savedThumbGrid.distribution = .equalSpacing
+        savedThumbGrid.spacing = self.isCompactPhoneLayout ? 10.0 : 14.0
+        panel.addSubview(savedThumbGrid)
+
         for index in 0..<4 {
             let thumb = self.historyThumbButton()
             thumb.tag = index
             self.applyAccessibilityLabel(KCL10n.savedThumbAccessibility(index + 1), identifier: "history.saved.\(index + 1)", toControl: thumb)
             thumb.addTarget(self, action: #selector(didTapHistoryThumb(_:)), for: .touchUpInside)
-            panel.addSubview(thumb)
+            savedThumbGrid.addArrangedSubview(thumb)
             self.historyThumbButtons.append(thumb)
         }
 
@@ -669,8 +680,12 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
         self.nextHistoryButton.translatesAutoresizingMaskIntoConstraints = false
         self.previousHistoryButton.addTarget(self, action: #selector(didTapPreviousHistoryPage), for: .touchUpInside)
         self.nextHistoryButton.addTarget(self, action: #selector(didTapNextHistoryPage), for: .touchUpInside)
-        panel.addSubview(self.previousHistoryButton)
-        panel.addSubview(self.nextHistoryButton)
+        let pageStack = UIStackView(arrangedSubviews: [self.previousHistoryButton, self.nextHistoryButton])
+        pageStack.translatesAutoresizingMaskIntoConstraints = false
+        pageStack.axis = .horizontal
+        pageStack.alignment = .center
+        pageStack.spacing = 8.0
+        panel.addSubview(pageStack)
 
         let openButton = self.historyActionButtonWithTitle(KCL10n.openLatestHistoryTitle, accent: false)
         let importButton = self.historyActionButtonWithTitle(KCL10n.importPhotoHistoryTitle, accent: true)
@@ -686,21 +701,20 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
         importButton.addTarget(self, action: #selector(didTapImportImage), for: .touchUpInside)
         self.deleteHistoryButton.addTarget(self, action: #selector(didTapDeleteLatestSession), for: .touchUpInside)
 
-        panel.addSubview(openButton)
-        panel.addSubview(importButton)
-        panel.addSubview(self.deleteHistoryButton)
+        let actionStack = UIStackView(arrangedSubviews: [openButton, importButton, self.deleteHistoryButton])
+        actionStack.translatesAutoresizingMaskIntoConstraints = false
+        actionStack.axis = .horizontal
+        actionStack.alignment = .center
+        actionStack.distribution = .fillEqually
+        actionStack.spacing = self.isCompactPhoneLayout ? 8.0 : 12.0
+        panel.addSubview(actionStack)
 
-        let thumbOne = self.historyThumbButtons[0]
-        let thumbTwo = self.historyThumbButtons[1]
-        let thumbThree = self.historyThumbButtons[2]
-        let thumbFour = self.historyThumbButtons[3]
-        let inset = self.rightPanelInnerInset()
-        let thumbSize = self.historyThumbSize()
+        let inset: CGFloat = self.isCompactPhoneLayout ? 18.0 : 24.0
+        let draftWidth: CGFloat = self.isCompactPhoneLayout ? 220.0 : 286.0
+        let draftHeight: CGFloat = self.isCompactPhoneLayout ? 136.0 : 176.0
+        let thumbSize: CGFloat = self.isCompactPhoneLayout ? 104.0 : 128.0
         let actionButtonHeight: CGFloat = self.isCompactPhoneLayout ? 34.0 : 38.0
         let pageButtonWidth: CGFloat = self.isCompactPhoneLayout ? 42.0 : 46.0
-        let openButtonWidth: CGFloat = self.isCompactPhoneLayout ? 60.0 : 68.0
-        let importButtonWidth: CGFloat = self.isCompactPhoneLayout ? 70.0 : 78.0
-        let deleteButtonWidth: CGFloat = self.isCompactPhoneLayout ? 70.0 : 78.0
 
         NSLayoutConstraint.activate([
             titleLabel.leadingAnchor.constraint(equalTo: panel.leadingAnchor, constant: inset),
@@ -710,56 +724,39 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
             draftLabel.topAnchor.constraint(equalTo: titleLabel.bottomAnchor, constant: 12.0),
 
             self.draftThumbButton.leadingAnchor.constraint(equalTo: panel.leadingAnchor, constant: inset),
-            self.draftThumbButton.trailingAnchor.constraint(equalTo: panel.trailingAnchor, constant: -inset),
             self.draftThumbButton.topAnchor.constraint(equalTo: draftLabel.bottomAnchor, constant: 8.0),
-            self.draftThumbButton.heightAnchor.constraint(equalToConstant: self.historyDraftThumbHeight()),
+            self.draftThumbButton.widthAnchor.constraint(equalToConstant: draftWidth),
+            self.draftThumbButton.heightAnchor.constraint(equalToConstant: draftHeight),
 
             savedLabel.leadingAnchor.constraint(equalTo: panel.leadingAnchor, constant: inset),
-            savedLabel.topAnchor.constraint(equalTo: self.draftThumbButton.bottomAnchor, constant: 12.0),
+            savedLabel.topAnchor.constraint(equalTo: self.draftThumbButton.bottomAnchor, constant: 16.0),
 
-            thumbOne.leadingAnchor.constraint(equalTo: panel.leadingAnchor, constant: inset),
-            thumbOne.topAnchor.constraint(equalTo: savedLabel.bottomAnchor, constant: 8.0),
-            thumbOne.widthAnchor.constraint(equalToConstant: thumbSize),
-            thumbOne.heightAnchor.constraint(equalToConstant: thumbSize),
+            savedThumbGrid.leadingAnchor.constraint(equalTo: panel.leadingAnchor, constant: inset),
+            savedThumbGrid.trailingAnchor.constraint(lessThanOrEqualTo: panel.trailingAnchor, constant: -inset),
+            savedThumbGrid.topAnchor.constraint(equalTo: savedLabel.bottomAnchor, constant: 10.0),
 
-            thumbTwo.trailingAnchor.constraint(equalTo: panel.trailingAnchor, constant: -inset),
-            thumbTwo.topAnchor.constraint(equalTo: savedLabel.bottomAnchor, constant: 8.0),
-            thumbTwo.widthAnchor.constraint(equalToConstant: thumbSize),
-            thumbTwo.heightAnchor.constraint(equalToConstant: thumbSize),
+            self.historyThumbButtons[0].widthAnchor.constraint(equalToConstant: thumbSize),
+            self.historyThumbButtons[0].heightAnchor.constraint(equalToConstant: thumbSize),
+            self.historyThumbButtons[1].widthAnchor.constraint(equalToConstant: thumbSize),
+            self.historyThumbButtons[1].heightAnchor.constraint(equalToConstant: thumbSize),
+            self.historyThumbButtons[2].widthAnchor.constraint(equalToConstant: thumbSize),
+            self.historyThumbButtons[2].heightAnchor.constraint(equalToConstant: thumbSize),
+            self.historyThumbButtons[3].widthAnchor.constraint(equalToConstant: thumbSize),
+            self.historyThumbButtons[3].heightAnchor.constraint(equalToConstant: thumbSize),
 
-            thumbThree.leadingAnchor.constraint(equalTo: panel.leadingAnchor, constant: inset),
-            thumbThree.topAnchor.constraint(equalTo: thumbOne.bottomAnchor, constant: 10.0),
-            thumbThree.widthAnchor.constraint(equalToConstant: thumbSize),
-            thumbThree.heightAnchor.constraint(equalToConstant: thumbSize),
-
-            thumbFour.trailingAnchor.constraint(equalTo: panel.trailingAnchor, constant: -inset),
-            thumbFour.topAnchor.constraint(equalTo: thumbTwo.bottomAnchor, constant: 10.0),
-            thumbFour.widthAnchor.constraint(equalToConstant: thumbSize),
-            thumbFour.heightAnchor.constraint(equalToConstant: thumbSize),
-
-            self.previousHistoryButton.leadingAnchor.constraint(equalTo: panel.leadingAnchor, constant: inset),
-            self.previousHistoryButton.topAnchor.constraint(equalTo: thumbThree.bottomAnchor, constant: 12.0),
+            pageStack.leadingAnchor.constraint(equalTo: panel.leadingAnchor, constant: inset),
+            pageStack.topAnchor.constraint(equalTo: savedThumbGrid.bottomAnchor, constant: 14.0),
             self.previousHistoryButton.widthAnchor.constraint(equalToConstant: pageButtonWidth),
-
-            self.nextHistoryButton.leadingAnchor.constraint(equalTo: self.previousHistoryButton.trailingAnchor, constant: 8.0),
-            self.nextHistoryButton.topAnchor.constraint(equalTo: thumbThree.bottomAnchor, constant: 12.0),
             self.nextHistoryButton.widthAnchor.constraint(equalToConstant: pageButtonWidth),
 
-            openButton.leadingAnchor.constraint(equalTo: panel.leadingAnchor, constant: inset),
-            openButton.topAnchor.constraint(equalTo: self.previousHistoryButton.bottomAnchor, constant: 10.0),
-            openButton.widthAnchor.constraint(equalToConstant: openButtonWidth),
+            actionStack.leadingAnchor.constraint(equalTo: pageStack.trailingAnchor, constant: 16.0),
+            actionStack.trailingAnchor.constraint(lessThanOrEqualTo: panel.trailingAnchor, constant: -inset),
+            actionStack.centerYAnchor.constraint(equalTo: pageStack.centerYAnchor),
+
             openButton.heightAnchor.constraint(equalToConstant: actionButtonHeight),
-
-            importButton.leadingAnchor.constraint(equalTo: openButton.trailingAnchor, constant: 8.0),
-            importButton.topAnchor.constraint(equalTo: self.previousHistoryButton.bottomAnchor, constant: 10.0),
-            importButton.widthAnchor.constraint(equalToConstant: importButtonWidth),
             importButton.heightAnchor.constraint(equalToConstant: actionButtonHeight),
-
-            self.deleteHistoryButton.trailingAnchor.constraint(equalTo: panel.trailingAnchor, constant: -inset),
-            self.deleteHistoryButton.topAnchor.constraint(equalTo: importButton.bottomAnchor, constant: 8.0),
-            self.deleteHistoryButton.widthAnchor.constraint(equalToConstant: deleteButtonWidth),
             self.deleteHistoryButton.heightAnchor.constraint(equalToConstant: actionButtonHeight),
-            self.deleteHistoryButton.bottomAnchor.constraint(equalTo: panel.bottomAnchor, constant: -inset)
+            self.deleteHistoryButton.bottomAnchor.constraint(lessThanOrEqualTo: panel.bottomAnchor, constant: -inset)
         ])
     }
 

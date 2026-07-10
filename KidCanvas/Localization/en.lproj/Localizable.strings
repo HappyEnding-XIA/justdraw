@@ -201,6 +201,9 @@
 /* T100: import from photo library */
 "import.from-photo-library.title" = "Choose from Photos";
 
+/* T104: feedback while the photo picker is opening */
+"import.opening-photo-library.title" = "Opening Photos...";
+
 /* T100: import by taking a photo */
 "import.from-camera.title" = "Take a Photo";
 
