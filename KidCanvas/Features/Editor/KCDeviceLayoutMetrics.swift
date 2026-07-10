@@ -61,31 +61,23 @@ struct KCDeviceLayoutMetrics {
     }
 
     var bottomDockWidth: CGFloat {
-        isCompactPhoneLayout ? 430.0 : 560.0
+        isCompactPhoneLayout ? 344.0 : 444.0
     }
 
     var bottomDockHeight: CGFloat {
-        isCompactPhoneLayout ? 66.0 : 98.0
+        isCompactPhoneLayout ? 66.0 : 88.0
     }
 
     var bottomDockBottomInset: CGFloat {
         isCompactPhoneLayout ? 0.0 : -18.0
     }
 
-    var bottomDockTitleWidth: CGFloat {
-        isCompactPhoneLayout ? 54.0 : 88.0
-    }
-
-    var bottomDockTitleFontSize: CGFloat {
-        isCompactPhoneLayout ? 13.0 : 16.0
-    }
-
     var bottomDockHorizontalInset: CGFloat {
-        isCompactPhoneLayout ? 14.0 : 22.0
+        isCompactPhoneLayout ? 12.0 : 18.0
     }
 
     var bottomDockVerticalInset: CGFloat {
-        isCompactPhoneLayout ? 8.0 : 12.0
+        isCompactPhoneLayout ? 8.0 : 10.0
     }
 
     var bottomDockStackSpacing: CGFloat {
@@ -93,11 +85,11 @@ struct KCDeviceLayoutMetrics {
     }
 
     var brushCardWidth: CGFloat {
-        isCompactPhoneLayout ? 100.0 : 126.0
+        isCompactPhoneLayout ? 96.0 : 124.0
     }
 
     var brushCardHeight: CGFloat {
-        isCompactPhoneLayout ? 50.0 : 68.0
+        isCompactPhoneLayout ? 50.0 : 62.0
     }
 
     var brushCardIconSize: CGFloat {

@@ -69,7 +69,7 @@ final class KCBrushStickerPanelView {
         let shell = UIView()
         shell.translatesAutoresizingMaskIntoConstraints = false
         shell.backgroundColor = UIColor(white: 1.0, alpha: 0.58)
-        shell.layer.cornerRadius = 24.0
+        shell.layer.cornerRadius = 20.0
         shell.layer.cornerCurve = .continuous
         shell.layer.borderWidth = 1.0
         shell.layer.borderColor = UIColor(white: 1.0, alpha: 0.54).cgColor
@@ -89,8 +89,8 @@ final class KCBrushStickerPanelView {
 
         let sizePreviewView = UIView()
         sizePreviewView.translatesAutoresizingMaskIntoConstraints = false
-        sizePreviewView.backgroundColor = UIColor(white: 1.0, alpha: 0.72)
-        sizePreviewView.layer.cornerRadius = 24.0
+        sizePreviewView.backgroundColor = UIColor(white: 1.0, alpha: 0.64)
+        sizePreviewView.layer.cornerRadius = 20.0
         sizePreviewView.layer.cornerCurve = .continuous
         sizePreviewView.layer.borderWidth = 1.0
         sizePreviewView.layer.borderColor = UIColor(white: 1.0, alpha: 0.74).cgColor
@@ -100,27 +100,6 @@ final class KCBrushStickerPanelView {
         sizePreviewShapeLayer.lineCap = .round
         sizePreviewShapeLayer.lineJoin = .round
         sizePreviewView.layer.addSublayer(sizePreviewShapeLayer)
-
-        let dots = UIStackView()
-        dots.translatesAutoresizingMaskIntoConstraints = false
-        dots.axis = .horizontal
-        dots.distribution = .equalSpacing
-        dots.alignment = .bottom
-        dots.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
-        shell.addSubview(dots)
-
-        for size in [8.0, 14.0, 20.0, 28.0] as [CGFloat] {
-            let dot = UIView()
-            dot.translatesAutoresizingMaskIntoConstraints = false
-            dot.backgroundColor = UIColor(red: 0.91, green: 0.64, blue: 0.42, alpha: 1.0)
-            dot.layer.cornerRadius = size / 2.0
-            let widthConstraint = dot.widthAnchor.constraint(equalToConstant: size)
-            let heightConstraint = dot.heightAnchor.constraint(equalToConstant: size)
-            widthConstraint.priority = .defaultHigh
-            heightConstraint.priority = .defaultHigh
-            NSLayoutConstraint.activate([widthConstraint, heightConstraint])
-            dots.addArrangedSubview(dot)
-        }
 
         let stickerTitle = makeTitleLabel(texts.stickersTitle)
         stickerTitle.translatesAutoresizingMaskIntoConstraints = false
@@ -221,24 +200,22 @@ final class KCBrushStickerPanelView {
 
             shell.leadingAnchor.constraint(equalTo: panel.leadingAnchor, constant: 18.0),
             shell.trailingAnchor.constraint(equalTo: panel.trailingAnchor, constant: -18.0),
-            shell.topAnchor.constraint(equalTo: titleLabel.bottomAnchor, constant: 12.0),
+            shell.topAnchor.constraint(equalTo: titleLabel.bottomAnchor, constant: 10.0),
 
-            sizeSlider.leadingAnchor.constraint(equalTo: shell.leadingAnchor, constant: 14.0),
+            sizePreviewView.leadingAnchor.constraint(equalTo: shell.leadingAnchor, constant: 14.0),
+            sizePreviewView.centerYAnchor.constraint(equalTo: shell.centerYAnchor),
+            sizePreviewView.widthAnchor.constraint(equalToConstant: 42.0),
+            sizePreviewView.heightAnchor.constraint(equalToConstant: 42.0),
+            sizePreviewView.topAnchor.constraint(greaterThanOrEqualTo: shell.topAnchor, constant: 12.0),
+            sizePreviewView.bottomAnchor.constraint(lessThanOrEqualTo: shell.bottomAnchor, constant: -12.0),
+
+            sizeSlider.leadingAnchor.constraint(equalTo: sizePreviewView.trailingAnchor, constant: 14.0),
             sizeSlider.trailingAnchor.constraint(equalTo: shell.trailingAnchor, constant: -14.0),
-            sizeSlider.topAnchor.constraint(equalTo: shell.topAnchor, constant: 18.0),
-
-            sizePreviewView.leadingAnchor.constraint(equalTo: shell.leadingAnchor, constant: 16.0),
-            sizePreviewView.topAnchor.constraint(equalTo: sizeSlider.bottomAnchor, constant: 14.0),
-            sizePreviewView.widthAnchor.constraint(equalToConstant: 50.0),
-            sizePreviewView.heightAnchor.constraint(equalToConstant: 50.0),
-
-            dots.leadingAnchor.constraint(equalTo: sizePreviewView.trailingAnchor, constant: 18.0),
-            dots.trailingAnchor.constraint(equalTo: shell.trailingAnchor, constant: -22.0),
-            dots.topAnchor.constraint(equalTo: sizeSlider.bottomAnchor, constant: 16.0),
-            dots.bottomAnchor.constraint(equalTo: shell.bottomAnchor, constant: -14.0),
+            sizeSlider.centerYAnchor.constraint(equalTo: shell.centerYAnchor),
+            shell.heightAnchor.constraint(equalToConstant: 70.0),
 
             stickerTitle.leadingAnchor.constraint(equalTo: panel.leadingAnchor, constant: 18.0),
-            stickerTitle.topAnchor.constraint(equalTo: shell.bottomAnchor, constant: 14.0),
+            stickerTitle.topAnchor.constraint(equalTo: shell.bottomAnchor, constant: 12.0),
 
             stickerCategoryRow.leadingAnchor.constraint(equalTo: panel.leadingAnchor, constant: 18.0),
             stickerCategoryRow.trailingAnchor.constraint(equalTo: panel.trailingAnchor, constant: -18.0),

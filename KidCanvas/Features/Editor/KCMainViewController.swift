@@ -21,7 +21,7 @@ enum KCStartupDeferredDelay {
 
 // MARK: - KCMainViewController
 
-class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIImagePickerControllerDelegate, UINavigationControllerDelegate, UIColorPickerViewControllerDelegate {
+class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIImagePickerControllerDelegate, UINavigationControllerDelegate, UIColorPickerViewControllerDelegate, UIScrollViewDelegate {
 
     var canvasContainerView: UIView!
     var canvasView: KCDrawingCanvasView!
@@ -47,6 +47,8 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
     var redoButton: UIButton!
     var saveButton: UIButton!
     var saveToastView: UIView?
+    var rightPanelScrollView: UIScrollView!
+    var rightPanelFadeMaskLayer: CAGradientLayer!
 #if DEBUG
     var runtimeAcceptanceLastSaveToastTitle: String?
     var runtimeAcceptanceLastPhotoExportToastTitle: String?
@@ -247,6 +249,7 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
     override func viewDidLayoutSubviews() {
         super.viewDidLayoutSubviews()
         self.refreshSizePreview()
+        self.updateRightPanelFadeMask()
         // 把面板感知的“安全创作区”注入画布 viewport，使默认视图按创作区居中、
         // 缩放/平移按创作区边界钳制。每次布局（含面板收起/展开）都重新计算。
         self.canvasView.applyViewportRect(self.canvasCreationRect())
@@ -299,6 +302,9 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
         rightScrollView.showsVerticalScrollIndicator = false
         rightScrollView.alwaysBounceVertical = true
         rightScrollView.clipsToBounds = true
+        rightScrollView.delegate = self
+        self.rightPanelScrollView = rightScrollView
+        self.installRightPanelFadeMask(on: rightScrollView)
         rightStack.axis = .vertical
         rightStack.spacing = self.rightPanelStackSpacing()
 
@@ -313,7 +319,7 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
 
         // T097：画布“恢复视图”按钮，仅在画布缩放/平移偏离默认视图时显示。
         // 右下角常驻工具隐藏按钮也在此区域，因此恢复按钮固定上移一格，避免触控重叠。
-        self.restoreViewportButton = self.iconButtonWithSymbolName("viewfinder", accentColor: KCEditorVisualStyle.saveActionColor)
+        self.restoreViewportButton = self.editorUIFactory.restoreViewportButton(symbolName: "arrow.down.right.and.arrow.up.left")
         self.restoreViewportButton.translatesAutoresizingMaskIntoConstraints = false
         self.restoreViewportButton.isHidden = true
         self.applyAccessibilityLabel(KCL10n.restoreViewportTitle, identifier: "canvas.restore-viewport", toControl: self.restoreViewportButton)
@@ -388,6 +394,38 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
 
     func floatingPanel(cornerRadius: CGFloat = KCEditorVisualStyle.floatingPanelCornerRadius) -> UIView {
         return self.editorUIFactory.floatingPanel(cornerRadius: cornerRadius)
+    }
+
+    func installRightPanelFadeMask(on scrollView: UIScrollView) {
+        let maskLayer = CAGradientLayer()
+        maskLayer.colors = [
+            UIColor.clear.cgColor,
+            UIColor.black.cgColor,
+            UIColor.black.cgColor,
+            UIColor.clear.cgColor
+        ]
+        maskLayer.locations = [0.0, 0.025, 0.965, 1.0]
+        maskLayer.startPoint = CGPoint(x: 0.5, y: 0.0)
+        maskLayer.endPoint = CGPoint(x: 0.5, y: 1.0)
+        scrollView.layer.mask = maskLayer
+        self.rightPanelFadeMaskLayer = maskLayer
+    }
+
+    func updateRightPanelFadeMask() {
+        guard let scrollView = self.rightPanelScrollView,
+              let maskLayer = self.rightPanelFadeMaskLayer else {
+            return
+        }
+        CATransaction.begin()
+        CATransaction.setDisableActions(true)
+        maskLayer.frame = scrollView.bounds
+        CATransaction.commit()
+    }
+
+    func scrollViewDidScroll(_ scrollView: UIScrollView) {
+        if scrollView === self.rightPanelScrollView {
+            self.updateRightPanelFadeMask()
+        }
     }
 
     func iconButtonWithSymbolName(_ symbolName: String, accentColor: UIColor?) -> UIButton {
@@ -760,13 +798,6 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
     }
 
     func buildBottomDock(_ panel: UIView) {
-        let label = UILabel()
-        label.translatesAutoresizingMaskIntoConstraints = false
-        label.text = KCL10n.brushesPanelTitle
-        label.font = UIFont.systemFont(ofSize: self.bottomDockTitleFontSize(), weight: .semibold)
-        label.textColor = UIColor(red: 0.34, green: 0.39, blue: 0.45, alpha: 1.0)
-        panel.addSubview(label)
-
         let scrollView = UIScrollView()
         scrollView.translatesAutoresizingMaskIntoConstraints = false
         scrollView.showsHorizontalScrollIndicator = false
@@ -782,11 +813,7 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
         scrollView.addSubview(stack)
 
         NSLayoutConstraint.activate([
-            label.leadingAnchor.constraint(equalTo: panel.leadingAnchor, constant: self.bottomDockHorizontalInset()),
-            label.centerYAnchor.constraint(equalTo: panel.centerYAnchor),
-            label.widthAnchor.constraint(equalToConstant: self.bottomDockTitleWidth()),
-
-            scrollView.leadingAnchor.constraint(equalTo: label.trailingAnchor, constant: 8.0),
+            scrollView.leadingAnchor.constraint(equalTo: panel.leadingAnchor, constant: self.bottomDockHorizontalInset()),
             scrollView.trailingAnchor.constraint(equalTo: panel.trailingAnchor, constant: -self.bottomDockHorizontalInset()),
             scrollView.topAnchor.constraint(equalTo: panel.topAnchor, constant: self.bottomDockVerticalInset()),
             scrollView.bottomAnchor.constraint(equalTo: panel.bottomAnchor, constant: -self.bottomDockVerticalInset()),

@@ -13,11 +13,14 @@ enum KCEditorVisualStyle {
     static let mutedInkColor = UIColor(red: 0.48, green: 0.52, blue: 0.58, alpha: 1.0)
     static let accentColor = UIColor(red: 0.97, green: 0.86, blue: 0.48, alpha: 1.0)
     static let accentInkColor = UIColor(red: 0.39, green: 0.26, blue: 0.0, alpha: 1.0)
-    static let raisedBackgroundColor = UIColor(white: 1.0, alpha: 0.92)
+    /// T109 G3a：raised 按钮底色 0.92 → 0.82，玻璃感更通透（mockup `rgba(255,255,255,0.82)`）。
+    static let raisedBackgroundColor = UIColor(white: 1.0, alpha: 0.82)
     static let compactBackgroundColor = UIColor(white: 1.0, alpha: 0.88)
     static let pillBackgroundColor = UIColor(white: 1.0, alpha: 0.78)
     static let disabledBackgroundColor = UIColor(white: 1.0, alpha: 0.68)
     static let saveActionColor = UIColor(red: 0.54, green: 0.80, blue: 0.98, alpha: 1.0)
+    static let restoreViewportButtonColor = UIColor(white: 1.0, alpha: 0.98)
+    static let restoreViewportBorderColor = UIColor(red: 0.20, green: 0.25, blue: 0.32, alpha: 0.30).cgColor
     static let borderColor = UIColor(white: 1.0, alpha: 0.78).cgColor
     static let activeBorderColor = UIColor(white: 1.0, alpha: 0.94).cgColor
     static let subtleBorderColor = UIColor(red: 0.17, green: 0.22, blue: 0.30, alpha: 0.12).cgColor
@@ -52,9 +55,12 @@ enum KCEditorVisualStyle {
     /// - iOS 26 以下：降级为 `systemMaterialLight` 模糊 + 暖底色叠层 + 白高光描边（近似玻璃，无液态折射）。
     static func makeGlassEffectView(contentTint: UIColor = glassContentTint) -> UIVisualEffectView {
         if #available(iOS 26.0, *) {
-            return UIVisualEffectView(effect: UIGlassEffect(style: .regular))
+            let glass = UIVisualEffectView(effect: UIGlassEffect(style: .regular))
+            glass.isUserInteractionEnabled = false
+            return glass
         }
         let blur = UIVisualEffectView(effect: UIBlurEffect(style: .systemMaterialLight))
+        blur.isUserInteractionEnabled = false
         blur.contentView.backgroundColor = contentTint
         blur.layer.borderColor = glassHighlightBorderColor
         blur.layer.borderWidth = 1.0
@@ -98,12 +104,36 @@ enum KCEditorVisualStyle {
         view.backgroundColor = backgroundColor
         view.layer.cornerRadius = cornerRadius
         view.layer.cornerCurve = .continuous
+        // T109 G3a：暗细线描边 → 玻璃高光白边（`glassHighlightBorderColor`），与玻璃面板同源。
         view.layer.borderWidth = 1.0
-        view.layer.borderColor = subtleBorderColor
+        view.layer.borderColor = glassHighlightBorderColor
         view.layer.shadowColor = shadowColor
         view.layer.shadowOpacity = shadowOpacity
         view.layer.shadowRadius = shadowRadius
         view.layer.shadowOffset = shadowOffset
+
+        // T109 G3a：顶部 1pt 白色内高光（mockup `inset 0 1px 0 rgba(255,255,255,0.76)`）。
+        // 1pt 高 UIView，顶端圆角匹配按钮，其余直角；置底不抢子控件（图标/文字）；防重复加。
+        let highlightTag = 0x4B43_4869 // "KCHi"
+        if view.viewWithTag(highlightTag) == nil {
+            let highlight = UIView()
+            highlight.tag = highlightTag
+            highlight.translatesAutoresizingMaskIntoConstraints = false
+            highlight.backgroundColor = UIColor(white: 1.0, alpha: 0.76)
+            highlight.layer.cornerRadius = cornerRadius
+            highlight.layer.cornerCurve = .continuous
+            highlight.layer.maskedCorners = [.layerMinXMinYCorner, .layerMaxXMinYCorner]
+            highlight.clipsToBounds = true
+            highlight.isUserInteractionEnabled = false
+            view.addSubview(highlight)
+            view.sendSubviewToBack(highlight)
+            NSLayoutConstraint.activate([
+                highlight.topAnchor.constraint(equalTo: view.topAnchor),
+                highlight.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+                highlight.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+                highlight.heightAnchor.constraint(equalToConstant: 1.0)
+            ])
+        }
     }
 
     static func applyCompactButtonAppearance(to button: UIButton, accent: Bool, cornerRadius: CGFloat = 16.0) {
@@ -246,6 +276,25 @@ struct KCEditorUIFactory {
         return button
     }
 
+    func restoreViewportButton(symbolName: String) -> UIButton {
+        let button = UIButton(type: .system)
+        button.translatesAutoresizingMaskIntoConstraints = false
+        KCEditorVisualStyle.applyRaisedButtonAppearance(
+            to: button,
+            cornerRadius: 18.0,
+            backgroundColor: KCEditorVisualStyle.restoreViewportButtonColor,
+            shadowOpacity: 0.24,
+            shadowRadius: 16.0,
+            shadowOffset: CGSize(width: 0.0, height: 8.0)
+        )
+        button.tintColor = KCEditorVisualStyle.inkColor
+        button.layer.borderColor = KCEditorVisualStyle.restoreViewportBorderColor
+        button.layer.borderWidth = 2.0
+        let image = Self.cachedConfiguredSystemImage(symbolName: symbolName, pointSize: 24.0, weight: .black, weightKey: "black")
+        button.setImage(image, for: .normal)
+        return button
+    }
+
     func historyThumbButton() -> UIButton {
         let button = UIButton(type: .custom)
         button.translatesAutoresizingMaskIntoConstraints = false
@@ -347,16 +396,27 @@ struct KCEditorUIFactory {
     }
 
     func collapseToggleButton(symbolName: String) -> UIButton {
+        // T109 G3b：折叠按钮由"实色 0.88"轻实色改为真玻璃（与所折叠的玻璃面板同源）。
         let button = UIButton(type: .system)
         button.translatesAutoresizingMaskIntoConstraints = false
-        KCEditorVisualStyle.applyRaisedButtonAppearance(
-            to: button,
-            cornerRadius: 18.0,
-            backgroundColor: KCEditorVisualStyle.compactBackgroundColor,
-            shadowOpacity: 0.06,
-            shadowRadius: 6.0,
-            shadowOffset: CGSize(width: 0.0, height: 3.0)
-        )
+        button.backgroundColor = .clear
+        button.layer.cornerRadius = 18.0
+        button.layer.cornerCurve = .continuous
+        button.layer.shadowColor = KCEditorVisualStyle.glassShadowColor
+        button.layer.shadowOpacity = 0.14
+        button.layer.shadowRadius = 18.0
+        button.layer.shadowOffset = CGSize(width: 0.0, height: 8.0)
+        let glass = KCEditorVisualStyle.makeGlassEffectView()
+        KCEditorVisualStyle.applyGlassSurface(to: glass, cornerRadius: 18.0)
+        glass.translatesAutoresizingMaskIntoConstraints = false
+        button.addSubview(glass)
+        button.sendSubviewToBack(glass)
+        NSLayoutConstraint.activate([
+            glass.topAnchor.constraint(equalTo: button.topAnchor),
+            glass.leadingAnchor.constraint(equalTo: button.leadingAnchor),
+            glass.trailingAnchor.constraint(equalTo: button.trailingAnchor),
+            glass.bottomAnchor.constraint(equalTo: button.bottomAnchor)
+        ])
         button.tintColor = KCEditorVisualStyle.inkColor
         button.setImage(Self.cachedConfiguredSystemImage(symbolName: symbolName, pointSize: 18.0, weight: .bold, weightKey: "bold"), for: .normal)
         NSLayoutConstraint.activate([
@@ -367,16 +427,27 @@ struct KCEditorUIFactory {
     }
 
     func toolStateChip() -> UIView {
+        // T109 G3b：工具状态 chip 由"实色 0.88"改为真玻璃（与玻璃面板同源）。
         let chip = UIView()
         chip.translatesAutoresizingMaskIntoConstraints = false
-        KCEditorVisualStyle.applyRaisedButtonAppearance(
-            to: chip,
-            cornerRadius: 18.0,
-            backgroundColor: KCEditorVisualStyle.compactBackgroundColor,
-            shadowOpacity: 0.05,
-            shadowRadius: 5.0,
-            shadowOffset: CGSize(width: 0.0, height: 2.0)
-        )
+        chip.backgroundColor = .clear
+        chip.layer.cornerRadius = 18.0
+        chip.layer.cornerCurve = .continuous
+        chip.layer.shadowColor = KCEditorVisualStyle.glassShadowColor
+        chip.layer.shadowOpacity = 0.14
+        chip.layer.shadowRadius = 18.0
+        chip.layer.shadowOffset = CGSize(width: 0.0, height: 8.0)
+        let glass = KCEditorVisualStyle.makeGlassEffectView()
+        KCEditorVisualStyle.applyGlassSurface(to: glass, cornerRadius: 18.0)
+        glass.translatesAutoresizingMaskIntoConstraints = false
+        chip.addSubview(glass)
+        chip.sendSubviewToBack(glass)
+        NSLayoutConstraint.activate([
+            glass.topAnchor.constraint(equalTo: chip.topAnchor),
+            glass.leadingAnchor.constraint(equalTo: chip.leadingAnchor),
+            glass.trailingAnchor.constraint(equalTo: chip.trailingAnchor),
+            glass.bottomAnchor.constraint(equalTo: chip.bottomAnchor)
+        ])
         chip.isHidden = true
         chip.alpha = 0.0
         return chip
@@ -430,10 +501,13 @@ struct KCEditorUIFactory {
         label.text = title
         label.font = UIFont.systemFont(ofSize: metrics.brushCardLabelFontSize, weight: .semibold)
         label.textColor = KCEditorVisualStyle.inkColor
+        label.adjustsFontSizeToFitWidth = true
+        label.minimumScaleFactor = 0.78
+        label.lineBreakMode = .byTruncatingTail
 
         let halo = UIView()
         halo.translatesAutoresizingMaskIntoConstraints = false
-        halo.backgroundColor = accentColor.withAlphaComponent(0.16)
+        halo.backgroundColor = accentColor.withAlphaComponent(0.10)
         halo.layer.cornerRadius = metrics.brushCardHaloSize / 2.0
 
         button.addSubview(halo)
@@ -450,6 +524,7 @@ struct KCEditorUIFactory {
             iconView.widthAnchor.constraint(equalToConstant: metrics.brushCardIconSize),
             iconView.heightAnchor.constraint(equalToConstant: metrics.brushCardIconSize),
             label.leadingAnchor.constraint(equalTo: halo.trailingAnchor, constant: metrics.isCompactPhoneLayout ? 10.0 : 14.0),
+            label.trailingAnchor.constraint(lessThanOrEqualTo: button.trailingAnchor, constant: metrics.isCompactPhoneLayout ? -8.0 : -12.0),
             label.centerYAnchor.constraint(equalTo: button.centerYAnchor)
         ])
 

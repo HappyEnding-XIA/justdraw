@@ -402,16 +402,28 @@ private final class KCLineArtExtractionResultCard: UIView {
         backdropView.addGestureRecognizer(tap)
 
         cardView.translatesAutoresizingMaskIntoConstraints = false
-        cardView.backgroundColor = UIColor(white: 1.0, alpha: 0.98)
+        cardView.backgroundColor = .clear
         cardView.layer.cornerRadius = 24.0
         cardView.layer.cornerCurve = .continuous
-        cardView.layer.borderColor = KCEditorVisualStyle.borderColor
-        cardView.layer.borderWidth = 1.0
-        cardView.layer.shadowColor = KCEditorVisualStyle.shadowColor
-        cardView.layer.shadowOpacity = 0.22
+        cardView.layer.shadowColor = KCEditorVisualStyle.glassShadowColor
+        cardView.layer.shadowOpacity = 0.14
         cardView.layer.shadowRadius = 18.0
         cardView.layer.shadowOffset = CGSize(width: 0.0, height: 8.0)
         addSubview(cardView)
+
+        // T109 G2：线稿提取结果卡由"假玻璃"（实色 0.98）改为统一玻璃入口：
+        // `cardView` 承载阴影与圆角，玻璃由 `cardGlass`（系统液态玻璃 / 降级模糊 + 暖底 + 白高光描边，强染色保弹层对比度）铺底。
+        let cardGlass = KCEditorVisualStyle.makeGlassEffectView(contentTint: KCEditorVisualStyle.glassContentTintStrong)
+        KCEditorVisualStyle.applyGlassSurface(to: cardGlass, cornerRadius: 24.0)
+        cardGlass.translatesAutoresizingMaskIntoConstraints = false
+        cardView.addSubview(cardGlass)
+        cardView.sendSubviewToBack(cardGlass)
+        NSLayoutConstraint.activate([
+            cardGlass.topAnchor.constraint(equalTo: cardView.topAnchor),
+            cardGlass.leadingAnchor.constraint(equalTo: cardView.leadingAnchor),
+            cardGlass.trailingAnchor.constraint(equalTo: cardView.trailingAnchor),
+            cardGlass.bottomAnchor.constraint(equalTo: cardView.bottomAnchor)
+        ])
 
         titleLabel.translatesAutoresizingMaskIntoConstraints = false
         titleLabel.font = .systemFont(ofSize: 20.0, weight: .bold)

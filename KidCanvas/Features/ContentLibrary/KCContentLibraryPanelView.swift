@@ -72,17 +72,31 @@ final class KCContentLibraryPanelView: UIView {
         let backdropTap = UITapGestureRecognizer(target: self, action: #selector(handleClose))
         backdropView.addGestureRecognizer(backdropTap)
 
-        cardView.backgroundColor = UIColor(white: 1.0, alpha: 0.96)
+        cardView.backgroundColor = .clear
         cardView.layer.cornerRadius = 26.0
         cardView.layer.cornerCurve = .continuous
-        cardView.layer.borderColor = KCEditorVisualStyle.borderColor
-        cardView.layer.borderWidth = 1.0
-        cardView.layer.shadowColor = KCEditorVisualStyle.shadowColor
-        cardView.layer.shadowOpacity = 0.30
+        cardView.layer.shadowColor = KCEditorVisualStyle.glassShadowColor
+        cardView.layer.shadowOpacity = 0.14
         cardView.layer.shadowRadius = 18.0
         cardView.layer.shadowOffset = CGSize(width: 0.0, height: 8.0)
         cardView.translatesAutoresizingMaskIntoConstraints = false
         addSubview(cardView)
+
+        // T109 G2：内容库卡片由"假玻璃"（实色 0.96 + 描边）改为统一玻璃入口（`makeGlassEffectView`）：
+        // `cardView` 自身只承载阴影形状与圆角；玻璃效果由 `cardGlass`（系统液态玻璃 / 降级模糊 + 暖底 + 白高光描边）
+        // 作为子视图铺底，置于最底层；既有分段/关闭/内容子控件原样叠在玻璃之上，玻璃在边距与圆角处可见。
+        // 顺带解开 `historyPanel` 嵌套遮挡：父层不再是不透明 0.96 实色，子层历史玻璃可见。
+        let cardGlass = KCEditorVisualStyle.makeGlassEffectView()
+        KCEditorVisualStyle.applyGlassSurface(to: cardGlass, cornerRadius: 26.0)
+        cardGlass.translatesAutoresizingMaskIntoConstraints = false
+        cardView.addSubview(cardGlass)
+        cardView.sendSubviewToBack(cardGlass)
+        NSLayoutConstraint.activate([
+            cardGlass.topAnchor.constraint(equalTo: cardView.topAnchor),
+            cardGlass.leadingAnchor.constraint(equalTo: cardView.leadingAnchor),
+            cardGlass.trailingAnchor.constraint(equalTo: cardView.trailingAnchor),
+            cardGlass.bottomAnchor.constraint(equalTo: cardView.bottomAnchor)
+        ])
 
         segmentedControl.translatesAutoresizingMaskIntoConstraints = false
         for (index, partition) in KCContentLibraryPartition.defaultOrder.enumerated() {

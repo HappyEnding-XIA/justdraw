@@ -1,12 +1,12 @@
 # KCBrushStickerPanelView
 
-App 层画笔 / 印章 / 橡皮编辑面板组装器：承接尺寸 slider、尺寸预览容器、印章分类、印章列表、橡皮形状按钮和印章编辑按钮的 UIKit 创建与约束。位于 `KidCanvas/Features/Tools/KCBrushStickerPanelView.swift`，不是独立 SPM target。
+App 层画笔 / 印章 / 橡皮编辑面板组装器：承接尺寸 slider、实时尺寸预览容器、印章分类、印章列表、橡皮形状按钮和印章编辑按钮的 UIKit 创建与约束。位于 `KidCanvas/Features/Tools/KCBrushStickerPanelView.swift`，不是独立 SPM target。
 
 > 文件名与内部 API 暂保留 `Sticker`，对应现有 `KDToolMode.sticker`、`KCSticker*` 与内容目录 schema；用户可见文案统一展示为“印章 / Stamp”。
 
 ## 1. 职责
 
-- 创建画笔/印章面板标题、尺寸 slider、尺寸预览容器和尺寸示意点。
+- 创建画笔/印章面板标题、尺寸 slider 和实时尺寸预览容器；尺寸控制采用横向紧凑布局，避免旧版纵向提示块占据过多右侧面板空间。
 - 创建印章分类按钮行，并保持图标优先、中文/英文无障碍文本由外层传入。
 - 创建印章横向滚动列表，并提供 `reloadStickerButtons(...)` 刷新入口。
 - 创建橡皮擦 circle/cloud/star 形状按钮。
@@ -35,6 +35,7 @@ App 层画笔 / 印章 / 橡皮编辑面板组装器：承接尺寸 slider、尺
 ## 4. 验收规则
 
 - 不允许在 `KCMainViewController.buildSizePanel(_:)` 重新手写尺寸 slider、印章滚动行、橡皮按钮或印章编辑按钮组装。
+- 不允许恢复无交互的圆点式尺寸示意；尺寸控制以 slider + 实时预览为主，且预览应与 slider 横向同组展示。若后续要新增常用尺寸快捷档位，必须具备点击、明确选中态，并与 slider、预览和实际尺寸双向同步。
 - 不允许把画布状态、选中印章状态、undo/redo 或印章手势下沉到本组装器。
 - 不允许新增印章分类/印章列表/编辑按钮样式时绕过本组装器的样式 helper，或在本文件复制一套独立颜色/阴影/禁用态 token。
 - 不允许在 `KCMainViewController.selectStickerSymbol(_:)` 重新手写印章素材按钮的背景、边框、阴影或缩放。

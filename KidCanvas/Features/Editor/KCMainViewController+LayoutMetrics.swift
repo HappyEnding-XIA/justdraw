@@ -62,14 +62,6 @@ extension KCMainViewController {
         return self.layoutMetrics.bottomDockBottomInset
     }
 
-    func bottomDockTitleWidth() -> CGFloat {
-        return self.layoutMetrics.bottomDockTitleWidth
-    }
-
-    func bottomDockTitleFontSize() -> CGFloat {
-        return self.layoutMetrics.bottomDockTitleFontSize
-    }
-
     func bottomDockHorizontalInset() -> CGFloat {
         return self.layoutMetrics.bottomDockHorizontalInset
     }
