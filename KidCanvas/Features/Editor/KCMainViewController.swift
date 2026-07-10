@@ -281,11 +281,11 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
 
         let topLeft = self.floatingPanel()
         let topRight = self.floatingPanel()
-        let leftRail = self.floatingPanel()
+        let leftRail = self.floatingPanel(cornerRadius: KCEditorVisualStyle.leftRailCornerRadius)
         let colorsPanel = self.floatingPanel()
         let sizePanel = self.floatingPanel()
         let historyPanel = self.floatingPanel()
-        let bottomDock = self.floatingPanel()
+        let bottomDock = self.floatingPanel(cornerRadius: KCEditorVisualStyle.bottomDockCornerRadius)
         let rightScrollView = UIScrollView()
         let rightStack = UIStackView()
         self.historyPanelView = historyPanel
@@ -386,8 +386,8 @@ class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIIma
         self.buildCollapseControls()
     }
 
-    func floatingPanel() -> UIView {
-        return self.editorUIFactory.floatingPanel()
+    func floatingPanel(cornerRadius: CGFloat = KCEditorVisualStyle.floatingPanelCornerRadius) -> UIView {
+        return self.editorUIFactory.floatingPanel(cornerRadius: cornerRadius)
     }
 
     func iconButtonWithSymbolName(_ symbolName: String, accentColor: UIColor?) -> UIButton {

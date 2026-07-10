@@ -26,21 +26,65 @@ enum KCEditorVisualStyle {
     static let activeShadowOpacity: Float = 0.09
     static let disabledAlpha: CGFloat = 0.56
 
-    static func applyFloatingPanelChrome(to panel: UIView, blurView: UIVisualEffectView) {
+    // MARK: 玻璃材质 token（T109 液态玻璃，对齐 docs/product/mockups/ui-preview.html）
+
+    /// 玻璃底色/染色（暖奶白，对齐 mockup `--glass rgba(255,251,246,0.72)`）。
+    /// iOS 26+ 不额外染色；低版本作为 contentView 叠层。
+    static let glassContentTint = UIColor(red: 1.0, green: 0.984, blue: 0.961, alpha: 0.34)
+    /// 玻璃染色（强，用于弹层/Toast 等需更高对比处，对齐 `--glass-strong`）。
+    static let glassContentTintStrong = UIColor(red: 1.0, green: 0.984, blue: 0.961, alpha: 0.50)
+    /// 玻璃内描边：白高光（仅低版本降级路径用；iOS 26 液态玻璃自带高光边缘）。
+    static let glassHighlightBorderColor = UIColor(white: 1.0, alpha: 0.76).cgColor
+    /// 玻璃投影色：暖棕（对齐 mockup `--shadow rgba(125,91,49,…)`）。按钮投影暂沿用 `shadowColor`，留 G3 统一。
+    static let glassShadowColor = UIColor(red: 0.49, green: 0.357, blue: 0.192, alpha: 1.0).cgColor
+
+    /// 玻璃圆角分级（对齐 mockup：容器 30 / 左轨 34 / 底部 Dock 36；Toast/线稿选择器为小弹层，沿用 24/28）。
+    static let floatingPanelCornerRadius: CGFloat = 30.0
+    static let leftRailCornerRadius: CGFloat = 34.0
+    static let bottomDockCornerRadius: CGFloat = 36.0
+    static let toastCornerRadius: CGFloat = 24.0
+    static let lineArtPickerCornerRadius: CGFloat = 28.0
+
+    /// 创建液态玻璃效果视图（所有玻璃表面的唯一入口）：
+    /// - iOS 26+：直接用系统 `UIGlassEffect(style: .regular)`——Apple 液态玻璃，自带折射/镜面高光/厚度感。
+    ///   不设置 `tintColor`：保持系统玻璃校准的中性通透，暖调由奶白工作台背景折射提供；
+    ///   如需明确色相可设 `tintColor`（系统按玻璃规则柔和混合，仍是半透明，不会变实色）。
+    /// - iOS 26 以下：降级为 `systemMaterialLight` 模糊 + 暖底色叠层 + 白高光描边（近似玻璃，无液态折射）。
+    static func makeGlassEffectView(contentTint: UIColor = glassContentTint) -> UIVisualEffectView {
+        if #available(iOS 26.0, *) {
+            return UIVisualEffectView(effect: UIGlassEffect(style: .regular))
+        }
+        let blur = UIVisualEffectView(effect: UIBlurEffect(style: .systemMaterialLight))
+        blur.contentView.backgroundColor = contentTint
+        blur.layer.borderColor = glassHighlightBorderColor
+        blur.layer.borderWidth = 1.0
+        return blur
+    }
+
+    /// 玻璃表面统一裁剪：把 `UIVisualEffectView`（液态玻璃或降级模糊）裁到圆角。
+    static func applyGlassSurface(
+        to blurView: UIVisualEffectView,
+        cornerRadius: CGFloat
+    ) {
+        blurView.layer.cornerRadius = cornerRadius
+        blurView.layer.cornerCurve = .continuous
+        blurView.layer.masksToBounds = true
+    }
+
+    /// 浮层玻璃铬样：外层 `panel` 承载暖棕投影，内层 `blurView` 经 `applyGlassSurface` 裁圆角。
+    static func applyFloatingPanelChrome(
+        to panel: UIView,
+        blurView: UIVisualEffectView,
+        cornerRadius: CGFloat = floatingPanelCornerRadius
+    ) {
         panel.backgroundColor = UIColor.clear
-        panel.layer.cornerRadius = 26.0
+        panel.layer.cornerRadius = cornerRadius
         panel.layer.cornerCurve = .continuous
-        panel.layer.shadowColor = shadowColor
+        panel.layer.shadowColor = glassShadowColor
         panel.layer.shadowOpacity = 0.14
         panel.layer.shadowRadius = 18.0
         panel.layer.shadowOffset = CGSize(width: 0.0, height: 8.0)
-
-        blurView.layer.cornerRadius = 26.0
-        blurView.layer.cornerCurve = .continuous
-        blurView.layer.masksToBounds = true
-        blurView.layer.borderColor = UIColor(red: 0.17, green: 0.22, blue: 0.30, alpha: 0.08).cgColor
-        blurView.layer.borderWidth = 1.2
-        blurView.contentView.backgroundColor = UIColor(white: 1.0, alpha: 0.34)
+        applyGlassSurface(to: blurView, cornerRadius: cornerRadius)
     }
 
     static func applyRaisedButtonAppearance(
@@ -166,13 +210,12 @@ struct KCEditorUIFactory {
         return image
     }
 
-    func floatingPanel() -> UIView {
+    func floatingPanel(cornerRadius: CGFloat = KCEditorVisualStyle.floatingPanelCornerRadius) -> UIView {
         let panel = UIView()
 
-        let effect = UIBlurEffect(style: .systemThinMaterialLight)
-        let blurView = UIVisualEffectView(effect: effect)
+        let blurView = KCEditorVisualStyle.makeGlassEffectView()
         blurView.translatesAutoresizingMaskIntoConstraints = false
-        KCEditorVisualStyle.applyFloatingPanelChrome(to: panel, blurView: blurView)
+        KCEditorVisualStyle.applyFloatingPanelChrome(to: panel, blurView: blurView, cornerRadius: cornerRadius)
         panel.addSubview(blurView)
 
         NSLayoutConstraint.activate([

@@ -297,6 +297,12 @@ CanvasEngine
 - 默认居中策略不受影响：`defaultState` / `resettingToDefault()` 仍直接给出“内容中心对齐安全创作区中心”的平移量，不经缩小态钳制分支；恢复视图、新建、打开历史、导入图片、加载线稿仍回到默认居中。
 - `canvas-viewport` 探针在 200% 放大态断言之外，新增 50% 缩小态断言：`scaledDownScaleAfterSet < 1.0`、`scaledDownViewportTranslationChanged == true`、`scaledDownContentPointChangedAfterPan == true`、`scaledDownNotCentered == true`（缩小态平移未被吸回中心）。
 
+玻璃材质视觉基线（T109，设计基线，2026-07-10）：
+
+- PRD 要求按钮组/菜单/浮层/底部 Dock 优先用 iOS 玻璃材质（半透明、轻模糊、轻高光、柔和边界、背景透出），服务于层级区分且不过度透明。**唯一真源为 `docs/product/mockups/ui-preview.html`**；完整 token、现状盘点、差距与后续编码任务见 `docs/architecture/GLASS_MATERIAL_BASELINE.md`。
+- 当前：浮层/左轨/底部 Dock 经 `KCEditorUIFactory.floatingPanel()` → `KCEditorVisualStyle.applyFloatingPanelChrome`（真模糊 `.systemThinMaterialLight`）；按钮经 `applyRaisedButtonAppearance`（实色 white 0.92）；线稿选择器、Toast 内联模糊（圆角 24/28 与浮层 26 不一致）；内容库卡片、线稿提取结果卡为“假玻璃”（近不透明实色 0.96/0.98 无模糊）。
+- 边界：玻璃统一收敛进 `KCEditorVisualStyle`/`KCEditorUIFactory`，禁止内联散写 `UIVisualEffectView`、不引入 CIFilter 自定义模糊；调色盘色样/选中强调按钮/禁用态/画布纸张保持实色（保儿童识别与准确辨色）。**G1（统一入口 + token + 系统液态玻璃 `UIGlassEffect`）已实现并通过自动验收与 Codex 审核，待 commit**；假玻璃→真玻璃(G2)/按钮玻璃化(G3)/减层(G4)/画纸留边+工作台氛围光(G5) 后续承接。
+
 ### 4.3.1 Content Library / Line Art 系统
 
 PRD 已把线稿从“官方线稿弹窗”升级为“官方线稿 + 我的线稿 + 照片生成线稿”的内容体系。按以下边界实现：

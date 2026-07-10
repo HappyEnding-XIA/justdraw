@@ -44,10 +44,9 @@ final class KCLineArtPickerViewController: UIViewController {
     }
 
     private func buildInterface() {
-        let panel = UIVisualEffectView(effect: UIBlurEffect(style: .systemThinMaterialLight))
+        let panel = KCEditorVisualStyle.makeGlassEffectView(contentTint: KCEditorVisualStyle.glassContentTintStrong)
         panel.translatesAutoresizingMaskIntoConstraints = false
-        panel.layer.cornerRadius = 28.0
-        panel.clipsToBounds = true
+        KCEditorVisualStyle.applyGlassSurface(to: panel, cornerRadius: KCEditorVisualStyle.lineArtPickerCornerRadius)
         self.view.addSubview(panel)
 
         let scrollView = UIScrollView()

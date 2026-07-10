@@ -67,12 +67,9 @@ final class KCToastPresenter {
         in view: UIView,
         anchorView: UIView
     ) -> UIView {
-        let toast = UIVisualEffectView(effect: UIBlurEffect(style: .systemThinMaterialLight))
+        let toast = KCEditorVisualStyle.makeGlassEffectView(contentTint: KCEditorVisualStyle.glassContentTintStrong)
         toast.translatesAutoresizingMaskIntoConstraints = false
-        toast.layer.cornerRadius = 24.0
-        toast.clipsToBounds = true
-        toast.layer.borderWidth = 1.0
-        toast.layer.borderColor = UIColor(white: 1.0, alpha: 0.72).cgColor
+        KCEditorVisualStyle.applyGlassSurface(to: toast, cornerRadius: KCEditorVisualStyle.toastCornerRadius)
         toast.alpha = 0.0
         toast.transform = CGAffineTransform(scaleX: 0.82, y: 0.82)
         view.addSubview(toast)
