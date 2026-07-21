@@ -418,6 +418,8 @@ final class KCDrawingCanvasView: UIView, UIGestureRecognizerDelegate {
 
     // MARK: - Dab 渲染（T094：铅笔/蜡笔专业质感）
 
+    private static let brushTipVariantCount = 8
+
     private lazy var brushTipCache: NSCache<NSString, UIImage> = {
         let cache = NSCache<NSString, UIImage>()
         cache.countLimit = 64
@@ -463,26 +465,58 @@ final class KCDrawingCanvasView: UIView, UIGestureRecognizerDelegate {
     }
 
     /// 生成（或从缓存取）着色软边纹理 stamp：径向衰减盘 + 确定性颗粒。
-    /// 缓存键为 (brushStyle, textureSeed, 颜色 RGBA)，命中即返回，避免每 dab 分配。
-    private func brushTipImage(brushStyle: KDBrushStyle, textureSeed: UInt64, color: UIColor) -> UIImage {
+    /// 缓存键为 (brushStyle, textureSeed, 颜色 RGBA, 变体索引)，避免移动阶段分配图片。
+    private func brushTipImage(
+        brushStyle: KDBrushStyle,
+        textureSeed: UInt64,
+        color: UIColor,
+        variantIndex: Int
+    ) -> UIImage {
         var cr: CGFloat = 0, cg: CGFloat = 0, cb: CGFloat = 0, ca: CGFloat = 0
         color.getRed(&cr, green: &cg, blue: &cb, alpha: &ca)
-        let cacheKey = "\(brushStyle.rawValue)|\(textureSeed)|\(cr)|\(cg)|\(cb)|\(ca)" as NSString
+        let cacheKey = "\(brushStyle.rawValue)|\(textureSeed)|\(cr)|\(cg)|\(cb)|\(ca)|\(variantIndex)" as NSString
         if let cached = brushTipCache.object(forKey: cacheKey) {
             return cached
         }
 
         let edge = 80
+        let variantSeed = kcBrushDabMix(seed: textureSeed, index: UInt64(variantIndex))
         let renderer = UIGraphicsImageRenderer(size: CGSize(width: edge, height: edge))
         let image = renderer.image { rendererContext in
             self.renderBrushTip(into: rendererContext.cgContext,
                                 edge: CGFloat(edge),
                                 brushStyle: brushStyle,
-                                textureSeed: textureSeed,
+                                textureSeed: variantSeed,
                                 color: color)
         }
         brushTipCache.setObject(image, forKey: cacheKey)
         return image
+    }
+
+    private func brushTipImages(
+        brushStyle: KDBrushStyle,
+        textureSeed: UInt64,
+        color: UIColor
+    ) -> [UIImage] {
+        (0..<Self.brushTipVariantCount).map { variantIndex in
+            brushTipImage(
+                brushStyle: brushStyle,
+                textureSeed: textureSeed,
+                color: color,
+                variantIndex: variantIndex
+            )
+        }
+    }
+
+    /// 在第一次移动事件前准备全部纹理，避免 touchesMoved 间接创建 UIImage。
+    private func prewarmBrushTipVariants(for stroke: KDStroke) {
+        guard stroke.toolMode == .brush,
+              stroke.brushStyle == .pencil || stroke.brushStyle == .crayon else { return }
+        _ = brushTipImages(
+            brushStyle: stroke.brushStyle,
+            textureSeed: dabTextureSeed(for: stroke.brushStyle),
+            color: stroke.color
+        )
     }
 
     private func renderBrushTip(into ctx: CGContext,
@@ -536,10 +570,12 @@ final class KCDrawingCanvasView: UIView, UIGestureRecognizerDelegate {
                           textureSeed: UInt64,
                           color: UIColor) {
         guard let ctx = UIGraphicsGetCurrentContext() else { return }
-        let tip = brushTipImage(brushStyle: brushStyle, textureSeed: textureSeed, color: color)
+        let tips = brushTipImages(brushStyle: brushStyle, textureSeed: textureSeed, color: color)
         for dab in dabs {
             let alpha = CGFloat(max(0.0, min(1.0, dab.alpha * dab.flow)))
             guard alpha > 0.001, dab.radius > 0 else { continue }
+            let variantIndex = Int(dab.seed % UInt64(Self.brushTipVariantCount))
+            let tip = tips[variantIndex]
             let halfWidth = CGFloat(dab.radius * dab.aspectRatio)
             let halfHeight = CGFloat(dab.radius)
             ctx.saveGState()
@@ -754,6 +790,7 @@ final class KCDrawingCanvasView: UIView, UIGestureRecognizerDelegate {
         stroke.path = UIBezierPath()
         stroke.path.lineWidth = stroke.lineWidth
         stroke.startPoint = contentPoint
+        prewarmBrushTipVariants(for: stroke)
         addPressureSample(from: touch, to: stroke)
         if let sample = makeDabSample(
             contentPoint: contentPoint,

@@ -2196,6 +2196,11 @@ def app_feature_checks(
     checks.append(require_text(canvas_text, "func drawDabs(", "Canvas rasterizes dab sequences with cached brush-tip masks"))
     checks.append(require_text(canvas_text, "brushTipCache", "Canvas caches brush-tip masks to avoid per-dab allocation"))
     checks.append(require_text(canvas_text, "NSCache<NSString, UIImage>", "Brush-tip cache uses NSCache keyed by style/seed/color"))
+    # T116：每个 dab 按确定性 seed 选择固定纹理变体，移动阶段不创建 UIImage。
+    checks.append(require_text(canvas_text, "static let brushTipVariantCount = 8", "Canvas uses exactly eight deterministic brush-tip variants (T116)"))
+    checks.append(require_text(canvas_text, "|\(variantIndex)", "Brush-tip cache key includes the deterministic variant index (T116)"))
+    checks.append(require_text(canvas_text, "Int(dab.seed % UInt64(Self.brushTipVariantCount))", "Each dab seed selects its brush-tip variant (T116)"))
+    checks.append(require_text(canvas_text, "prewarmBrushTipVariants", "Brush-tip variants are warmed before touch movement (T116)"))
     checks.append(require_text(canvas_text, "drawDabStroke", "Canvas routes pencil/crayon strokes through the dab renderer"))
     checks.append(require_text(canvas_text, "func renderBrushSampleSheet", "Canvas exposes the Debug brush sample-sheet renderer (T095 visual acceptance)"))
     checks.append(require_regex(canvas_text, r"func strokeRenderBounds\(_ stroke: KDStroke\)[\s\S]*if let cachedRenderBounds = stroke\.cachedRenderBounds[\s\S]*return cachedRenderBounds", "Canvas render-bound lookup reuses cached stroke bounds"))
