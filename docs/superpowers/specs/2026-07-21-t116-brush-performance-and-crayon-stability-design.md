@@ -3,7 +3,7 @@
 ## 1. 状态
 
 - 日期：2026-07-21
-- 状态：已确认设计，待实施
+- 状态：代码与自动化验收已完成，待老款实体 iPad 性能/手势验收
 - 执行者：Codex
 - 适用范围：iPhone 与 iPad，横屏优先
 - 明确不包含：T108 AI 增强线稿、Metal 重写、保存格式或历史 schema 变更
@@ -191,3 +191,12 @@ iPhone 17 Pro 与 iPad Pro 11 M4 横屏分别验证：
 - 新增单元测试、性能探针、validator 和模块文档；
 - 全量 Swift 测试、项目校验、iPhone/iPad build 与相关 runtime acceptance 通过；
 - 用户完成双端实际绘制确认。
+
+## 11. 当前交付证据（2026-07-21）
+
+- 提交链：`19cab33`（增量 dab）、`14b4841`（蜡笔几何）、`d613674`（活动画笔接入）、`e3fc2eb`（8 个确定性纹理变体）、`8865806`（完成内容与工作台缓存）、`395bbd7`（交互性能探针）。
+- `swift test --package-path Packages/KidCanvasModules`：277 tests，0 failures。
+- `scripts/validate_project.py`：Validation passed；完整 iOS Simulator Debug build 通过。
+- `drawing-tools`、`canvas-viewport`、`save-history-restore`：iPhone 17 Pro 与 iPad Pro 11 M4 双端通过。
+- `brush-interaction`：iPhone 增量/全量约 `0.0273`、P95 `0.0091ms`、最大 `0.0130ms`；iPad 增量/全量约 `0.0299`、P95 `0.0150ms`、最大 `0.0380ms`；两端 300 条历史 viewport 均无新增 replay/rebuild，蜡笔偏移比约 `0.060000000000003`，aspect ratio `1.35`，几何有限。
+- iPad Pro 11 M4 模拟器 300 条历史 viewport 合成观测约 `22.7 FPS`。2026-07-21 检查时目标 iPad7,11 在 CoreDevice 中为 `unavailable`，且不在 Xcode destination 列表；因此该项保持人工待验收，不能据模拟器结果宣称最低 30 FPS 已完成。

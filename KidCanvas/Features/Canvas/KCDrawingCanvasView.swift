@@ -634,7 +634,9 @@ final class KCDrawingCanvasView: UIView, UIGestureRecognizerDelegate {
                           color: UIColor) {
         guard let ctx = UIGraphicsGetCurrentContext() else { return }
         let tips = brushTipImages(brushStyle: brushStyle, textureSeed: textureSeed, color: color)
+        let clipBounds = ctx.boundingBoxOfClipPath
         for dab in dabs {
+            guard clipBounds.intersects(dab.bounds(inset: 1.0)) else { continue }
             let alpha = CGFloat(max(0.0, min(1.0, dab.alpha * dab.flow)))
             guard alpha > 0.001, dab.radius > 0 else { continue }
             let variantIndex = Int(dab.seed % UInt64(Self.brushTipVariantCount))

@@ -16,7 +16,7 @@
 - Modify: `Packages/KidCanvasModules/Sources/KCDrawingEngine/KCBrushDabGenerator.swift`
 - Modify: `Packages/KidCanvasModules/Tests/KCDrawingEngineTests/KCBrushDabGeneratorTests.swift`
 
-- [ ] **Step 1: Write failing incremental-equivalence tests**
+- [x] **Step 1: Write failing incremental-equivalence tests**
 
 Add tests that split the same samples into one-sample and uneven batches and require exact equality with `dabs(for:)`:
 
@@ -44,7 +44,7 @@ func testIncrementalDuplicateSamplesMatchFullGeneration() {
 
 Implement the test-local `chunked(sizes:)` helper in the test file so no production collection extension is added.
 
-- [ ] **Step 2: Run the tests and verify RED**
+- [x] **Step 2: Run the tests and verify RED**
 
 Run:
 
@@ -54,7 +54,7 @@ swift test --package-path Packages/KidCanvasModules --filter KCBrushDabGenerator
 
 Expected: compile failure because `KCBrushDabGenerationState` and `appendDabs(for:state:)` do not exist.
 
-- [ ] **Step 3: Implement resumable generator state**
+- [x] **Step 3: Implement resumable generator state**
 
 Add a public UIKit-free state and make full generation reuse the incremental core:
 
@@ -81,11 +81,11 @@ public func appendDabs(
 
 Move the existing segment/residual algorithm into `appendDabs`. Preserve duplicate-sample behavior, exact seed ordering, spacing math, and deterministic output.
 
-- [ ] **Step 4: Run focused tests and verify GREEN**
+- [x] **Step 4: Run focused tests and verify GREEN**
 
 Run the focused test command. Expected: all `KCBrushDabGeneratorTests` pass.
 
-- [ ] **Step 5: Commit the engine increment**
+- [x] **Step 5: Commit the engine increment**
 
 ```bash
 git add Packages/KidCanvasModules/Sources/KCDrawingEngine/KCBrushDabGenerator.swift Packages/KidCanvasModules/Tests/KCDrawingEngineTests/KCBrushDabGeneratorTests.swift
@@ -99,7 +99,7 @@ git commit -m '【xiaoda】perf(brush): 支持增量生成 dab'
 - Modify: `Packages/KidCanvasModules/Sources/KCDrawingEngine/KCBrushDabGenerator.swift`
 - Modify: `Packages/KidCanvasModules/Tests/KCDrawingEngineTests/KCBrushDabGeneratorTests.swift`
 
-- [ ] **Step 1: Write failing crayon-stability tests**
+- [x] **Step 1: Write failing crayon-stability tests**
 
 Add tests for the exact jitter contract and finite fallback:
 
@@ -121,15 +121,15 @@ func testNonFiniteTiltFallsBackToStableRoundDab() {
 }
 ```
 
-- [ ] **Step 2: Run focused tests and verify RED**
+- [x] **Step 2: Run focused tests and verify RED**
 
 Expected: jitter assertion fails because current value is `0.18`; non-finite input produces unstable geometry.
 
-- [ ] **Step 3: Implement stable preset and finite guards**
+- [x] **Step 3: Implement stable preset and finite guards**
 
 Set crayon `jitter` to `0.06`. Normalize non-finite pressure, velocity, altitude, azimuth, point coordinates, radius, aspect ratio, and rotation at the generator boundary. Keep crayon aspect ratio in `[1.0, 1.35]` and preserve content-coordinate brush size semantics.
 
-- [ ] **Step 4: Run focused and full engine tests**
+- [x] **Step 4: Run focused and full engine tests**
 
 ```bash
 swift test --package-path Packages/KidCanvasModules --filter KCBrushDabGeneratorTests
@@ -138,7 +138,7 @@ swift test --package-path Packages/KidCanvasModules --filter KCDrawingEngineTest
 
 Expected: all pass.
 
-- [ ] **Step 5: Commit geometry stability**
+- [x] **Step 5: Commit geometry stability**
 
 ```bash
 git add Packages/KidCanvasModules/Sources/KCDrawingEngine/KCBrushPreset.swift Packages/KidCanvasModules/Sources/KCDrawingEngine/KCBrushDabGenerator.swift Packages/KidCanvasModules/Tests/KCDrawingEngineTests/KCBrushDabGeneratorTests.swift
@@ -153,7 +153,7 @@ git commit -m '【xiaoda】fix(brush): 稳定缩放后的蜡笔几何'
 - Modify: `KidCanvas/Features/Canvas/KCDrawingCanvasView.swift`
 - Modify: `scripts/validate_project.py`
 
-- [ ] **Step 1: Add failing validator requirements**
+- [x] **Step 1: Add failing validator requirements**
 
 Require these structures and forbid active-stroke full invalidation:
 
@@ -165,11 +165,11 @@ require_text(canvas_view, "copy.samples = stroke.samples", "Undo/redo preserves 
 require_text(canvas_view, "copy.cachedDabs = stroke.cachedDabs", "Undo/redo preserves generated dabs")
 ```
 
-- [ ] **Step 2: Run validator and verify RED**
+- [x] **Step 2: Run validator and verify RED**
 
 Run `/usr/bin/python3 scripts/validate_project.py`. Expected: new T116 checks fail.
 
-- [ ] **Step 3: Extend the drawing-engine provider**
+- [x] **Step 3: Extend the drawing-engine provider**
 
 Add an incremental provider method using the same style mapping and line-width-scaled preset as the full method:
 
@@ -183,7 +183,7 @@ func appendBrushDabs(
 ) -> [KCBrushDab]
 ```
 
-- [ ] **Step 4: Store incremental state on active strokes**
+- [x] **Step 4: Store incremental state on active strokes**
 
 Add `dabGenerationState` to `KDStroke`. Replace per-sample cache invalidation with a shared `appendIncrementalDabs(_:to:)` helper that:
 
@@ -195,7 +195,7 @@ Add `dabGenerationState` to `KDStroke`. Replace per-sample cache invalidation wi
 
 Use the helper from touches began/moved/ended. Keep coalesced touches batched. Do not clear completed dabs on viewport changes.
 
-- [ ] **Step 5: Preserve dab data through state restore**
+- [x] **Step 5: Preserve dab data through state restore**
 
 Update `copyOfStroke(_:)`:
 
@@ -206,7 +206,7 @@ copy.cachedDabs = stroke.cachedDabs
 
 Generation state need not be copied for completed strokes.
 
-- [ ] **Step 6: Run validator, tests, and drawing-tools runtime**
+- [x] **Step 6: Run validator, tests, and drawing-tools runtime**
 
 ```bash
 /usr/bin/python3 scripts/validate_project.py
@@ -217,7 +217,7 @@ scripts/runtime_acceptance_test.sh "iPad Pro 11 M4" drawing-tools
 
 Expected: all pass.
 
-- [ ] **Step 7: Commit App incremental integration**
+- [x] **Step 7: Commit App incremental integration**
 
 ```bash
 git add KidCanvas/Infrastructure/KCDrawingEngineAdapter.swift KidCanvas/Features/Canvas/KCDrawingCanvasModels.swift KidCanvas/Features/Canvas/KCDrawingCanvasView.swift scripts/validate_project.py
@@ -230,15 +230,15 @@ git commit -m '【xiaoda】perf(canvas): 增量处理活动画笔 dab'
 - Modify: `KidCanvas/Features/Canvas/KCDrawingCanvasView.swift`
 - Modify: `scripts/validate_project.py`
 
-- [ ] **Step 1: Add failing validator requirements**
+- [x] **Step 1: Add failing validator requirements**
 
 Require a fixed variant count of 8, require the cache key to include a variant index, and require `drawDabs` to select with `dab.seed`.
 
-- [ ] **Step 2: Run validator and verify RED**
+- [x] **Step 2: Run validator and verify RED**
 
 Expected: T116 variant checks fail.
 
-- [ ] **Step 3: Implement an eight-image cached variant set**
+- [x] **Step 3: Implement an eight-image cached variant set**
 
 Use a small reference wrapper cached by style and RGBA color. Build exactly eight 80-point tip images, each with a deterministic seed derived from the preset seed and variant index. In `drawDabs`, choose:
 
@@ -249,7 +249,7 @@ let tip = variants[variantIndex]
 
 Create variants before touch movement begins or on first style/color selection; `touchesMoved` must not allocate `UIImage` instances. Variant changes only internal speck placement.
 
-- [ ] **Step 4: Run validator and brush-sample runtime**
+- [x] **Step 4: Run validator and brush-sample runtime**
 
 ```bash
 /usr/bin/python3 scripts/validate_project.py
@@ -258,7 +258,7 @@ scripts/runtime_acceptance_test.sh "iPad Pro 11 M4" brush-samples
 
 Expected: pass and write a nonblank sample sheet.
 
-- [ ] **Step 5: Commit texture variants**
+- [x] **Step 5: Commit texture variants**
 
 ```bash
 git add KidCanvas/Features/Canvas/KCDrawingCanvasView.swift scripts/validate_project.py
@@ -271,15 +271,15 @@ git commit -m '【xiaoda】fix(brush): 使用确定性蜡笔纹理变体'
 - Modify: `KidCanvas/Features/Canvas/KCDrawingCanvasView.swift`
 - Modify: `scripts/validate_project.py`
 
-- [ ] **Step 1: Add failing cache-path validator checks**
+- [x] **Step 1: Add failing cache-path validator checks**
 
 Require `draw(_:)` to draw `rasterImageExcludingStickers()` for completed content, require active stroke overlay separately, require a workbench cache key containing bounds/scale/traits, and forbid the committed-stroke loop from the viewport screen draw path.
 
-- [ ] **Step 2: Run validator and verify RED**
+- [x] **Step 2: Run validator and verify RED**
 
 Expected: new cache checks fail.
 
-- [ ] **Step 3: Render completed content through the existing bounded cache**
+- [x] **Step 3: Render completed content through the existing bounded cache**
 
 Refactor `draw(_:)` order:
 
@@ -293,15 +293,15 @@ Refactor `draw(_:)` order:
 
 On stroke completion, if the cache is valid, compose only the completed stroke into a new bounded cache image; otherwise allow one lazy full rebuild. Keep fill, picker, snapshot, background replacement, undo/redo, bounds changes, and memory warning invalidation coherent.
 
-- [ ] **Step 4: Cache the workbench gradient**
+- [x] **Step 4: Cache the workbench gradient**
 
 Create one `workbenchSurfaceCacheImage` keyed by bounds, screen scale, and interface style. Rebuild only when the key changes or a memory warning clears the cache. Do not include paper, artwork, or stamps.
 
-- [ ] **Step 5: Add Debug counters for proof**
+- [x] **Step 5: Add Debug counters for proof**
 
 Track completed-stroke replay count and raster rebuild count in Debug. After warming a 300-stroke cache, viewport-only frames must not increase either counter.
 
-- [ ] **Step 6: Run cache regressions**
+- [x] **Step 6: Run cache regressions**
 
 ```bash
 /usr/bin/python3 scripts/validate_project.py
@@ -314,7 +314,7 @@ scripts/runtime_acceptance_test.sh "iPad Pro 11 M4" save-history-restore
 
 Expected: all pass.
 
-- [ ] **Step 7: Commit raster caching**
+- [x] **Step 7: Commit raster caching**
 
 ```bash
 git add KidCanvas/Features/Canvas/KCDrawingCanvasView.swift scripts/validate_project.py
@@ -329,11 +329,11 @@ git commit -m '【xiaoda】perf(canvas): 缓存完成笔画与工作台渲染'
 - Modify: `scripts/runtime_acceptance_test.sh`
 - Modify: `scripts/validate_project.py`
 
-- [ ] **Step 1: Add the `brush-interaction` probe route**
+- [x] **Step 1: Add the `brush-interaction` probe route**
 
 Map `brush-interaction` to `--kc-runtime-brush-interaction-check` and `kc_runtime_brush_interaction.json`.
 
-- [ ] **Step 2: Implement shared-path measurements**
+- [x] **Step 2: Implement shared-path measurements**
 
 Use 600 deterministic samples in coalesced-style batches. Measure:
 
@@ -358,7 +358,7 @@ geometryFinite == true
 passed == true
 ```
 
-- [ ] **Step 3: Run both simulators**
+- [x] **Step 3: Run both simulators**
 
 ```bash
 scripts/runtime_acceptance_test.sh "iPhone 17 Pro" brush-interaction
@@ -367,11 +367,13 @@ scripts/runtime_acceptance_test.sh "iPad Pro 11 M4" brush-interaction
 
 Expected: both JSON results satisfy every threshold. Record timing output in the workboard.
 
-- [ ] **Step 4: Attempt physical old-iPad verification**
+- [x] **Step 4: Attempt physical old-iPad verification**
 
 If the paired iPad7,11 is available, build and run the same Debug probe on it. Require measured viewport FPS >= 30 and no main-thread interval >= 50 ms. If CoreDevice transport is unavailable, preserve the automated probe evidence and record physical FPS as the only manual acceptance item; do not claim physical-device completion without its output.
 
-- [ ] **Step 5: Commit the performance probe**
+2026-07-21 执行结果：`xcrun devicectl list devices` 显示目标 iPad7,11 为 `unavailable`，`xcodebuild -showdestinations` 未列出该 iPad；已保留双端模拟器证据，实体机 FPS/主线程停顿继续作为唯一性能人工验收项。
+
+- [x] **Step 5: Commit the performance probe**
 
 ```bash
 git add KidCanvas/Features/Canvas/KCDrawingCanvasView.swift KidCanvas/Features/Editor/KCMainViewController+RuntimeAcceptance.swift scripts/runtime_acceptance_test.sh scripts/validate_project.py
@@ -387,11 +389,11 @@ git commit -m '【xiaoda】test(canvas): 增加画笔交互性能验收'
 - Modify: `docs/testing/DELIVERY_ACCEPTANCE_CHECKLIST.md`
 - Modify: `ai-docs/AI_WORKBOARD.md` (local ignored board)
 
-- [ ] **Step 1: Update module and architecture documents**
+- [x] **Step 1: Update module and architecture documents**
 
 Document incremental state, active-stroke local dirty bounds, jitter `0.06`, eight variants, completed-content cache, workbench cache, memory behavior, performance thresholds, and unchanged history schema.
 
-- [ ] **Step 2: Run complete automated verification**
+- [x] **Step 2: Run complete automated verification**
 
 ```bash
 swift test --package-path Packages/KidCanvasModules
@@ -409,15 +411,15 @@ scripts/runtime_acceptance_test.sh "iPad Pro 11 M4" save-history-restore
 
 Expected: all pass. Run iPhone/iPad Debug builds explicitly if a runtime probe did not rebuild one destination.
 
-- [ ] **Step 3: Review the complete diff**
+- [x] **Step 3: Review the complete diff**
 
 Check for behavior regressions, cache invalidation gaps, retained-image growth, duplicated rendering, missing sample copies, and test gaps. Resolve all blocking findings and rerun affected verification.
 
-- [ ] **Step 4: Update the local workboard**
+- [x] **Step 4: Update the local workboard**
 
 Mark T116 code and automated acceptance complete, record exact timings and commits, and leave physical old-iPad/manual visual acceptance explicit until proven.
 
-- [ ] **Step 5: Commit documentation and any review fixes**
+- [x] **Step 5: Commit documentation and any review fixes**
 
 ```bash
 git add docs KidCanvas Packages scripts

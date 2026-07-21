@@ -2224,6 +2224,7 @@ def app_feature_checks(
     checks.append(require_text(canvas_text, "|\(variantIndex)", "Brush-tip cache key includes the deterministic variant index (T116)"))
     checks.append(require_text(canvas_text, "Int(dab.seed % UInt64(Self.brushTipVariantCount))", "Each dab seed selects its brush-tip variant (T116)"))
     checks.append(require_text(canvas_text, "prewarmBrushTipVariants", "Brush-tip variants are warmed before touch movement (T116)"))
+    checks.append(require_text(canvas_text, "ctx.boundingBoxOfClipPath", "Dab rendering culls active-stroke dabs outside the dirty clip (T116)"))
     checks.append(require_text(canvas_text, "drawDabStroke", "Canvas routes pencil/crayon strokes through the dab renderer"))
     checks.append(require_text(canvas_text, "func renderBrushSampleSheet", "Canvas exposes the Debug brush sample-sheet renderer (T095 visual acceptance)"))
     checks.append(require_regex(canvas_text, r"func strokeRenderBounds\(_ stroke: KDStroke\)[\s\S]*if let cachedRenderBounds = stroke\.cachedRenderBounds[\s\S]*return cachedRenderBounds", "Canvas render-bound lookup reuses cached stroke bounds"))

@@ -701,7 +701,10 @@ MVP 阶段继续使用快照栈即可。
 
 ### 9.1 当前策略
 
-- `drawRect` 绘制背景图和笔触。
+- 活动笔画使用 `KCBrushDabGenerationState` 增量生成 dab，coalesced touches 只追加新增 dab 与局部 dirty bounds。
+- 完成内容使用一个 bounds/屏幕 scale 键控的非印章 raster cache；有效缓存下新完成笔画只做一次增量合成。
+- `draw(_:)` 在 viewport 变换后绘制完成内容 raster，再单独叠加活动笔画；缩放/平移不逐帧遍历历史 strokes。
+- 工作台底色和氛围光使用独立的 bounds/scale/trait cache，不进入作品快照、历史缩略图或导出图片。
 - 长按/拖动使用 UIKit touch events。
 - flood fill 使用 bitmap queue。
 - 撤销重做使用最多 48 个状态快照。
@@ -709,16 +712,17 @@ MVP 阶段继续使用快照栈即可。
 
 ### 9.2 风险点
 
-- 笔触数量增长后，`drawRect` 每次重绘所有 stroke 会变慢。
+- raster cache 失效后的第一次重建仍会按历史量增长；后续 viewport 帧只合成缓存图。
 - 大图填色在主线程执行可能卡顿。
 - undo state 数量增长后仍会带来内存压力；当前已避免快照阶段反复深拷贝已提交笔画路径。
 - 贴纸用 view 子节点实现，数量过多时布局和合成成本会上升。
+- 老款实体 iPad 的 300 条历史笔画最低 30 FPS 仍需真机测量，模拟器结果不替代真机。
 
 ### 9.3 优化路线
 
 优先级从高到低：
 
-1. 将已完成笔触定期栅格化到 backing image。
+1. 已完成：增量 dab + 完成内容 raster cache + 工作台 cache（T116）。
 2. flood fill 放到后台队列，完成后主线程替换 background image。
 3. undo state 从完整快照改为 command + checkpoint 混合模式。
 4. 历史缩略图异步加载。
