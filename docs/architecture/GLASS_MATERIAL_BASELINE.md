@@ -1,6 +1,6 @@
 # 玻璃材质视觉基线（T109）
 
-> 状态：✅ 设计基线 + G1 + G2 + G3 已实现（2026-07-10，Claude/Codex 接手收口）。**G1（系统液态玻璃 `UIGlassEffect`）通过 Codex 审核；G2（假玻璃→真玻璃：内容库卡片 + 线稿提取结果卡 + 解 history 嵌套遮挡）已编码并通过全量自动验收与双端 content-library runtime；G3（按钮玻璃化：raised 按钮 0.82 + 白高光，折叠按钮/chip 改真玻璃）已编码并进入验收**；G4/G5 按 §7 后续推进。
+> 状态：✅ 设计基线 + G1-G5 已实现（2026-07-21，Codex 收口）。G1（系统液态玻璃 `UIGlassEffect`）、G2（假玻璃→真玻璃并解除 history 嵌套遮挡）、G3（按钮玻璃化）、G4（尺寸面板减层）和 G5（画纸留边 + 轻工作台氛围光）均已完成；代码通过全量自动验收，双端 runtime 验收口径已同步。
 >
 > 设计来源（唯一真源）：`docs/product/mockups/ui-preview.html` / `ui-preview.svg`（PRD `docs/product/prd.md` §视觉语言明确指向）。本基线把 mockup 的 CSS 材质参数翻译为 iOS 实现口径，并盘点当前代码与目标的差距。
 
@@ -63,7 +63,7 @@ T109 目标：
 - 高饱和色块（调色盘色样、色板选中）：**保持实色**，不走玻璃（儿童需准确辨色，玻璃会偏色）。
 - 禁用态：`disabledBackgroundColor`（white 0.68）+ `disabledAlpha 0.56`，保持实色压暗。
 
-## 4. 当前实现盘点（现状）
+## 4. 实施前盘点（历史现状）
 
 中央样式系统：`KCEditorVisualStyle`（token + chrome 方法）与 `KCEditorUIFactory`（控件工厂），均位于 `KidCanvas/DesignSystem/KCEditorUIFactory.swift`。容器玻璃经 `floatingPanel()`（`UIBlurEffect(.systemThinMaterialLight)`）→ `applyFloatingPanelChrome`；按钮经 `applyRaisedButtonAppearance`（实色）。
 
@@ -80,7 +80,7 @@ T109 目标：
 | 9 | 画笔/印章/橡皮参数子层（`KCBrushStickerPanelView`） | 宿主玻璃 + 额外半透明层 | 在 `sizePanel` 玻璃上再叠 `shell` white 0.58、`sizePreview` white 0.72 | `KCBrushStickerPanelView.swift:69-76,90-97` |
 | 10 | 按钮（icon/tool/swatch/history…） | 否（实色 0.92） | `applyRaisedButtonAppearance` | `KCEditorUIFactory.swift:46-63` 等 |
 
-## 5. 差距与不一致
+## 5. 实施前差距与不一致
 
 1. **三套玻璃圆角**：浮层 26 / 线稿选择器 28 / Toast 24 → 应统一并按表面分级（§3.1）。
 2. **三条玻璃应用路径**（同一 `.systemThinMaterialLight`）：(a) `applyFloatingPanelChrome`（带边/带阴影/带 0.34 底色）；(b) 线稿选择器内联（无边无阴影）；(c) Toast 内联（带边无阴影）→ 收敛为**单一入口**。
@@ -107,17 +107,17 @@ T109 目标：
 - 画布纸张/工作台背景（§画布分层，T105 已定）。
 - 系统控件（alert、取色器）沿用系统外观。
 
-**需收敛的层级**：`KCBrushStickerPanelView` 的 `shell`/`sizePreview` 额外半透明层应**减层或并入玻璃底色叠层**，避免双重削弱。
+**已收敛的层级**：`KCBrushStickerPanelView` 已移除额外半透明 `shell`，`sizePreview` 直接使用宿主玻璃面板表面，避免双重削弱。
 
-## 7. 实施优先级与后续任务拆分（G1 + G2 + G3 已实现：系统液态玻璃 + 假玻璃→真玻璃 + 按钮玻璃化；G4 / G5 后续）
+## 7. 实施优先级与任务拆分（G1-G5 已完成）
 
 | 编号 | 后续任务 | 范围 | 风险 |
 |---|---|---|---|
 | ✅ G1 | 统一玻璃入口 + 系统液态玻璃（**已实现，自动验收通过，Codex 审核通过**） | `makeGlassEffectView(contentTint:)` 统一入口；iOS 26+ 用 `UIGlassEffect(style: .regular)`（系统液态玻璃），iOS<26 降级 `systemMaterialLight`+暖描边；`applyFloatingPanelChrome` 暖棕投影 + 分级圆角（容器30/左轨34/Dock36）；线稿选择器、Toast 改走统一入口 | 低（集中改 DesignSystem） |
 | ✅ G2 | 假玻璃→真玻璃（**已实现**） | `KCContentLibraryPanelView.cardView` 与 `KCLineArtExtractionResultCard.cardView` 由"实色 0.96/0.98 + 暗描边"改为统一玻璃入口（`makeGlassEffectView` + `applyGlassSurface`），`cardView` 自身只承载暖棕投影与圆角，玻璃作子视图铺底置于最后、既有分段/关闭/内容/按钮子控件原样叠在玻璃之上。**顺带解开 `historyPanel` 嵌套遮挡**（父层由 0.96 不透明实色 → 玻璃透出，子层历史玻璃可见） | 中（内容库/弹层可见性，需双端截图验收） |
 | ✅ G3 | 按钮玻璃化（**已实现**） | `applyRaisedButtonAppearance` 底色 0.92→0.82，描边改玻璃白高光，并增加顶部 1pt 白色内高光；折叠按钮与工具状态 chip 由 `compactBackgroundColor` 实色改为统一玻璃入口（`makeGlassEffectView` + `applyGlassSurface`） | 低-中（按钮可读性，深/浅画布下点验） |
-| G4 | 减层 | `KCBrushStickerPanelView` `shell`/`sizePreview` 并入玻璃底色叠层 | 低 |
-| G5 | 画纸留边 + 工作台氛围光 | 画纸不全屏铺满（留边）+ 工作台叠 mockup 那种柔和径向氛围光，让液态玻璃在白纸上有可折射背景、肉眼可见 | 中（画布布局/坐标，需双端截图验收） |
+| ✅ G4 | 减层（已完成） | `KCBrushStickerPanelView` 移除玻璃面板内额外半透明 `shell`，尺寸预览直接落在宿主玻璃面板上 | 低 |
+| ✅ G5 | 画纸留边 + 工作台氛围光（已完成） | 画纸屏幕呈现保留安全留边，工作台增加低干扰暖色氛围光；不写入保存图片、历史缩略图或草稿 | 中 |
 
 每个 G* 任务独立提交，各自跑 `layout-safe-area`/`system-ui`/`content-library` runtime 验收不回退 + 双端截图人工确认。
 
@@ -143,4 +143,4 @@ T109 目标：
 - 不把调色盘色样、选中/强调按钮改玻璃（保实色，§6）。
 - 不引入自定义 CIFilter 模糊或 `UIVisualEffectView` 之外的模糊实现；统一用系统 `.systemThinMaterialLight`。
 - 不为玻璃新增第二个样式系统；一切收敛进 `KCEditorVisualStyle` / `KCEditorUIFactory`。
-- **G1（系统液态玻璃 `UIGlassEffect`）已实现并通过全量自动验收与 Codex 审核，待 commit**；**G2（假玻璃→真玻璃）已实现并通过全量自动验收与双端 content-library runtime，待 Codex 审核 + commit**；**G3（按钮玻璃化）已实现，需通过 `drawing-tools`/`system-ui`/`layout-safe-area` 双端验收后提交**；其余改动由 G4 / G5 后续承接。
+- **G1-G5 已实现并已提交**：G1-G3 由 `9fc5660`、`e76624c` 等提交落地，G4/G5 随 `8c145d5` 收口；自动验收与文档同步完成。后续仅在出现新的视觉问题时按截图另开任务。
