@@ -120,6 +120,17 @@ final class KCBrushDabGeneratorTests: XCTestCase {
         XCTAssertLessThanOrEqual(offset, dab.radius * 0.06 + 1e-9)
     }
 
+    func testCrayonJitterStaysWithinRadiusForAllDabs() {
+        let inputs = (0..<128).map { index in
+            sample(x: 100, y: 100, pressure: 0.4 + Double(index % 8) / 16.0)
+        }
+        let generator = KCBrushDabGenerator(preset: .preset(for: .crayon))
+        for dab in generator.dabs(for: inputs) {
+            let offset = hypot(dab.center.x - 100, dab.center.y - 100)
+            XCTAssertLessThanOrEqual(offset, dab.radius * 0.06 + 1e-9)
+        }
+    }
+
     func testNonFiniteTiltFallsBackToStableRoundDab() {
         let input = sample(x: 0, y: 0, altitude: .nan, azimuth: .infinity)
         let dab = KCBrushDabGenerator(preset: .preset(for: .crayon)).dabs(for: [input]).first!

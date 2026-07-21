@@ -30,6 +30,7 @@ extension KCMainViewController {
         let shouldRunSystemUIProbe = arguments.contains("--kc-runtime-system-ui-check")
         let shouldRunBrushSamplesProbe = arguments.contains("--kc-runtime-brush-samples-check")
         let shouldRunBrushPerfProbe = arguments.contains("--kc-runtime-brush-perf-check")
+        let shouldRunBrushInteractionProbe = arguments.contains("--kc-runtime-brush-interaction-check")
         let shouldRunCanvasViewportProbe = arguments.contains("--kc-runtime-canvas-viewport-check")
         let shouldRunContentLibraryProbe = arguments.contains("--kc-runtime-content-library-check")
         guard shouldRunEmptySaveProbe
@@ -41,6 +42,7 @@ extension KCMainViewController {
                 || shouldRunSystemUIProbe
                 || shouldRunBrushSamplesProbe
                 || shouldRunBrushPerfProbe
+                || shouldRunBrushInteractionProbe
                 || shouldRunCanvasViewportProbe
                 || shouldRunContentLibraryProbe else {
             return
@@ -48,7 +50,9 @@ extension KCMainViewController {
         self.runtimeAcceptanceProbeDidRun = true
 
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { [weak self] in
-            if shouldRunBrushSamplesProbe {
+            if shouldRunBrushInteractionProbe {
+                self?.runBrushInteractionAcceptanceProbe()
+            } else if shouldRunBrushSamplesProbe {
                 self?.runBrushSamplesAcceptanceProbe()
             } else if shouldRunBrushPerfProbe {
                 self?.runBrushPerfAcceptanceProbe()
@@ -1288,6 +1292,20 @@ extension KCMainViewController {
             "generate300StrokesMs": measureGenerate(strokeCount: 300)
         ]
         self.writeRuntimeAcceptanceResult(result, fileName: "kc_runtime_brush_perf.json")
+    }
+
+    private func runBrushInteractionAcceptanceProbe() {
+        self.activeSession = nil
+        self.selectedHistorySession = nil
+        self.activeSessionHasUnsavedChanges = false
+        self.invalidateDraftSaveTimer()
+        self.suppressNextDraftSave = true
+        self.canvasView.startBlankCanvas()
+        self.view.layoutIfNeeded()
+
+        var result = self.canvasView.runtimeAcceptanceBrushInteractionMetrics()
+        result["probe"] = "brush-interaction"
+        self.writeRuntimeAcceptanceResult(result, fileName: "kc_runtime_brush_interaction.json")
     }
 
     private func writeRuntimeAcceptanceResult(_ result: [String: Any], fileName: String) {

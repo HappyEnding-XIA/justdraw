@@ -741,6 +741,209 @@ final class KCDrawingCanvasView: UIView, UIGestureRecognizerDelegate {
         }
         return samples
     }
+
+    /// T116：量化活动笔画增量处理、蜡笔几何和 300 条历史笔画的 viewport 缓存行为。
+    func runtimeAcceptanceBrushInteractionMetrics() -> [String: Any] {
+        let sampleCount = 600
+        let samples = (0..<sampleCount).map { index in
+            KCBrushInputSample(
+                point: CGPoint(x: 24.0 + CGFloat(index) * 1.8, y: 120.0),
+                timestamp: Double(index) * 0.004,
+                pressure: 0.35 + Double(index % 17) / 26.0,
+                velocity: 0,
+                altitude: Double.pi / 2.0,
+                azimuth: 0,
+                isPencil: true
+            )
+        }
+        let batchSizes = [1, 8, 4, 12, 6, 10]
+        var batches: [[KCBrushInputSample]] = []
+        var sampleIndex = 0
+        var batchIndex = 0
+        while sampleIndex < samples.count {
+            let endIndex = min(sampleIndex + batchSizes[batchIndex % batchSizes.count], samples.count)
+            batches.append(Array(samples[sampleIndex..<endIndex]))
+            sampleIndex = endIndex
+            batchIndex += 1
+        }
+
+        let lineWidth = KCBrushPreset.preset(for: .crayon).referenceLineWidth
+        let fullStart = CFAbsoluteTimeGetCurrent()
+        var fullPrefixCount = 0
+        for batch in batches {
+            fullPrefixCount += batch.count
+            let dabs = drawingEngine.brushDabs(
+                for: Array(samples.prefix(fullPrefixCount)),
+                canvasScale: 1.0,
+                brushStyle: KDBrushStyle.crayon.rawValue,
+                lineWidth: lineWidth
+            )
+            if var bounds = dabs.first?.bounds(inset: 2.0) {
+                for dab in dabs.dropFirst() {
+                    bounds = bounds.union(dab.bounds(inset: 2.0))
+                }
+                _ = bounds
+            }
+        }
+        let repeatedFullGenerationMs = (CFAbsoluteTimeGetCurrent() - fullStart) * 1_000.0
+
+        let incrementalStroke = KDStroke()
+        incrementalStroke.color = currentColor
+        incrementalStroke.lineWidth = CGFloat(lineWidth)
+        incrementalStroke.toolMode = .brush
+        incrementalStroke.brushStyle = .crayon
+        var appendBatchDurationsMs: [Double] = []
+        appendBatchDurationsMs.reserveCapacity(batches.count)
+        for batch in batches {
+            let start = CFAbsoluteTimeGetCurrent()
+            _ = appendIncrementalDabs(batch, to: incrementalStroke)
+            appendBatchDurationsMs.append((CFAbsoluteTimeGetCurrent() - start) * 1_000.0)
+        }
+        let incrementalGenerationMs = appendBatchDurationsMs.reduce(0, +)
+        let incrementalVsFullRatio = repeatedFullGenerationMs > 0
+            ? incrementalGenerationMs / repeatedFullGenerationMs
+            : 0
+        let sortedBatchDurations = appendBatchDurationsMs.sorted()
+        let p95Index = max(0, min(
+            sortedBatchDurations.count - 1,
+            Int(ceil(Double(sortedBatchDurations.count) * 0.95)) - 1
+        ))
+        let appendBatchP95Ms = sortedBatchDurations.isEmpty ? 0 : sortedBatchDurations[p95Index]
+        let appendBatchMaxMs = sortedBatchDurations.last ?? 0
+
+        let geometryCenter = CGPoint(x: 300.0, y: 220.0)
+        let geometrySamples = (0..<128).map { index in
+            KCBrushInputSample(
+                point: geometryCenter,
+                timestamp: Double(index) * 0.004,
+                pressure: 0.5 + Double(index % 8) / 16.0,
+                velocity: 0,
+                altitude: index.isMultiple(of: 2) ? 0 : Double.pi / 2.0,
+                azimuth: Double(index) * 0.07,
+                isPencil: true
+            )
+        }
+        let geometryDabs = drawingEngine.brushDabs(
+            for: geometrySamples,
+            canvasScale: 1.0,
+            brushStyle: KDBrushStyle.crayon.rawValue,
+            lineWidth: lineWidth
+        )
+        var crayonMaxOffsetRatio = 0.0
+        var crayonMaxAspectRatio = 0.0
+        var geometryFinite = true
+        for dab in geometryDabs {
+            let offset = Double(hypot(dab.center.x - geometryCenter.x, dab.center.y - geometryCenter.y))
+            let offsetRatio = dab.radius > 0 ? offset / dab.radius : .infinity
+            crayonMaxOffsetRatio = max(crayonMaxOffsetRatio, offsetRatio)
+            crayonMaxAspectRatio = max(crayonMaxAspectRatio, dab.aspectRatio)
+            geometryFinite = geometryFinite
+                && dab.center.x.isFinite
+                && dab.center.y.isFinite
+                && dab.radius.isFinite
+                && dab.rotation.isFinite
+                && dab.aspectRatio.isFinite
+        }
+
+        activeStroke = nil
+        backgroundImage = nil
+        strokes.removeAll(keepingCapacity: true)
+        let drawingBounds = bounds.isEmpty
+            ? CGRect(x: 0, y: 0, width: 1_024, height: 720)
+            : bounds
+        for index in 0..<300 {
+            let row = CGFloat(index % 60)
+            let column = CGFloat(index / 60)
+            let y = drawingBounds.minY + 20.0 + row * max(2.0, (drawingBounds.height - 40.0) / 60.0)
+            let xInset = 16.0 + column * 5.0
+            let path = UIBezierPath()
+            path.move(to: CGPoint(x: drawingBounds.minX + xInset, y: y))
+            path.addLine(to: CGPoint(x: drawingBounds.maxX - xInset, y: y + CGFloat(index % 3) - 1.0))
+
+            let stroke = KDStroke()
+            stroke.path = path
+            stroke.color = UIColor(
+                red: 0.25 + CGFloat(index % 5) * 0.08,
+                green: 0.35,
+                blue: 0.55,
+                alpha: 1.0
+            )
+            stroke.lineWidth = 2.0 + CGFloat(index % 3)
+            stroke.pressureTotal = 1.0
+            stroke.pressureSampleCount = 1
+            stroke.startPoint = path.currentPoint
+            stroke.toolMode = .brush
+            stroke.brushStyle = .pen
+            strokes.append(stroke)
+        }
+
+        invalidateNonStickerRasterCache()
+        completedStrokeReplayCount = 0
+        rasterRebuildCount = 0
+        _ = rasterImageExcludingStickers()
+        let replayCountBeforeViewportFrames = completedStrokeReplayCount
+        let rebuildCountBeforeViewportFrames = rasterRebuildCount
+
+        let frameCount = 20
+        let frameFormat = UIGraphicsImageRendererFormat()
+        frameFormat.scale = 1.0
+        frameFormat.opaque = true
+        let frameRenderer = UIGraphicsImageRenderer(bounds: drawingBounds, format: frameFormat)
+        let viewportFramesStart = CFAbsoluteTimeGetCurrent()
+        for frameIndex in 0..<frameCount {
+            viewportState.scale = frameIndex.isMultiple(of: 2) ? 1.35 : 0.8
+            viewportState.translation = CGPoint(
+                x: CGFloat((frameIndex % 5) - 2) * 8.0,
+                y: CGFloat((frameIndex % 3) - 1) * 6.0
+            )
+            viewportState = viewportState.clamped
+            _ = frameRenderer.image { _ in
+                draw(drawingBounds)
+            }
+        }
+        let viewportFramesDurationMs = (CFAbsoluteTimeGetCurrent() - viewportFramesStart) * 1_000.0
+        let replayCountAfterViewportFrames = completedStrokeReplayCount
+        let rebuildCountAfterViewportFrames = rasterRebuildCount
+        let viewportTriggeredStrokeReplay = replayCountAfterViewportFrames != replayCountBeforeViewportFrames
+            || rebuildCountAfterViewportFrames != rebuildCountBeforeViewportFrames
+        viewportState = viewportState.defaultState
+
+        let completedStrokeCount = strokes.count
+        let passed = incrementalVsFullRatio <= 0.35
+            && appendBatchP95Ms <= 8.0
+            && appendBatchMaxMs < 50.0
+            && completedStrokeCount == 300
+            && !viewportTriggeredStrokeReplay
+            && crayonMaxOffsetRatio <= 0.060001
+            && crayonMaxAspectRatio <= 1.35
+            && geometryFinite
+
+        return [
+            "passed": passed,
+            "sampleCount": sampleCount,
+            "batchCount": batches.count,
+            "repeatedFullGenerationMs": repeatedFullGenerationMs,
+            "incrementalGenerationMs": incrementalGenerationMs,
+            "incrementalVsFullRatio": incrementalVsFullRatio,
+            "appendBatchP95Ms": appendBatchP95Ms,
+            "appendBatchMaxMs": appendBatchMaxMs,
+            "incrementalDabCount": incrementalStroke.cachedDabs?.count ?? 0,
+            "completedStrokeCount": completedStrokeCount,
+            "viewportFrameCount": frameCount,
+            "viewportFramesDurationMs": viewportFramesDurationMs,
+            "viewportAverageFPS": viewportFramesDurationMs > 0
+                ? Double(frameCount) * 1_000.0 / viewportFramesDurationMs
+                : 0,
+            "replayCountBeforeViewportFrames": replayCountBeforeViewportFrames,
+            "replayCountAfterViewportFrames": replayCountAfterViewportFrames,
+            "rebuildCountBeforeViewportFrames": rebuildCountBeforeViewportFrames,
+            "rebuildCountAfterViewportFrames": rebuildCountAfterViewportFrames,
+            "viewportTriggeredStrokeReplay": viewportTriggeredStrokeReplay,
+            "crayonMaxOffsetRatio": crayonMaxOffsetRatio,
+            "crayonMaxAspectRatio": crayonMaxAspectRatio,
+            "geometryFinite": geometryFinite
+        ]
+    }
     #endif
 
     private func strokeRenderBounds(_ stroke: KDStroke) -> CGRect {

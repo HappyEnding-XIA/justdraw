@@ -84,8 +84,12 @@ case "$PROBE" in
     LAUNCH_ARG="--kc-runtime-brush-perf-check"
     RESULT_FILE="kc_runtime_brush_perf.json"
     ;;
+  brush-interaction)
+    LAUNCH_ARG="--kc-runtime-brush-interaction-check"
+    RESULT_FILE="kc_runtime_brush_interaction.json"
+    ;;
   *)
-    red "错误：未知验收探针 '$PROBE'，可选：empty-save / layout-safe-area / sticker-undo-redo / save-history-restore / photo-export-failure / drawing-tools / system-ui / brush-samples / brush-perf / canvas-viewport / content-library"
+    red "错误：未知验收探针 '$PROBE'，可选：empty-save / layout-safe-area / sticker-undo-redo / save-history-restore / photo-export-failure / drawing-tools / system-ui / brush-samples / brush-perf / brush-interaction / canvas-viewport / content-library"
     exit 8
     ;;
 esac

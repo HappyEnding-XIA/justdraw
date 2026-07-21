@@ -337,6 +337,7 @@ def delivery_acceptance_checks():
     checks.append(require_text(runtime_acceptance_text, "--kc-runtime-system-ui-check", "Runtime acceptance script launches the system-ui Debug probe"))
     checks.append(require_text(runtime_acceptance_text, "--kc-runtime-brush-samples-check", "Runtime acceptance script launches the brush-samples Debug probe"))
     checks.append(require_text(runtime_acceptance_text, "--kc-runtime-brush-perf-check", "Runtime acceptance script launches the brush-perf Debug probe"))
+    checks.append(require_text(runtime_acceptance_text, "--kc-runtime-brush-interaction-check", "Runtime acceptance script launches the brush-interaction Debug probe (T116)"))
     checks.append(require_text(runtime_acceptance_text, "kc_runtime_acceptance_empty_save.json", "Runtime acceptance script reads the empty-save JSON result"))
     checks.append(require_text(runtime_acceptance_text, "kc_runtime_acceptance_layout.json", "Runtime acceptance script reads the layout JSON result"))
     checks.append(require_text(runtime_acceptance_text, "kc_runtime_acceptance_sticker.json", "Runtime acceptance script reads the sticker JSON result"))
@@ -346,12 +347,14 @@ def delivery_acceptance_checks():
     checks.append(require_text(runtime_acceptance_text, "kc_runtime_acceptance_system_ui.json", "Runtime acceptance script reads the system-ui JSON result"))
     checks.append(require_text(runtime_acceptance_text, "kc_runtime_brush_samples.json", "Runtime acceptance script reads the brush-samples JSON result"))
     checks.append(require_text(runtime_acceptance_text, "kc_runtime_brush_perf.json", "Runtime acceptance script reads the brush-perf JSON result"))
+    checks.append(require_text(runtime_acceptance_text, "kc_runtime_brush_interaction.json", "Runtime acceptance script reads the brush-interaction JSON result (T116)"))
     checks.append(require_text(runtime_acceptance_text, "layout-safe-area", "Runtime acceptance script exposes the layout-safe-area probe"))
     checks.append(require_text(runtime_acceptance_text, "sticker-undo-redo", "Runtime acceptance script exposes the sticker-undo-redo probe"))
     checks.append(require_text(runtime_acceptance_text, "save-history-restore", "Runtime acceptance script exposes the save-history-restore probe"))
     checks.append(require_text(runtime_acceptance_text, "photo-export-failure", "Runtime acceptance script exposes the photo-export-failure probe"))
     checks.append(require_text(runtime_acceptance_text, "drawing-tools", "Runtime acceptance script exposes the drawing-tools probe"))
     checks.append(require_text(runtime_acceptance_text, "system-ui", "Runtime acceptance script exposes the system-ui probe"))
+    checks.append(require_text(runtime_acceptance_text, "brush-interaction", "Runtime acceptance script exposes the brush-interaction probe (T116)"))
     checks.append(require_text(runtime_acceptance_text, "safe_path_component", "Runtime acceptance script sanitizes device/probe names for DerivedData paths"))
     checks.append(require_text(runtime_acceptance_text, "/tmp/kc-dd-acceptance-${SAFE_DEVICE_NAME}-${SAFE_PROBE_NAME}", "Runtime acceptance script uses per-device/probe DerivedData by default"))
     checks.append(require_text(runtime_acceptance_text, "PYTHON_BIN", "Runtime acceptance script allows a stable Python interpreter override"))
@@ -2181,6 +2184,19 @@ def app_feature_checks(
     checks.append(require_text(canvas_text, "appendCommittedStrokeToRasterCache", "Committed strokes compose incrementally into the raster cache (T116)"))
     checks.append(require_text(canvas_text, "completedStrokeReplayCount", "Debug instrumentation counts completed-stroke replays (T116)"))
     checks.append(require_text(canvas_text, "rasterRebuildCount", "Debug instrumentation counts full raster rebuilds (T116)"))
+    checks.append(require_text(main_text, "--kc-runtime-brush-interaction-check", "Controller wires the brush-interaction Debug probe (T116)"))
+    checks.append(require_text(main_text, "runBrushInteractionAcceptanceProbe", "Controller executes the quantified brush-interaction probe (T116)"))
+    for field in [
+        "incrementalVsFullRatio",
+        "appendBatchP95Ms",
+        "appendBatchMaxMs",
+        "completedStrokeCount",
+        "viewportTriggeredStrokeReplay",
+        "crayonMaxOffsetRatio",
+        "crayonMaxAspectRatio",
+        "geometryFinite",
+    ]:
+        checks.append(require_text(main_text + canvas_text, f'"{field}"', f"Brush-interaction result reports {field} (T116)"))
     checks.append(require_text(canvas_models_text, "var cachedRenderBounds: CGRect?", "Canvas strokes cache their conservative render bounds"))
     checks.append(require_text(canvas_models_text, "var cachedCrayonGrainDashPoints: [NSValue]?", "Canvas strokes cache crayon grain dash points"))
     # T094：铅笔/蜡笔 dab 渲染接入

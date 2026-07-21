@@ -130,8 +130,10 @@ public struct KCBrushDabGenerator: Sendable {
         let jitterRadius = Self.finite(preset.jitter, fallback: 0) * radius
         if jitterRadius > 0 {
             let jitter = kcBrushDabJitter(hash: seed)
-            center.x += jitter.dx * jitterRadius
-            center.y += jitter.dy * jitterRadius
+            // 两个独立分量的长度可能超过 1，归一化到单位圆避免实际偏移超过 jitter 合约。
+            let jitterLength = max(1.0, hypot(jitter.dx, jitter.dy))
+            center.x += jitter.dx / jitterLength * jitterRadius
+            center.y += jitter.dy / jitterLength * jitterRadius
         }
 
         output.append(KCBrushDab(
