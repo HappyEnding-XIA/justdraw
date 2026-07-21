@@ -27,6 +27,12 @@ protocol KDDrawingCanvasViewDelegate: AnyObject {
 @objc(KDDrawingCanvasView)
 final class KCDrawingCanvasView: UIView, UIGestureRecognizerDelegate {
 
+    private struct KCWorkbenchSurfaceCacheKey: Equatable {
+        let bounds: CGRect
+        let scale: CGFloat
+        let interfaceStyle: UIUserInterfaceStyle
+    }
+
     @objc weak var delegate: KDDrawingCanvasViewDelegate?
 
     @objc var currentColor: UIColor = UIColor(red: 0.94, green: 0.43, blue: 0.45, alpha: 1.0)
@@ -55,7 +61,14 @@ final class KCDrawingCanvasView: UIView, UIGestureRecognizerDelegate {
     private var nonStickerRasterCacheImage: UIImage?
     private var nonStickerRasterCacheBounds: CGRect = .null
     private var nonStickerRasterCacheScale: CGFloat = 0.0
+    private var workbenchSurfaceCacheImage: UIImage?
+    private var workbenchSurfaceCacheKey: KCWorkbenchSurfaceCacheKey?
     private weak var selectedStickerView: KDStickerView?
+
+    #if DEBUG
+    private var completedStrokeReplayCount = 0
+    private var rasterRebuildCount = 0
+    #endif
 
     /// 工作台背景色：只用于屏幕呈现层，让画布外区域和白色纸张形成低干扰区分。
     private static let workbenchBackgroundColor = UIColor(red: 0.935, green: 0.945, blue: 0.925, alpha: 1.0)
@@ -104,6 +117,16 @@ final class KCDrawingCanvasView: UIView, UIGestureRecognizerDelegate {
         canvasTwoFingerPanGestureRecognizer.delegate = self
         addGestureRecognizer(canvasPinchGestureRecognizer)
         addGestureRecognizer(canvasTwoFingerPanGestureRecognizer)
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(handleMemoryWarning),
+            name: UIApplication.didReceiveMemoryWarningNotification,
+            object: nil
+        )
+    }
+
+    deinit {
+        NotificationCenter.default.removeObserver(self)
     }
 
     override func layoutSubviews() {
@@ -135,12 +158,8 @@ final class KCDrawingCanvasView: UIView, UIGestureRecognizerDelegate {
     override func draw(_ rect: CGRect) {
         super.draw(rect)
 
-        // 工作台背景：内容平面之外的区域（缩放/平移后露出的画布外区域）
-        // 使用低干扰浅色，与白色纸张形成稳定区分；该填充不随 viewport 变换。
-        Self.workbenchBackgroundColor.setFill()
-        UIRectFill(bounds)
-
         guard let ctx = UIGraphicsGetCurrentContext() else { return }
+        workbenchSurfaceImage().draw(in: bounds)
 
         ctx.saveGState()
         ctx.concatenate(viewportState.affineTransform)
@@ -148,24 +167,22 @@ final class KCDrawingCanvasView: UIView, UIGestureRecognizerDelegate {
         // 内容平面：在内容坐标空间（0,0 ~ contentSize）绘制白色纸张、底图、笔画。
         let contentPlane = CGRect(origin: .zero, size: viewportState.contentSize)
         drawPaperSurface(in: ctx, contentPlane: contentPlane)
-        drawWorkbenchGlow(in: ctx)
+
+        ctx.saveGState()
         ctx.clip(to: contentPlane)
-        drawImage(backgroundImage, aspectFitIn: contentPlane)
+        let completedContentImage = rasterImageExcludingStickers()
+        completedContentImage.draw(in: contentPlane)
 
-        // 把屏幕坐标的脏区域反变换到内容坐标，再做笔画裁剪，避免缩放后漏绘/重绘。
+        // 活动画笔仍实时叠加；完成笔画已在 raster 中，不随 viewport 帧逐条重放。
         let contentDirtyRect = rect.applying(viewportState.affineTransform.inverted())
-        for stroke in strokes {
-            if strokeRenderBounds(stroke).intersects(contentDirtyRect) {
-                drawStroke(stroke)
-            }
-        }
-
         if let activeStroke {
             if strokeRenderBounds(activeStroke).intersects(contentDirtyRect) {
                 drawStroke(activeStroke)
             }
         }
+        ctx.restoreGState()
 
+        drawPaperBorder(in: ctx, contentPlane: contentPlane)
         ctx.restoreGState()
     }
 
@@ -178,7 +195,9 @@ final class KCDrawingCanvasView: UIView, UIGestureRecognizerDelegate {
         UIColor.white.setFill()
         ctx.fill(contentPlane)
         ctx.restoreGState()
+    }
 
+    private func drawPaperBorder(in ctx: CGContext, contentPlane: CGRect) {
         let borderInset = 0.5 / max(viewportState.scale, 0.001)
         let borderRect = contentPlane.insetBy(dx: borderInset, dy: borderInset)
         ctx.saveGState()
@@ -186,6 +205,50 @@ final class KCDrawingCanvasView: UIView, UIGestureRecognizerDelegate {
         Self.paperBorderColor.setStroke()
         ctx.stroke(borderRect)
         ctx.restoreGState()
+    }
+
+    private func workbenchSurfaceImage() -> UIImage {
+        let scale = window?.screen.scale ?? UIScreen.main.scale
+        let key = KCWorkbenchSurfaceCacheKey(
+            bounds: bounds,
+            scale: scale,
+            interfaceStyle: traitCollection.userInterfaceStyle
+        )
+        if workbenchSurfaceCacheKey == key, let workbenchSurfaceCacheImage {
+            return workbenchSurfaceCacheImage
+        }
+
+        let format = UIGraphicsImageRendererFormat()
+        format.scale = scale
+        format.opaque = true
+        let renderer = UIGraphicsImageRenderer(bounds: bounds, format: format)
+        let image = renderer.image { rendererContext in
+            Self.workbenchBackgroundColor.setFill()
+            rendererContext.cgContext.fill(bounds)
+            drawWorkbenchGlow(in: rendererContext.cgContext)
+        }
+        workbenchSurfaceCacheKey = key
+        workbenchSurfaceCacheImage = image
+        return image
+    }
+
+    override func traitCollectionDidChange(_ previousTraitCollection: UITraitCollection?) {
+        super.traitCollectionDidChange(previousTraitCollection)
+        guard previousTraitCollection?.userInterfaceStyle != traitCollection.userInterfaceStyle else { return }
+        invalidateWorkbenchSurfaceCache()
+        setNeedsDisplay()
+    }
+
+    @objc private func handleMemoryWarning() {
+        brushTipCache.removeAllObjects()
+        invalidateNonStickerRasterCache()
+        invalidateWorkbenchSurfaceCache()
+        setNeedsDisplay()
+    }
+
+    private func invalidateWorkbenchSurfaceCache() {
+        workbenchSurfaceCacheImage = nil
+        workbenchSurfaceCacheKey = nil
     }
 
     /// 极轻的工作台氛围光：只影响屏幕呈现层，让白纸周围有更柔和的暖感。
@@ -905,7 +968,7 @@ final class KCDrawingCanvasView: UIView, UIGestureRecognizerDelegate {
         }
         commitUndoStateSnapshot(pendingStrokeState)
         strokes.append(activeStroke)
-        invalidateNonStickerRasterCache()
+        appendCommittedStrokeToRasterCache(activeStroke)
         self.activeStroke = nil
         pendingStrokeState = nil
         activeStrokeDidMutate = false
@@ -1062,7 +1125,7 @@ final class KCDrawingCanvasView: UIView, UIGestureRecognizerDelegate {
         stroke.brushStyle = currentBrushStyle
         stroke.eraserShape = currentEraserShape
         strokes.append(stroke)
-        invalidateNonStickerRasterCache()
+        appendCommittedStrokeToRasterCache(stroke)
 
         setNeedsDisplayForStroke(stroke)
         notifyContentChanged()
@@ -1095,7 +1158,7 @@ final class KCDrawingCanvasView: UIView, UIGestureRecognizerDelegate {
         stroke.brushStyle = currentBrushStyle
         stroke.eraserShape = currentEraserShape
         strokes.append(stroke)
-        invalidateNonStickerRasterCache()
+        appendCommittedStrokeToRasterCache(stroke)
 
         setNeedsDisplayForStroke(stroke)
         notifyContentChanged()
@@ -1170,34 +1233,44 @@ final class KCDrawingCanvasView: UIView, UIGestureRecognizerDelegate {
         guard bounds.width > 0.0 && bounds.height > 0.0 else { return UIImage() }
 
         let scale = self.window?.screen.scale ?? UIScreen.main.scale
-        if !includeActiveStroke,
-           let cachedImage = nonStickerRasterCacheImage,
+        let completedImage: UIImage
+        if let cachedImage = nonStickerRasterCacheImage,
            nonStickerRasterCacheBounds.equalTo(bounds),
            abs(nonStickerRasterCacheScale - scale) < 0.001 {
-            return cachedImage
+            completedImage = cachedImage
+        } else {
+            let format = UIGraphicsImageRendererFormat()
+            format.scale = scale
+            format.opaque = true
+            let renderer = UIGraphicsImageRenderer(bounds: bounds, format: format)
+            completedImage = renderer.image { rendererContext in
+                UIColor.white.setFill()
+                rendererContext.cgContext.fill(bounds)
+                drawImage(backgroundImage, aspectFitIn: bounds)
+
+                #if DEBUG
+                rasterRebuildCount += 1
+                completedStrokeReplayCount += strokes.count
+                #endif
+                for stroke in strokes {
+                    drawStroke(stroke)
+                }
+            }
+            cacheNonStickerRasterImage(completedImage, scale: scale)
+        }
+
+        guard includeActiveStroke, let activeStroke else {
+            return completedImage
         }
 
         let format = UIGraphicsImageRendererFormat()
         format.scale = scale
         format.opaque = true
         let renderer = UIGraphicsImageRenderer(bounds: bounds, format: format)
-        let image = renderer.image { _ in
-            UIColor.white.setFill()
-            UIRectFill(bounds)
-            drawImage(backgroundImage, aspectFitIn: bounds)
-
-            for stroke in strokes {
-                drawStroke(stroke)
-            }
-
-            if includeActiveStroke, let activeStroke {
-                drawStroke(activeStroke)
-            }
+        return renderer.image { _ in
+            completedImage.draw(in: bounds)
+            drawStroke(activeStroke)
         }
-        if !includeActiveStroke {
-            cacheNonStickerRasterImage(image, scale: scale)
-        }
-        return image
     }
 
     private func drawStickerViewsForSnapshot(in context: CGContext) {
@@ -1513,6 +1586,27 @@ final class KCDrawingCanvasView: UIView, UIGestureRecognizerDelegate {
         cacheNonStickerRasterImage(resultImage, scale: imageScale)
         setNeedsDisplay()
         notifyContentChanged()
+    }
+
+    /// 缓存有效时只合成刚完成的一笔；缓存缺失时保留惰性全量重建策略。
+    private func appendCommittedStrokeToRasterCache(_ stroke: KDStroke) {
+        let scale = window?.screen.scale ?? UIScreen.main.scale
+        guard let cachedImage = nonStickerRasterCacheImage,
+              nonStickerRasterCacheBounds.equalTo(bounds),
+              abs(nonStickerRasterCacheScale - scale) < 0.001 else {
+            invalidateNonStickerRasterCache()
+            return
+        }
+
+        let format = UIGraphicsImageRendererFormat()
+        format.scale = scale
+        format.opaque = true
+        let renderer = UIGraphicsImageRenderer(bounds: bounds, format: format)
+        let image = renderer.image { _ in
+            cachedImage.draw(in: bounds)
+            drawStroke(stroke)
+        }
+        cacheNonStickerRasterImage(image, scale: scale)
     }
 
     private func cacheNonStickerRasterImage(_ image: UIImage, scale: CGFloat) {
