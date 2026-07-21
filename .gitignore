@@ -11,5 +11,8 @@ xcuserdata/
 .build/
 Packages/**/.build/
 
+# Local Git worktrees
+.worktrees/
+
 # Local AI coordination workspace
 ai-docs/
