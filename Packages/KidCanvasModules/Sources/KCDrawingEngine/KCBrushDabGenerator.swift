@@ -8,6 +8,15 @@
 import Foundation
 import CoreGraphics
 
+/// dab 增量生成状态，用于跨触摸批次延续间距与确定性种子。
+public struct KCBrushDabGenerationState: Sendable, Equatable {
+    var previousSample: KCBrushInputSample?
+    var residualDistance: Double = 0
+    var nextDabIndex: UInt64 = 0
+
+    public init() {}
+}
+
 /// 画笔 dab 生成器：把连续的高保真输入采样变成稳定、可重放的 dab 序列。
 ///
 /// 这是 T093 的纯引擎核心，UIKit-free。每个 dab 的半径由该采样局部压力按曲线
@@ -32,53 +41,72 @@ public struct KCBrushDabGenerator: Sendable {
 
     /// 对一段连续采样生成 dab 序列。
     public func dabs(for samples: [KCBrushInputSample]) -> [KCBrushDab] {
-        guard let first = samples.first else { return [] }
+        var state = KCBrushDabGenerationState()
+        return appendDabs(for: samples, state: &state)
+    }
+
+    /// 只为新增采样生成 dab，并延续上一批次的间距余量与种子序列。
+    public func appendDabs(
+        for samples: [KCBrushInputSample],
+        state: inout KCBrushDabGenerationState
+    ) -> [KCBrushDab] {
+        guard !samples.isEmpty else { return [] }
 
         var output: [KCBrushDab] = []
-        var dabIndex: UInt64 = 0
+        var sampleIndex = 0
+        var previous: KCBrushInputSample
 
-        // 起点先落一个 dab。
-        appendDab(for: first, dabIndex: &dabIndex, into: &output)
+        if let previousSample = state.previousSample {
+            previous = previousSample
+        } else {
+            let first = samples[0]
+            appendDab(for: first, dabIndex: &state.nextDabIndex, into: &output)
+            state.previousSample = first
+            previous = first
+            sampleIndex = 1
+        }
 
-        // 沿折线按间距盖章，跨段保留余数，保证间距均匀。
-        var residual: Double = 0.0
-        for index in 1..<samples.count {
-            let previous = samples[index - 1]
-            let current = samples[index]
+        // 沿新增折线按间距盖章，跨批次保留余数，保证间距均匀。
+        while sampleIndex < samples.count {
+            let current = samples[sampleIndex]
             let segment = CGPoint(x: current.point.x - previous.point.x,
                                   y: current.point.y - previous.point.y)
             let segmentLength = (segment.x * segment.x + segment.y * segment.y).squareRoot()
 
-            guard segmentLength > 0 else {
+            if segmentLength > 0 {
+                let velocity = localVelocity(previous: previous, current: current, segmentLength: segmentLength)
+                let velocityT = Self.clamp01(velocity / Self.velocityReference)
+                let spacing = self.spacing(pressure: midpoint(previous.pressure, current.pressure),
+                                           velocityT: velocityT)
+
+                if spacing > 0 {
+                    var consumed: Double = 0.0
+                    while (spacing - state.residualDistance) <= (segmentLength - consumed) + 1e-9 {
+                        consumed += spacing - state.residualDistance
+                        let t = consumed / segmentLength
+                        let interpolated = KCBrushInputSample(
+                            point: CGPoint(x: previous.point.x + segment.x * t,
+                                           y: previous.point.y + segment.y * t),
+                            timestamp: previous.timestamp + (current.timestamp - previous.timestamp) * t,
+                            pressure: previous.pressure + (current.pressure - previous.pressure) * t,
+                            velocity: velocity,
+                            altitude: previous.altitude + (current.altitude - previous.altitude) * t,
+                            azimuth: previous.azimuth + (current.azimuth - previous.azimuth) * t,
+                            isPencil: current.isPencil
+                        )
+                        appendDab(for: interpolated, dabIndex: &state.nextDabIndex, into: &output)
+                        state.residualDistance = 0.0
+                    }
+                    state.residualDistance += segmentLength - consumed
+                }
+            } else {
                 // 与上一点重合：仍按当前采样补一个 dab，保留压力/倾角变化。
-                appendDab(for: current, dabIndex: &dabIndex, into: &output)
-                continue
+                appendDab(for: current, dabIndex: &state.nextDabIndex, into: &output)
             }
 
-            let velocity = localVelocity(previous: previous, current: current, segmentLength: segmentLength)
-            let velocityT = Self.clamp01(velocity / Self.velocityReference)
-            let spacing = self.spacing(pressure: midpoint(previous.pressure, current.pressure),
-                                       velocityT: velocityT)
-            guard spacing > 0 else { continue }
-
-            var consumed: Double = 0.0
-            while (spacing - residual) <= (segmentLength - consumed) + 1e-9 {
-                consumed += spacing - residual
-                let t = consumed / segmentLength
-                let interpolated = KCBrushInputSample(
-                    point: CGPoint(x: previous.point.x + segment.x * t,
-                                   y: previous.point.y + segment.y * t),
-                    timestamp: previous.timestamp + (current.timestamp - previous.timestamp) * t,
-                    pressure: previous.pressure + (current.pressure - previous.pressure) * t,
-                    velocity: velocity,
-                    altitude: previous.altitude + (current.altitude - previous.altitude) * t,
-                    azimuth: previous.azimuth + (current.azimuth - previous.azimuth) * t,
-                    isPencil: current.isPencil
-                )
-                appendDab(for: interpolated, dabIndex: &dabIndex, into: &output)
-                residual = 0.0
-            }
-            residual += segmentLength - consumed
+            previous = current
+            state.previousSample = current
+            sampleIndex += 1
         }
 
         return output

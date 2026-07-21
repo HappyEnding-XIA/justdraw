@@ -183,6 +183,33 @@ final class KCBrushDabGeneratorTests: XCTestCase {
 
     // MARK: - 确定性
 
+    func testIncrementalBatchesExactlyMatchFullGeneration() {
+        let samples = line(samples: 80, spacing: 3.0)
+        let generator = KCBrushDabGenerator(preset: .preset(for: .crayon))
+        let expected = generator.dabs(for: samples)
+        var state = KCBrushDabGenerationState()
+        var actual: [KCBrushDab] = []
+
+        for batch in samples.chunked(sizes: [1, 3, 7, 2, 11]) {
+            actual.append(contentsOf: generator.appendDabs(for: batch, state: &state))
+        }
+
+        XCTAssertEqual(actual, expected)
+    }
+
+    func testIncrementalDuplicateSamplesMatchFullGeneration() {
+        let samples = [
+            sample(x: 0, y: 0),
+            sample(x: 0, y: 0),
+            sample(x: 12, y: 0)
+        ]
+        let generator = KCBrushDabGenerator(preset: .preset(for: .pencil))
+        var state = KCBrushDabGenerationState()
+        let actual = samples.flatMap { generator.appendDabs(for: [$0], state: &state) }
+
+        XCTAssertEqual(actual, generator.dabs(for: samples))
+    }
+
     func testIdenticalInputsProduceIdenticalDabs() {
         let generator = KCBrushDabGenerator(preset: .preset(for: .crayon))
         let samples = line(samples: 20, spacing: 3.0)
@@ -276,6 +303,25 @@ final class KCBrushDabGeneratorTests: XCTestCase {
         XCTAssertEqual(KCBrushPreset.preset(for: .pencil).referenceLineWidth, 12.0, accuracy: 1e-9)
         XCTAssertEqual(KCBrushPreset.preset(for: .pen).referenceLineWidth, 9.0, accuracy: 1e-9)
         XCTAssertEqual(KCBrushPreset.preset(for: .crayon).referenceLineWidth, 18.0, accuracy: 1e-9)
+    }
+}
+
+private extension Array {
+    /// 按循环批量大小切分输入，模拟 coalesced touches 的不规则分批。
+    func chunked(sizes: [Int]) -> [[Element]] {
+        precondition(sizes.allSatisfy { $0 > 0 })
+        guard !isEmpty, !sizes.isEmpty else { return [] }
+
+        var batches: [[Element]] = []
+        var startIndex = 0
+        var sizeIndex = 0
+        while startIndex < count {
+            let endIndex = Swift.min(startIndex + sizes[sizeIndex % sizes.count], count)
+            batches.append(Array(self[startIndex..<endIndex]))
+            startIndex = endIndex
+            sizeIndex += 1
+        }
+        return batches
     }
 }
 
