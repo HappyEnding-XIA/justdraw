@@ -17,8 +17,8 @@ public enum KCImageImportSource: String, Equatable, Sendable {
 /// 图片导入的失败类型（统一结果模型，供 App 层映射为本地化反馈，不直接暴露系统错误）。
 public enum KCImageImportFailure: String, Equatable, Sendable {
     case cancelled
-    case photoLibraryDenied
     case cameraDenied
+    case photoLibraryDenied
     case noCamera
     case failed
 }
@@ -56,6 +56,11 @@ public enum KCImageImportDecision {
         if !isAvailable {
             // 相机不可用（模拟器/无相机设备）走降级；相册不可用属异常失败。
             return source == .camera ? .showNoCamera : .showDeniedFailure(.failed)
+        }
+        if source == .photoLibrary {
+            // iOS 14+ PHPicker 允许在不申请完整相册读写授权的前提下选图。
+            // App 层仍可记录授权状态，但不把 photoLibrary 的授权状态作为阻断条件。
+            return .present
         }
         switch authorization {
         case .authorized:

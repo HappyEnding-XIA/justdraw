@@ -6,6 +6,7 @@
 //
 
 import UIKit
+import PhotosUI
 import KCDrawingEngine
 import KCDomain
 
@@ -981,8 +982,8 @@ extension KCMainViewController {
 
         self.dismiss(animated: false) { [weak self] in
             guard let self = self else { return }
-            let photoLibraryAvailable = UIImagePickerController.isSourceTypeAvailable(.photoLibrary)
-            if !self.presentPhotoLibraryPicker(animated: false, completion: { [weak self] imagePicker in
+            let photoPickerConfiguration = self.configuredPhotoLibraryPickerConfiguration()
+            if !self.presentPhotoLibraryPicker(animated: false, completion: { [weak self] photoPicker in
                 self?.finishSystemUIPresentationAcceptanceProbe(
                     colorPickerPresented: colorPickerPresented,
                     colorPickerDelegateSet: colorPickerDelegateSet,
@@ -991,8 +992,8 @@ extension KCMainViewController {
                     colorPickerUsesPopoverPresentation: colorPickerUsesPopoverPresentation,
                     colorPickerSelectionApplied: colorPickerSelectionApplied,
                     colorPickerSelectionRecorded: colorPickerSelectionRecorded,
-                    photoLibraryAvailable: photoLibraryAvailable,
-                    imagePicker: imagePicker
+                    photoPickerSelectionLimit: photoPickerConfiguration.selectionLimit,
+                    photoPicker: photoPicker
                 )
             }) {
                 self.finishSystemUIPresentationAcceptanceProbe(
@@ -1003,8 +1004,8 @@ extension KCMainViewController {
                     colorPickerUsesPopoverPresentation: colorPickerUsesPopoverPresentation,
                     colorPickerSelectionApplied: colorPickerSelectionApplied,
                     colorPickerSelectionRecorded: colorPickerSelectionRecorded,
-                    photoLibraryAvailable: photoLibraryAvailable,
-                    imagePicker: nil
+                    photoPickerSelectionLimit: photoPickerConfiguration.selectionLimit,
+                    photoPicker: nil
                 )
             }
         }
@@ -1018,12 +1019,11 @@ extension KCMainViewController {
         colorPickerUsesPopoverPresentation: Bool,
         colorPickerSelectionApplied: Bool,
         colorPickerSelectionRecorded: Bool,
-        photoLibraryAvailable: Bool,
-        imagePicker: UIImagePickerController?
+        photoPickerSelectionLimit: Int,
+        photoPicker: PHPickerViewController?
     ) {
-        let imagePickerPresented = imagePicker != nil
-        let imagePickerUsesPhotoLibrary = imagePicker?.sourceType == .photoLibrary
-        let imagePickerDelegateSet = imagePicker?.delegate != nil
+        let photoPickerPresented = photoPicker != nil
+        let photoPickerDelegateSet = photoPicker?.delegate != nil
         let writeResult: () -> Void = { [weak self] in
             self?.writeSystemUIPresentationAcceptanceResult(
                 colorPickerPresented: colorPickerPresented,
@@ -1033,20 +1033,18 @@ extension KCMainViewController {
                 colorPickerUsesPopoverPresentation: colorPickerUsesPopoverPresentation,
                 colorPickerSelectionApplied: colorPickerSelectionApplied,
                 colorPickerSelectionRecorded: colorPickerSelectionRecorded,
-                photoLibraryAvailable: photoLibraryAvailable,
-                imagePickerPresented: imagePickerPresented,
-                imagePickerUsesPhotoLibrary: imagePickerUsesPhotoLibrary,
-                imagePickerDelegateSet: imagePickerDelegateSet
+                photoPickerPresented: photoPickerPresented,
+                photoPickerDelegateSet: photoPickerDelegateSet,
+                photoPickerSelectionLimit: photoPickerSelectionLimit
             )
         }
-        if let imagePicker {
+        if let photoPicker {
             self.runtimeAcceptanceImageImportCompletion = writeResult
-            self.imagePickerController(
-                imagePicker,
-                didFinishPickingMediaWithInfo: [
-                    .originalImage: self.runtimeAcceptanceImportImage()
-                ]
-            )
+            let generation = self.prepareImageImportGeneration()
+            photoPicker.dismiss(animated: false) { [weak self] in
+                guard let self else { return }
+                self.processImportedImage(self.runtimeAcceptanceImportImage(), generation: generation)
+            }
         } else {
             writeResult()
         }
@@ -1060,10 +1058,9 @@ extension KCMainViewController {
         colorPickerUsesPopoverPresentation: Bool,
         colorPickerSelectionApplied: Bool,
         colorPickerSelectionRecorded: Bool,
-        photoLibraryAvailable: Bool,
-        imagePickerPresented: Bool,
-        imagePickerUsesPhotoLibrary: Bool,
-        imagePickerDelegateSet: Bool
+        photoPickerPresented: Bool,
+        photoPickerDelegateSet: Bool,
+        photoPickerSelectionLimit: Int
     ) {
         let imageImportVisible = self.canvasFeature.hasVisibleContent(self.canvasView)
         let imageImportActiveSessionCleared = self.activeSession == nil
@@ -1081,10 +1078,9 @@ extension KCMainViewController {
                 && colorPickerUsesPopoverPresentation
                 && colorPickerSelectionApplied
                 && colorPickerSelectionRecorded
-                && photoLibraryAvailable
-                && imagePickerPresented
-                && imagePickerUsesPhotoLibrary
-                && imagePickerDelegateSet
+                && photoPickerPresented
+                && photoPickerDelegateSet
+                && photoPickerSelectionLimit == 1
                 && imageImportVisible
                 && imageImportActiveSessionCleared
                 && imageImportSelectedHistoryCleared
@@ -1096,10 +1092,9 @@ extension KCMainViewController {
             "colorPickerUsesPopoverPresentation": colorPickerUsesPopoverPresentation,
             "colorPickerSelectionApplied": colorPickerSelectionApplied,
             "colorPickerSelectionRecorded": colorPickerSelectionRecorded,
-            "photoLibraryAvailable": photoLibraryAvailable,
-            "imagePickerPresented": imagePickerPresented,
-            "imagePickerUsesPhotoLibrary": imagePickerUsesPhotoLibrary,
-            "imagePickerDelegateSet": imagePickerDelegateSet,
+            "photoPickerPresented": photoPickerPresented,
+            "photoPickerDelegateSet": photoPickerDelegateSet,
+            "photoPickerSelectionLimit": photoPickerSelectionLimit,
             "imageImportVisible": imageImportVisible,
             "imageImportActiveSessionCleared": imageImportActiveSessionCleared,
             "imageImportSelectedHistoryCleared": imageImportSelectedHistoryCleared,

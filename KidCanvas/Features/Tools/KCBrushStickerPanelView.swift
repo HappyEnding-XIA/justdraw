@@ -66,15 +66,6 @@ final class KCBrushStickerPanelView {
         titleLabel.translatesAutoresizingMaskIntoConstraints = false
         panel.addSubview(titleLabel)
 
-        let shell = UIView()
-        shell.translatesAutoresizingMaskIntoConstraints = false
-        shell.backgroundColor = UIColor(white: 1.0, alpha: 0.58)
-        shell.layer.cornerRadius = 20.0
-        shell.layer.cornerCurve = .continuous
-        shell.layer.borderWidth = 1.0
-        shell.layer.borderColor = UIColor(white: 1.0, alpha: 0.54).cgColor
-        panel.addSubview(shell)
-
         let sizeSlider = UISlider()
         sizeSlider.translatesAutoresizingMaskIntoConstraints = false
         sizeSlider.minimumValue = 4.0
@@ -85,16 +76,16 @@ final class KCBrushStickerPanelView {
         sizeSlider.accessibilityLabel = texts.sizeSliderAccessibility
         sizeSlider.accessibilityIdentifier = "size.slider"
         sizeSlider.addTarget(target, action: sizeSliderAction, for: .valueChanged)
-        shell.addSubview(sizeSlider)
+        panel.addSubview(sizeSlider)
 
         let sizePreviewView = UIView()
         sizePreviewView.translatesAutoresizingMaskIntoConstraints = false
-        sizePreviewView.backgroundColor = UIColor(white: 1.0, alpha: 0.64)
+        sizePreviewView.backgroundColor = UIColor(white: 1.0, alpha: 0.58)
         sizePreviewView.layer.cornerRadius = 20.0
         sizePreviewView.layer.cornerCurve = .continuous
         sizePreviewView.layer.borderWidth = 1.0
-        sizePreviewView.layer.borderColor = UIColor(white: 1.0, alpha: 0.74).cgColor
-        shell.addSubview(sizePreviewView)
+        sizePreviewView.layer.borderColor = UIColor(white: 1.0, alpha: 0.68).cgColor
+        panel.addSubview(sizePreviewView)
 
         let sizePreviewShapeLayer = CAShapeLayer()
         sizePreviewShapeLayer.lineCap = .round
@@ -198,24 +189,16 @@ final class KCBrushStickerPanelView {
             titleLabel.leadingAnchor.constraint(equalTo: panel.leadingAnchor, constant: 18.0),
             titleLabel.topAnchor.constraint(equalTo: panel.topAnchor, constant: 18.0),
 
-            shell.leadingAnchor.constraint(equalTo: panel.leadingAnchor, constant: 18.0),
-            shell.trailingAnchor.constraint(equalTo: panel.trailingAnchor, constant: -18.0),
-            shell.topAnchor.constraint(equalTo: titleLabel.bottomAnchor, constant: 10.0),
-
-            sizePreviewView.leadingAnchor.constraint(equalTo: shell.leadingAnchor, constant: 14.0),
-            sizePreviewView.centerYAnchor.constraint(equalTo: shell.centerYAnchor),
+            sizePreviewView.leadingAnchor.constraint(equalTo: panel.leadingAnchor, constant: 18.0),
+            sizePreviewView.topAnchor.constraint(equalTo: titleLabel.bottomAnchor, constant: 10.0),
             sizePreviewView.widthAnchor.constraint(equalToConstant: 42.0),
             sizePreviewView.heightAnchor.constraint(equalToConstant: 42.0),
-            sizePreviewView.topAnchor.constraint(greaterThanOrEqualTo: shell.topAnchor, constant: 12.0),
-            sizePreviewView.bottomAnchor.constraint(lessThanOrEqualTo: shell.bottomAnchor, constant: -12.0),
-
             sizeSlider.leadingAnchor.constraint(equalTo: sizePreviewView.trailingAnchor, constant: 14.0),
-            sizeSlider.trailingAnchor.constraint(equalTo: shell.trailingAnchor, constant: -14.0),
-            sizeSlider.centerYAnchor.constraint(equalTo: shell.centerYAnchor),
-            shell.heightAnchor.constraint(equalToConstant: 70.0),
+            sizeSlider.trailingAnchor.constraint(equalTo: panel.trailingAnchor, constant: -18.0),
+            sizeSlider.centerYAnchor.constraint(equalTo: sizePreviewView.centerYAnchor),
 
             stickerTitle.leadingAnchor.constraint(equalTo: panel.leadingAnchor, constant: 18.0),
-            stickerTitle.topAnchor.constraint(equalTo: shell.bottomAnchor, constant: 12.0),
+            stickerTitle.topAnchor.constraint(equalTo: sizePreviewView.bottomAnchor, constant: 12.0),
 
             stickerCategoryRow.leadingAnchor.constraint(equalTo: panel.leadingAnchor, constant: 18.0),
             stickerCategoryRow.trailingAnchor.constraint(equalTo: panel.trailingAnchor, constant: -18.0),

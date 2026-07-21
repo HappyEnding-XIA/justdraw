@@ -6,6 +6,7 @@
 //
 
 import UIKit
+import PhotosUI
 import QuartzCore
 import KCCommon
 import KCDomain
@@ -21,7 +22,7 @@ enum KCStartupDeferredDelay {
 
 // MARK: - KCMainViewController
 
-class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIImagePickerControllerDelegate, UINavigationControllerDelegate, UIColorPickerViewControllerDelegate, UIScrollViewDelegate {
+class KCMainViewController: UIViewController, KDDrawingCanvasViewDelegate, UIImagePickerControllerDelegate, PHPickerViewControllerDelegate, UINavigationControllerDelegate, UIColorPickerViewControllerDelegate, UIScrollViewDelegate {
 
     var canvasContainerView: UIView!
     var canvasView: KCDrawingCanvasView!

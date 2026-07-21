@@ -35,14 +35,14 @@ final class KCImageImportTests: XCTestCase {
 
     // MARK: - 相册
 
-    func testPhotoLibraryDeniedShowsPhotoLibraryDeniedFailure() {
+    func testPhotoLibraryDeniedStillPresentsPHPicker() {
         let action = KCImageImportDecision.resolve(source: .photoLibrary, isAvailable: true, authorization: .denied)
-        XCTAssertEqual(action, .showDeniedFailure(.photoLibraryDenied))
+        XCTAssertEqual(action, .present)
     }
 
-    func testPhotoLibraryNotDeterminedRequestsAuthorization() {
+    func testPhotoLibraryNotDeterminedPresentsWithoutAuthorizationRequest() {
         let action = KCImageImportDecision.resolve(source: .photoLibrary, isAvailable: true, authorization: .notDetermined)
-        XCTAssertEqual(action, .requestAuthorization)
+        XCTAssertEqual(action, .present)
     }
 
     func testPhotoLibraryAuthorizedPresents() {

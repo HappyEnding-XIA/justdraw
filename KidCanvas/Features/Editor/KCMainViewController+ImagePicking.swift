@@ -6,6 +6,8 @@
 //
 
 import UIKit
+import Photos
+import PhotosUI
 import KCDomain
 
 // MARK: - 图片导入（相册 / 拍照，T100；生成线稿，T101）
@@ -30,6 +32,39 @@ extension KCMainViewController {
         // 直接走相册导入；草稿保护在 confirmImport 内处理。
         self.performCanvasReplacementAfterUserConfirmation { [weak self] in
             self?.beginImport(from: .photoLibrary)
+        }
+    }
+
+    func prepareImageImportGeneration() -> Int {
+        self.invalidateArtworkLoadWork()
+        let generation = self.imageImportGeneration + 1
+        self.imageImportGeneration = generation
+        return generation
+    }
+
+    func processImportedImage(_ image: UIImage?, generation: Int) {
+        self.imageImportProcessingQueue.async { [weak self, image] in
+            guard let self else { return }
+            let normalizedImage = self.normalizedImageFromImage(image)
+
+            DispatchQueue.main.async { [weak self] in
+                guard let self else { return }
+                guard self.imageImportGeneration == generation else { return }
+                guard let normalizedImage else {
+                    self.showSaveToastWithSuccess(false)
+#if DEBUG
+                    let runtimeCompletion = self.runtimeAcceptanceImageImportCompletion
+                    self.runtimeAcceptanceImageImportCompletion = nil
+                    runtimeCompletion?()
+#endif
+                    return
+                }
+                if self.pendingImageImportIntent == .generateLineArt {
+                    self.generateLineArt(from: normalizedImage)
+                } else {
+                    self.finishImportingImage(normalizedImage)
+                }
+            }
         }
     }
 
@@ -181,23 +216,21 @@ extension KCMainViewController {
         }
     }
 
-    func configuredPhotoLibraryPicker() -> UIImagePickerController {
-        let picker = UIImagePickerController()
-        picker.sourceType = .photoLibrary
+    func configuredPhotoLibraryPicker() -> PHPickerViewController {
+        let picker = PHPickerViewController(configuration: self.configuredPhotoLibraryPickerConfiguration())
         picker.delegate = self
-        let popover = picker.popoverPresentationController
-        popover?.sourceView = self.view
-        popover?.sourceRect = CGRect(x: self.view.bounds.maxX - 110.0, y: 88.0, width: 1.0, height: 1.0)
-        popover?.permittedArrowDirections = .up
         return picker
     }
 
-    @discardableResult
-    func presentPhotoLibraryPicker(animated: Bool, completion: ((UIImagePickerController) -> Void)?) -> Bool {
-        if !UIImagePickerController.isSourceTypeAvailable(.photoLibrary) {
-            return false
-        }
+    func configuredPhotoLibraryPickerConfiguration() -> PHPickerConfiguration {
+        var configuration = PHPickerConfiguration(photoLibrary: .shared())
+        configuration.selectionLimit = 1
+        configuration.filter = .images
+        return configuration
+    }
 
+    @discardableResult
+    func presentPhotoLibraryPicker(animated: Bool, completion: ((PHPickerViewController) -> Void)?) -> Bool {
         let startedAt = Date()
         self.showCustomLineArtToast(title: KCL10n.importOpeningPhotoLibraryTitle,
                                     symbol: "photo.on.rectangle.angled",
@@ -259,40 +292,40 @@ extension KCMainViewController {
 
     func imagePickerController(_ picker: UIImagePickerController, didFinishPickingMediaWithInfo info: [UIImagePickerController.InfoKey: Any]) {
         let image = info[.originalImage] as? UIImage
-        self.invalidateArtworkLoadWork()
-        let generation = self.imageImportGeneration + 1
-        self.imageImportGeneration = generation
+        let generation = self.prepareImageImportGeneration()
         picker.dismiss(animated: true, completion: nil)
-
-        self.imageImportProcessingQueue.async { [weak self, image] in
-            guard let self else { return }
-            let normalizedImage = self.normalizedImageFromImage(image)
-
-            DispatchQueue.main.async { [weak self] in
-                guard let self else { return }
-                guard self.imageImportGeneration == generation else { return }
-                guard let normalizedImage else {
-                    self.showSaveToastWithSuccess(false)
-#if DEBUG
-                    let runtimeCompletion = self.runtimeAcceptanceImageImportCompletion
-                    self.runtimeAcceptanceImageImportCompletion = nil
-                    runtimeCompletion?()
-#endif
-                    return
-                }
-                if self.pendingImageImportIntent == .generateLineArt {
-                    self.generateLineArt(from: normalizedImage)
-                } else {
-                    self.finishImportingImage(normalizedImage)
-                }
-            }
-        }
+        self.processImportedImage(image, generation: generation)
     }
 
     func imagePickerControllerDidCancel(_ picker: UIImagePickerController) {
         self.invalidateArtworkLoadWork()
         self.invalidateImageImportWork()
         picker.dismiss(animated: true, completion: nil)
+    }
+
+    func picker(_ picker: PHPickerViewController, didFinishPicking results: [PHPickerResult]) {
+        let generation = self.prepareImageImportGeneration()
+        guard let result = results.first else {
+            self.invalidateImageImportWork()
+            picker.dismiss(animated: true, completion: nil)
+            return
+        }
+        let provider = result.itemProvider
+        guard provider.canLoadObject(ofClass: UIImage.self) else {
+            picker.dismiss(animated: true, completion: nil)
+            self.processImportedImage(nil, generation: generation)
+            return
+        }
+
+        provider.loadObject(ofClass: UIImage.self) { [weak self] object, _ in
+            guard let self else { return }
+            DispatchQueue.main.async {
+                guard self.imageImportGeneration == generation else { return }
+                picker.dismiss(animated: true) {
+                    self.processImportedImage(object as? UIImage, generation: generation)
+                }
+            }
+        }
     }
 
     private func finishImportingImage(_ normalizedImage: UIImage) {

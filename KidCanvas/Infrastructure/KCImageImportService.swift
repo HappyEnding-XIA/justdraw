@@ -6,7 +6,6 @@
 //
 
 import UIKit
-import Photos
 import AVFoundation
 import KCDomain
 
@@ -38,7 +37,7 @@ final class KCImageImportService: KCImageImportServicing {
     func authorizationStatus(for source: KCImageImportSource) -> KCImageImportAuthorization {
         switch source {
         case .photoLibrary:
-            return Self.mapPhotoLibraryStatus(PHPhotoLibrary.authorizationStatus(for: .readWrite))
+            return .authorized
         case .camera:
             return Self.mapCameraStatus(AVCaptureDevice.authorizationStatus(for: .video))
         }
@@ -47,10 +46,7 @@ final class KCImageImportService: KCImageImportServicing {
     func requestAuthorization(for source: KCImageImportSource, completion: @escaping (KCImageImportAuthorization) -> Void) {
         switch source {
         case .photoLibrary:
-            PHPhotoLibrary.requestAuthorization(for: .readWrite) { status in
-                let mapped = Self.mapPhotoLibraryStatus(status)
-                DispatchQueue.main.async { completion(mapped) }
-            }
+            DispatchQueue.main.async { completion(.authorized) }
         case .camera:
             AVCaptureDevice.requestAccess(for: .video) { granted in
                 DispatchQueue.main.async { completion(granted ? .authorized : .denied) }
@@ -64,17 +60,6 @@ final class KCImageImportService: KCImageImportServicing {
             isAvailable: isSourceAvailable(source),
             authorization: authorizationStatus(for: source)
         )
-    }
-
-    // MARK: - 系统状态映射
-
-    private static func mapPhotoLibraryStatus(_ status: PHAuthorizationStatus) -> KCImageImportAuthorization {
-        switch status {
-        case .authorized, .limited: return .authorized
-        case .notDetermined: return .notDetermined
-        case .denied, .restricted: return .denied
-        @unknown default: return .denied
-        }
     }
 
     private static func mapCameraStatus(_ status: AVAuthorizationStatus) -> KCImageImportAuthorization {

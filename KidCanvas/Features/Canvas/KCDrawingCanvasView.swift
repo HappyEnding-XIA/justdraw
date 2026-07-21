@@ -148,6 +148,7 @@ final class KCDrawingCanvasView: UIView, UIGestureRecognizerDelegate {
         // 内容平面：在内容坐标空间（0,0 ~ contentSize）绘制白色纸张、底图、笔画。
         let contentPlane = CGRect(origin: .zero, size: viewportState.contentSize)
         drawPaperSurface(in: ctx, contentPlane: contentPlane)
+        drawWorkbenchGlow(in: ctx)
         ctx.clip(to: contentPlane)
         drawImage(backgroundImage, aspectFitIn: contentPlane)
 
@@ -184,6 +185,29 @@ final class KCDrawingCanvasView: UIView, UIGestureRecognizerDelegate {
         ctx.setLineWidth(1.0 / max(viewportState.scale, 0.001))
         Self.paperBorderColor.setStroke()
         ctx.stroke(borderRect)
+        ctx.restoreGState()
+    }
+
+    /// 极轻的工作台氛围光：只影响屏幕呈现层，让白纸周围有更柔和的暖感。
+    private func drawWorkbenchGlow(in ctx: CGContext) {
+        let colors = [
+            UIColor(red: 1.0, green: 0.98, blue: 0.93, alpha: 0.10).cgColor,
+            UIColor(red: 0.94, green: 0.96, blue: 0.92, alpha: 0.00).cgColor
+        ] as CFArray
+        guard let gradient = CGGradient(colorsSpace: CGColorSpaceCreateDeviceRGB(),
+                                        colors: colors,
+                                        locations: [0.0, 1.0]) else { return }
+
+        let center = CGPoint(x: bounds.midX, y: bounds.midY * 0.92)
+        let radius = max(bounds.width, bounds.height) * 0.72
+        ctx.saveGState()
+        ctx.setBlendMode(.screen)
+        ctx.drawRadialGradient(gradient,
+                               startCenter: center,
+                               startRadius: 0.0,
+                               endCenter: center,
+                               endRadius: radius,
+                               options: [.drawsAfterEndLocation])
         ctx.restoreGState()
     }
 
