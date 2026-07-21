@@ -39,6 +39,14 @@ protocol KCDrawingEngineProviding: AnyObject {
         brushStyle: Int,
         lineWidth: Double
     ) -> [KCBrushDab]
+    /// 为活动笔画的新增采样生成 dab，跨批次延续间距与纹理种子。
+    func appendBrushDabs(
+        for samples: [KCBrushInputSample],
+        state: inout KCBrushDabGenerationState,
+        canvasScale: Double,
+        brushStyle: Int,
+        lineWidth: Double
+    ) -> [KCBrushDab]
     func eraserStampPath(shape: Int, center: CGPoint, size: CGFloat) -> UIBezierPath?
     func eraserStampPointsAlongPath(_ path: CGPath, lineWidth: CGFloat) -> [NSValue]
     func crayonGrainDashPoints(pathBounds: CGRect, lineWidth: CGFloat) -> [NSValue]
@@ -185,6 +193,20 @@ final class KCDrawingEngineAdapter: NSObject, KCDrawingEngineProviding {
         guard let style = Self.brushStyleFromOC(brushStyle) else { return [] }
         let preset = KCBrushPreset.preset(for: style).scaledForLineWidth(lineWidth)
         return KCBrushDabGenerator(preset: preset, canvasScale: canvasScale).dabs(for: samples)
+    }
+
+    /// 增量生成活动笔画的新 dab；预设映射与完整生成路径保持一致。
+    func appendBrushDabs(
+        for samples: [KCBrushInputSample],
+        state: inout KCBrushDabGenerationState,
+        canvasScale: Double,
+        brushStyle: Int,
+        lineWidth: Double
+    ) -> [KCBrushDab] {
+        guard let style = Self.brushStyleFromOC(brushStyle) else { return [] }
+        let preset = KCBrushPreset.preset(for: style).scaledForLineWidth(lineWidth)
+        return KCBrushDabGenerator(preset: preset, canvasScale: canvasScale)
+            .appendDabs(for: samples, state: &state)
     }
 
     // MARK: - 橡皮擦印章路径

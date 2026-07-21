@@ -52,7 +52,9 @@ final class KDStroke: NSObject {
 
     /// T094：高保真输入采样，铅笔/蜡笔 dab 渲染用。运行时字段，不持久化（保存仍为 raster）。
     var samples: [KCBrushInputSample] = []
-    /// 由 samples 生成的 dab 缓存，重绘 / undo redo 复用；samples 变化时置 nil。
+    /// 活动画笔跨触摸批次延续的增量生成状态。
+    var dabGenerationState = KCBrushDabGenerationState()
+    /// 由 samples 增量生成的 dab 缓存，重绘 / undo redo 直接复用。
     var cachedDabs: [KCBrushDab]?
 
     var averagePressure: CGFloat {

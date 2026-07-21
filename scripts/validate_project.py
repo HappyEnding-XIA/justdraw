@@ -1367,7 +1367,7 @@ def app_feature_checks(
     dab_engine_sources = dab_generator_text + dab_preset_text + dab_hashing_text
     checks.append(require_text(dab_generator_text, "public struct KCBrushDabGenerator", "T093 dab engine entry point exists in KCDrawingEngine"))
     checks.append(require_text(dab_generator_text, "func dabs(for samples: [KCBrushInputSample]) -> [KCBrushDab]", "Dab engine consumes per-sample inputs instead of a whole-stroke average pressure"))
-    checks.append(require_text(dab_generator_text, "guard sample.isPencil else { return (1.0, 0.0) }", "Non-Pencil (finger) samples fall back to a vertical, round dab with no tilt shaping"))
+    checks.append(require_text(dab_generator_text, "guard sample.isPencil, sample.altitude.isFinite, sample.azimuth.isFinite else", "Non-Pencil and invalid tilt samples fall back to a stable round dab"))
     checks.append(require_text(dab_preset_text, "public static func preset(for style: KCBrushStyle) -> KCBrushPreset", "Brush presets are produced from KCBrushStyle"))
     checks.append(require_text(dab_preset_text, "case .pencil:", "Pencil dab preset is defined"))
     checks.append(require_text(dab_preset_text, "case .pen:", "Pen dab preset is defined"))
@@ -2179,7 +2179,13 @@ def app_feature_checks(
     # T094：铅笔/蜡笔 dab 渲染接入
     checks.append(require_text(canvas_models_text, "var samples: [KCBrushInputSample]", "KDStroke stores per-touch brush input samples for dab rendering"))
     checks.append(require_text(canvas_models_text, "var cachedDabs: [KCBrushDab]?", "KDStroke caches generated dabs for repaint / undo redo"))
-    checks.append(require_text(canvas_text, "appendDabSample", "Canvas collects dab samples from coalesced touches"))
+    # T116：活动笔画按触摸批次增量生成 dab，避免长笔画重复全量计算。
+    checks.append(require_text(canvas_models_text, "var dabGenerationState = KCBrushDabGenerationState()", "Active strokes retain incremental dab generation state (T116)"))
+    checks.append(require_text(canvas_text, "appendIncrementalDabs", "Canvas appends only newly generated dabs for active strokes (T116)"))
+    checks.append(forbid_text(canvas_text, "stroke.cachedDabs = nil\n    }", "Appending a dab sample no longer clears the complete dab cache (T116)"))
+    checks.append(require_text(canvas_text, "copy.samples = stroke.samples", "Undo and redo preserve high-fidelity dab samples (T116)"))
+    checks.append(require_text(canvas_text, "copy.cachedDabs = stroke.cachedDabs", "Undo and redo preserve generated dabs (T116)"))
+    checks.append(require_text(canvas_text, "makeDabSample", "Canvas collects dab samples from coalesced touches"))
     checks.append(require_text(canvas_text, "touch.altitudeAngle", "Canvas captures Pencil altitude for dab tilt shaping"))
     checks.append(require_text(canvas_text, "touch.azimuthAngle", "Canvas captures Pencil azimuth for dab rotation"))
     checks.append(require_text(drawing_bridge_text, "func brushDabs(", "Drawing bridge exposes dab generation from samples"))

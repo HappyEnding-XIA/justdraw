@@ -684,7 +684,6 @@ final class KCDrawingCanvasView: UIView, UIGestureRecognizerDelegate {
         stroke.cachedRenderBounds = nil
         stroke.cachedCrayonGrainDashPoints = nil
         stroke.cachedCrayonGrainDashLineWidth = 0
-        stroke.cachedDabs = nil
     }
 
     private func setNeedsDisplayForStroke(_ stroke: KDStroke) {
@@ -756,7 +755,14 @@ final class KCDrawingCanvasView: UIView, UIGestureRecognizerDelegate {
         stroke.path.lineWidth = stroke.lineWidth
         stroke.startPoint = contentPoint
         addPressureSample(from: touch, to: stroke)
-        appendDabSample(contentPoint: contentPoint, isPencil: touch.type == .pencil, touch: touch, to: stroke)
+        if let sample = makeDabSample(
+            contentPoint: contentPoint,
+            isPencil: touch.type == .pencil,
+            touch: touch,
+            for: stroke
+        ) {
+            _ = appendIncrementalDabs([sample], to: stroke)
+        }
         stroke.path.move(to: contentPoint)
         activeStroke = stroke
 
@@ -784,6 +790,8 @@ final class KCDrawingCanvasView: UIView, UIGestureRecognizerDelegate {
         let previousStrokeBounds = strokeRenderBounds(activeStroke)
         let coalescedTouches = event?.coalescedTouches(for: touch) ?? [touch]
         var didAppendPoint = false
+        var pendingDabSamples: [KCBrushInputSample] = []
+        pendingDabSamples.reserveCapacity(coalescedTouches.count)
         for coalescedTouch in coalescedTouches {
             let contentPoint = canvasPoint(forViewPoint: coalescedTouch.location(in: self))
             let dx = contentPoint.x - activeStroke.startPoint.x
@@ -794,17 +802,27 @@ final class KCDrawingCanvasView: UIView, UIGestureRecognizerDelegate {
 
             activeStroke.path.addLine(to: contentPoint)
             addPressureSample(from: coalescedTouch, to: activeStroke)
-            appendDabSample(contentPoint: contentPoint,
-                            isPencil: coalescedTouch.type == .pencil,
-                            touch: coalescedTouch,
-                            to: activeStroke)
+            if let sample = makeDabSample(
+                contentPoint: contentPoint,
+                isPencil: coalescedTouch.type == .pencil,
+                touch: coalescedTouch,
+                for: activeStroke
+            ) {
+                pendingDabSamples.append(sample)
+            }
             activeStrokeDidMutate = true
             didAppendPoint = true
         }
         if didAppendPoint {
-            invalidateStrokeRenderBounds(activeStroke)
-            let redrawBounds = previousStrokeBounds.union(strokeRenderBounds(activeStroke))
-            setNeedsDisplayForStrokeBounds(redrawBounds)
+            if !pendingDabSamples.isEmpty {
+                if let newDabBounds = appendIncrementalDabs(pendingDabSamples, to: activeStroke) {
+                    setNeedsDisplayForStrokeBounds(newDabBounds)
+                }
+            } else {
+                invalidateStrokeRenderBounds(activeStroke)
+                let redrawBounds = previousStrokeBounds.union(strokeRenderBounds(activeStroke))
+                setNeedsDisplayForStrokeBounds(redrawBounds)
+            }
         }
     }
 
@@ -817,11 +835,16 @@ final class KCDrawingCanvasView: UIView, UIGestureRecognizerDelegate {
         if activeStrokeDidMutate {
             activeStroke.path.addLine(to: contentPoint)
             addPressureSample(from: touch, to: activeStroke)
-            appendDabSample(contentPoint: contentPoint,
-                            isPencil: touch.type == .pencil,
-                            touch: touch,
-                            to: activeStroke)
-            invalidateStrokeRenderBounds(activeStroke)
+            if let sample = makeDabSample(
+                contentPoint: contentPoint,
+                isPencil: touch.type == .pencil,
+                touch: touch,
+                for: activeStroke
+            ) {
+                _ = appendIncrementalDabs([sample], to: activeStroke)
+            } else {
+                invalidateStrokeRenderBounds(activeStroke)
+            }
         } else {
             let dotRadius = max(1.0, activeStroke.lineWidth * 0.5)
             activeStroke.path = UIBezierPath(ovalIn: CGRect(x: activeStroke.startPoint.x - dotRadius,
@@ -832,11 +855,16 @@ final class KCDrawingCanvasView: UIView, UIGestureRecognizerDelegate {
             activeStroke.dotStroke = true
             activeStrokeDidMutate = true
             addPressureSample(from: touch, to: activeStroke)
-            appendDabSample(contentPoint: contentPoint,
-                            isPencil: touch.type == .pencil,
-                            touch: touch,
-                            to: activeStroke)
-            invalidateStrokeRenderBounds(activeStroke)
+            if let sample = makeDabSample(
+                contentPoint: contentPoint,
+                isPencil: touch.type == .pencil,
+                touch: touch,
+                for: activeStroke
+            ) {
+                _ = appendIncrementalDabs([sample], to: activeStroke)
+            } else {
+                invalidateStrokeRenderBounds(activeStroke)
+            }
         }
         commitUndoStateSnapshot(pendingStrokeState)
         strokes.append(activeStroke)
@@ -865,13 +893,18 @@ final class KCDrawingCanvasView: UIView, UIGestureRecognizerDelegate {
         stroke.pressureSampleCount += 1
     }
 
-    /// 为铅笔/蜡笔采集一个高保真 dab 输入采样（含倾角），存入 `stroke.samples`。
-    /// 其余工具（钢笔、橡皮等）不采集，drawStroke 会回落到 path 渲染。
+    /// 为铅笔/蜡笔创建一个高保真 dab 输入采样（含倾角）。
+    /// 其余工具（钢笔、橡皮等）返回 nil，drawStroke 会回落到 path 渲染。
     /// `contentPoint` 必须已经是内容坐标（经 viewport 反变换）。
-    private func appendDabSample(contentPoint: CGPoint, isPencil: Bool, touch: UITouch, to stroke: KDStroke) {
+    private func makeDabSample(
+        contentPoint: CGPoint,
+        isPencil: Bool,
+        touch: UITouch,
+        for stroke: KDStroke
+    ) -> KCBrushInputSample? {
         guard stroke.toolMode == .brush,
-              stroke.brushStyle == .pencil || stroke.brushStyle == .crayon else { return }
-        let sample = KCBrushInputSample(
+              stroke.brushStyle == .pencil || stroke.brushStyle == .crayon else { return nil }
+        return KCBrushInputSample(
             point: contentPoint,
             timestamp: touch.timestamp,
             pressure: normalizedPressure(for: touch),
@@ -880,8 +913,40 @@ final class KCDrawingCanvasView: UIView, UIGestureRecognizerDelegate {
             azimuth: Double(touch.azimuthAngle(in: self)),
             isPencil: isPencil
         )
-        stroke.samples.append(sample)
-        stroke.cachedDabs = nil
+    }
+
+    /// 把一个触摸批次追加到活动笔画，只生成新增 dab，并累计局部渲染范围。
+    @discardableResult
+    private func appendIncrementalDabs(
+        _ samples: [KCBrushInputSample],
+        to stroke: KDStroke
+    ) -> CGRect? {
+        guard !samples.isEmpty else { return nil }
+        stroke.samples.append(contentsOf: samples)
+        let newDabs = drawingEngine.appendBrushDabs(
+            for: samples,
+            state: &stroke.dabGenerationState,
+            canvasScale: 1.0,
+            brushStyle: stroke.brushStyle.rawValue,
+            lineWidth: Double(stroke.lineWidth)
+        )
+        guard let firstDab = newDabs.first else { return nil }
+
+        if stroke.cachedDabs == nil {
+            stroke.cachedDabs = []
+        }
+        stroke.cachedDabs?.append(contentsOf: newDabs)
+
+        var newBounds = firstDab.bounds(inset: 2.0)
+        for dab in newDabs.dropFirst() {
+            newBounds = newBounds.union(dab.bounds(inset: 2.0))
+        }
+        if let cachedRenderBounds = stroke.cachedRenderBounds {
+            stroke.cachedRenderBounds = cachedRenderBounds.union(newBounds)
+        } else {
+            stroke.cachedRenderBounds = newBounds
+        }
+        return newBounds
     }
 
     private func normalizedPressure(for touch: UITouch) -> Double {
@@ -1284,6 +1349,8 @@ final class KCDrawingCanvasView: UIView, UIGestureRecognizerDelegate {
         copy.toolMode = stroke.toolMode
         copy.brushStyle = stroke.brushStyle
         copy.eraserShape = stroke.eraserShape
+        copy.samples = stroke.samples
+        copy.cachedDabs = stroke.cachedDabs
         return copy
     }
 
