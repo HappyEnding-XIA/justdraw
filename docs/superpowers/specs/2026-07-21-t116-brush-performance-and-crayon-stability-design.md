@@ -201,5 +201,5 @@ iPhone 17 Pro 与 iPad Pro 11 M4 横屏分别验证：
 - `swift test --package-path Packages/KidCanvasModules`：277 tests，0 failures。
 - `scripts/validate_project.py`：Validation passed；完整 iOS Simulator Debug build 通过。
 - `drawing-tools`、`canvas-viewport`、`save-history-restore`：iPhone 17 Pro 与 iPad Pro 11 M4 双端通过。
-- `brush-interaction`（2026-07-21，最终代码测量）：iPhone 17 Pro 增量/全量约 `0.02930`、追加 P95 `0.01204ms`、最大 `0.01609ms`、viewport 平均 `189.75 FPS`、P95 `6.38ms`、最大帧 `7.00ms`、preview 预热 `6.31ms`；iPad Pro 11 M4 增量/全量约 `0.02770`、追加 P95 `0.01299ms`、最大 `0.03397ms`、viewport 平均 `82.28 FPS`、P95 `14.10ms`、最大帧 `15.10ms`、preview 预热 `16.27ms`。双端均为 `passed: true`，300 条历史 viewport 均无新增 replay/rebuild，蜡笔偏移比约 `0.060000000000003`，aspect ratio `1.35`，几何有限。
-- iPad Pro 11 M4 模拟器的 300 条历史 viewport 合成观测已达到 30 FPS 阈值，但不能替代老款实体 iPad 的最终结论。2026-07-21 检查时目标 iPad7,11 在 CoreDevice 中为 `unavailable`，且不在 Xcode destination 列表；该项仍保持人工真机待验收。
+- `brush-interaction`（2026-07-21，当前代码重跑）：iPhone 17 Pro 增量/全量约 `0.02176`、追加 P95 `0.01407ms`、最大 `0.01693ms`、viewport 平均 `121.47 FPS`、P95 `11.17ms`、最大帧 `11.34ms`、preview 生成 `21.74ms`；iPad Pro 11 M4 增量/全量约 `0.03118`、追加 P95 `0.02098ms`、最大 `0.04005ms`、viewport 平均 `52.45 FPS`、P95 `23.30ms`、最大帧 `24.04ms`、preview 生成 `32.81ms`。双端均为 `passed: true`，300 条历史 viewport 均无新增 replay/rebuild，蜡笔偏移比约 `0.060000000000003`，aspect ratio `1.35`，几何有限。
+- iPad Pro 11 M4 模拟器的 300 条历史 viewport 合成观测已达到 30 FPS 阈值，但不能替代老款实体 iPad 的最终结论。2026-07-21 经 CoreDevice 检查，目标 iPad7,11（`zzy的iPad`）仍为 `unavailable`，且不在 Xcode destination 列表；该项仍保持人工真机待验收。

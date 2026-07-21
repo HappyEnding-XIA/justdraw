@@ -118,7 +118,7 @@ git diff --check
 - 绘画工具链路可在 App 内运行时完成：24/36 色盘切换、选色高亮、画笔内容生成、橡皮擦除、线稿加载、填色、取色和最近色写入。
 - 系统 UI 入口和回调可在 App 内运行时执行：Custom 打开系统取色器并通过 delegate 回填颜色，相册导入打开系统相册选择器并通过 delegate 导入合成图片；真实选色、选图和权限弹窗仍需人工点验。
 - T095 画笔样张与性能基线：`brush-samples` 生成铅笔/钢笔/蜡笔横线、曲线、快线和压力渐变 PNG；`brush-perf` 输出 100/300 条 dab stroke 生成耗时 JSON。该能力用于人工视觉对比和性能回归，不替代真实手绘审美判断。
-- T116 画笔交互性能与蜡笔稳定：`brush-interaction` 在 iPhone 17 Pro / iPad Pro 11 M4 上验证 600 采样增量比例、追加批次 P95/最大耗时、viewport 复合 preview 预热与帧耗时、300 条历史笔画 replay/rebuild 计数、蜡笔偏移/纵横比/有限几何；2026-07-21 最终双端自动化通过。iPhone 平均约 189.75 FPS、最大帧 7.00ms；iPad 平均约 82.28 FPS、最大帧 15.10ms。模拟器结果不替代老款实体 iPad 的 30 FPS 真机验收，目标 iPad7,11 当前 unavailable。
+- T116 画笔交互性能与蜡笔稳定：`brush-interaction` 在 iPhone 17 Pro / iPad Pro 11 M4 上验证 600 采样增量比例、追加批次 P95/最大耗时、viewport 复合 preview 预热与帧耗时、300 条历史笔画 replay/rebuild 计数、蜡笔偏移/纵横比/有限几何；2026-07-21 当前代码重跑通过。iPhone 平均 `121.47 FPS`、最大帧 `11.34ms`；iPad 平均 `52.45 FPS`、最大帧 `24.04ms`。模拟器结果不替代老款实体 iPad 的 30 FPS 真机验收，目标 iPad7,11 当前 unavailable。
 - T105/T106 画布分层与放大平移：`canvas-viewport` 探针覆盖恢复视图按钮不重叠、放大后平移会改变 viewport translation、同一屏幕点内容坐标随平移变化且方向匹配；纸张/工作台视觉仍需双端截图或人工点验确认。
 
 下一阶段需要新增的自动验证：
