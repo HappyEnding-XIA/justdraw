@@ -59,7 +59,7 @@ public struct KCBrushDabGenerator: Sendable {
         if let previousSample = state.previousSample {
             previous = previousSample
         } else {
-            let first = samples[0]
+            let first = stableSample(samples[0])
             appendDab(for: first, dabIndex: &state.nextDabIndex, into: &output)
             state.previousSample = first
             previous = first
@@ -68,7 +68,7 @@ public struct KCBrushDabGenerator: Sendable {
 
         // 沿新增折线按间距盖章，跨批次保留余数，保证间距均匀。
         while sampleIndex < samples.count {
-            let current = samples[sampleIndex]
+            let current = stableSample(samples[sampleIndex])
             let segment = CGPoint(x: current.point.x - previous.point.x,
                                   y: current.point.y - previous.point.y)
             let segmentLength = (segment.x * segment.x + segment.y * segment.y).squareRoot()
@@ -127,7 +127,7 @@ public struct KCBrushDabGenerator: Sendable {
         let seed = kcBrushDabMix(seed: preset.textureSeed, index: dabIndex)
 
         var center = sample.point
-        let jitterRadius = preset.jitter * radius
+        let jitterRadius = Self.finite(preset.jitter, fallback: 0) * radius
         if jitterRadius > 0 {
             let jitter = kcBrushDabJitter(hash: seed)
             center.x += jitter.dx * jitterRadius
@@ -152,9 +152,13 @@ public struct KCBrushDabGenerator: Sendable {
 
     /// 半径 = (radiusMin + (radiusMax-radiusMin) * pow(p, gamma)) * canvasScale。
     private func scaledRadius(pressureT: Double) -> Double {
-        let span = max(0.0, preset.radiusMax - preset.radiusMin)
-        let base = preset.radiusMin + span * pow(pressureT, preset.radiusCurve)
-        return base * canvasScale
+        let radiusMin = max(0, Self.finite(preset.radiusMin, fallback: 0))
+        let radiusMax = max(radiusMin, Self.finite(preset.radiusMax, fallback: radiusMin))
+        let radiusCurve = max(0, Self.finite(preset.radiusCurve, fallback: 1))
+        let scale = max(0, Self.finite(canvasScale, fallback: 1))
+        let span = radiusMax - radiusMin
+        let base = radiusMin + span * pow(pressureT, radiusCurve)
+        return Self.finite(base * scale, fallback: radiusMin * scale)
     }
 
     /// 间距 = 半径 * spacingFactor * (1 + velocityToSpacing * velT)。
@@ -169,7 +173,9 @@ public struct KCBrushDabGenerator: Sendable {
 
     /// 由倾角决定 dab 形状；非 Pencil 一律正圆（手指垂直回退）。
     private func tiltShape(for sample: KCBrushInputSample) -> (aspectRatio: Double, rotation: Double) {
-        guard sample.isPencil else { return (1.0, 0.0) }
+        guard sample.isPencil, sample.altitude.isFinite, sample.azimuth.isFinite else {
+            return (1.0, 0.0)
+        }
         let tiltT = Self.clamp01(1 - sample.altitude / (Double.pi / 2))
         switch preset.tiltResponse {
         case .none:
@@ -196,7 +202,30 @@ public struct KCBrushDabGenerator: Sendable {
         (a + b) * 0.5
     }
 
+    /// 在引擎边界收敛异常触摸值，防止 NaN/Infinity 传播到绘制几何。
+    private func stableSample(_ sample: KCBrushInputSample) -> KCBrushInputSample {
+        let altitudeIsValid = sample.altitude.isFinite
+        let azimuthIsValid = sample.azimuth.isFinite
+        return KCBrushInputSample(
+            point: CGPoint(
+                x: Self.finite(sample.point.x, fallback: 0),
+                y: Self.finite(sample.point.y, fallback: 0)
+            ),
+            timestamp: Self.finite(sample.timestamp, fallback: 0),
+            pressure: Self.finite(sample.pressure, fallback: 0),
+            velocity: max(0, Self.finite(sample.velocity, fallback: 0)),
+            altitude: altitudeIsValid && azimuthIsValid ? sample.altitude : Double.pi / 2,
+            azimuth: altitudeIsValid && azimuthIsValid ? sample.azimuth : 0,
+            isPencil: sample.isPencil
+        )
+    }
+
     private static func clamp01(_ value: Double) -> Double {
-        min(1.0, max(0.0, value))
+        guard value.isFinite else { return 0 }
+        return min(1.0, max(0.0, value))
+    }
+
+    private static func finite<T: BinaryFloatingPoint>(_ value: T, fallback: T) -> T {
+        value.isFinite ? value : fallback
     }
 }

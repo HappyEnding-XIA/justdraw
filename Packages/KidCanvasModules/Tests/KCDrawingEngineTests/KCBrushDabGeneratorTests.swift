@@ -110,6 +110,44 @@ final class KCBrushDabGeneratorTests: XCTestCase {
         XCTAssertGreaterThan(crayon.jitter, pencil.jitter)
     }
 
+    func testCrayonJitterIsBoundedForZoomStableGeometry() {
+        let preset = KCBrushPreset.preset(for: .crayon)
+        XCTAssertEqual(preset.jitter, 0.06, accuracy: 1e-9)
+
+        let input = sample(x: 100, y: 100, pressure: 1.0)
+        let dab = KCBrushDabGenerator(preset: preset).dabs(for: [input]).first!
+        let offset = hypot(dab.center.x - input.point.x, dab.center.y - input.point.y)
+        XCTAssertLessThanOrEqual(offset, dab.radius * 0.06 + 1e-9)
+    }
+
+    func testNonFiniteTiltFallsBackToStableRoundDab() {
+        let input = sample(x: 0, y: 0, altitude: .nan, azimuth: .infinity)
+        let dab = KCBrushDabGenerator(preset: .preset(for: .crayon)).dabs(for: [input]).first!
+
+        XCTAssertTrue(dab.radius.isFinite)
+        XCTAssertTrue(dab.rotation.isFinite)
+        XCTAssertEqual(dab.aspectRatio, 1.0, accuracy: 1e-9)
+    }
+
+    func testNonFiniteInputProducesFiniteDabGeometry() {
+        let input = sample(
+            x: .nan,
+            y: .infinity,
+            pressure: .nan,
+            velocity: .infinity,
+            altitude: -.infinity,
+            azimuth: .nan,
+            timestamp: .infinity
+        )
+        let dab = KCBrushDabGenerator(preset: .preset(for: .crayon)).dabs(for: [input]).first!
+
+        XCTAssertTrue(dab.center.x.isFinite)
+        XCTAssertTrue(dab.center.y.isFinite)
+        XCTAssertTrue(dab.radius.isFinite)
+        XCTAssertTrue(dab.rotation.isFinite)
+        XCTAssertTrue(dab.aspectRatio.isFinite)
+    }
+
     // MARK: - 间距
 
     func testTwoSamplesEmitEvenlySpacedDabs() {

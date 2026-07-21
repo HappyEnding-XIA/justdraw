@@ -106,7 +106,7 @@ public struct KCBrushPreset: Sendable, Equatable {
     ///
     /// - 铅笔：小半径、低流量、gamma>1（轻压更细更淡）、强倾角侧锋、中低抖动。
     /// - 钢笔：近恒定半径、高不透明/流量、无纹理无抖动、不响应倾角。
-    /// - 蜡笔：大半径、高纸纹强度、高抖动、大间距（蜡块断续）、轻微倾角。
+    /// - 蜡笔：大半径、高纸纹强度、受控抖动、大间距（蜡块断续）、轻微倾角。
     public static func preset(for style: KCBrushStyle) -> KCBrushPreset {
         switch style {
         case .pencil:
@@ -155,7 +155,7 @@ public struct KCBrushPreset: Sendable, Equatable {
                 flow: 0.6,
                 flowPressureScale: 0.55,
                 hardness: 0.32,
-                jitter: 0.18,
+                jitter: 0.06,
                 textureStrength: 0.9,
                 textureSeed: 0x1C7A_55E0_BB19_4023,
                 tiltResponse: .mild,
