@@ -722,7 +722,7 @@ MVP 阶段继续使用快照栈即可。
 
 优先级从高到低：
 
-1. 已完成：增量 dab + 完成内容 raster cache + 工作台 cache（T116）。
+1. 已完成：增量 dab + 完成内容 raster cache + viewport 复合 preview（T116）；手势期间工作台使用 1x cache，纸张阴影与完成内容预合成为一张 1x 图，结束后恢复 screen-scale。
 2. flood fill 放到后台队列，完成后主线程替换 background image。
 3. undo state 从完整快照改为 command + checkpoint 混合模式。
 4. 历史缩略图异步加载。

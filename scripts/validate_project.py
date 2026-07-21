@@ -2177,19 +2177,31 @@ def app_feature_checks(
     checks.append(require_text(canvas_text, "touch.type == .pencil", "Apple Pencil pressure handling exists"))
     checks.append(require_regex(canvas_text, r"override func draw\(_ rect: CGRect\)[\s\S]*if let activeStroke[\s\S]*strokeRenderBounds\(activeStroke\)\.intersects\(contentDirtyRect\)[\s\S]*drawStroke\(activeStroke\)", "Canvas draw skips active stroke work outside the dirty rect"))
     # T116：屏幕帧只绘制完成内容 raster 与活动笔画，viewport 变化不重放历史笔画。
-    checks.append(require_regex(canvas_text, r"override func draw\(_ rect: CGRect\)[\s\S]*let completedContentImage = rasterImageExcludingStickers\(\)[\s\S]*completedContentImage\.draw\(in: contentPlane\)[\s\S]*if let activeStroke", "Canvas screen draw uses the completed-content raster before the active stroke (T116)"))
+    checks.append(require_regex(canvas_text, r"override func draw\(_ rect: CGRect\)[\s\S]*let viewportPreviewImage = displayedViewportPreviewImage\(\)[\s\S]*if viewportPreviewImage == nil[\s\S]*rasterImageExcludingStickers\(\)\.draw\(in: contentPlane\)[\s\S]*if let activeStroke", "Canvas screen draw uses one composite viewport preview or the completed-content raster before the active stroke (T116)"))
     checks.append(forbid_regex(canvas_text, r"override func draw\(_ rect: CGRect\)[\s\S]*for stroke in strokes[\s\S]*private func drawPaperSurface", "Canvas screen draw no longer replays committed strokes per viewport frame (T116)"))
     checks.append(require_text(canvas_text, "KCWorkbenchSurfaceCacheKey", "Workbench rendering has a dedicated cache key (T116)"))
     checks.append(require_text(canvas_text, "traitCollection.userInterfaceStyle", "Workbench cache key includes interface style (T116)"))
     checks.append(require_text(canvas_text, "appendCommittedStrokeToRasterCache", "Committed strokes compose incrementally into the raster cache (T116)"))
     checks.append(require_text(canvas_text, "completedStrokeReplayCount", "Debug instrumentation counts completed-stroke replays (T116)"))
     checks.append(require_text(canvas_text, "rasterRebuildCount", "Debug instrumentation counts full raster rebuilds (T116)"))
+    checks.append(require_text(canvas_text, "isViewportPreviewActive ? min(screenScale, 1.0) : screenScale", "Viewport gestures use a 1x preview and restore screen scale when idle (T116)"))
+    checks.append(require_text(canvas_text, "updateViewportPreviewState", "Pinch and pan share viewport preview lifecycle management (T116)"))
+    checks.append(require_text(canvas_text, "invalidateNonStickerRasterPreviewCache", "Content cache changes invalidate the viewport preview (T116)"))
+    checks.append(require_text(canvas_text, "prepareViewportPreviewForInteraction", "Viewport gestures synchronously cover a preview that has not finished background delivery (T116)"))
+    checks.append(require_text(canvas_text, "drainPendingNonStickerRasterPreviewWork", "Viewport gestures drain active preview rendering before continuous frames (T116)"))
+    checks.append(require_text(canvas_text, "viewportPreviewQueue.async", "Viewport preview downsampling runs off the main thread (T116)"))
+    checks.append(require_text(canvas_text, "scheduleNonStickerRasterPreview", "Completed raster updates schedule a fresh viewport preview (T116)"))
     checks.append(require_text(main_text, "--kc-runtime-brush-interaction-check", "Controller wires the brush-interaction Debug probe (T116)"))
     checks.append(require_text(main_text, "runBrushInteractionAcceptanceProbe", "Controller executes the quantified brush-interaction probe (T116)"))
     for field in [
         "incrementalVsFullRatio",
         "appendBatchP95Ms",
         "appendBatchMaxMs",
+        "viewportFrameP95Ms",
+        "viewportFrameMaxMs",
+        "viewportAverageFPS",
+        "viewportPreviewGenerationMs",
+        "viewportSurfaceWarmupMs",
         "completedStrokeCount",
         "viewportTriggeredStrokeReplay",
         "crayonMaxOffsetRatio",

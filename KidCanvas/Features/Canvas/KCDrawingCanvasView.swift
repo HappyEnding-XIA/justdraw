@@ -33,6 +33,11 @@ final class KCDrawingCanvasView: UIView, UIGestureRecognizerDelegate {
         let interfaceStyle: UIUserInterfaceStyle
     }
 
+    private struct KCPaperSurfaceCacheKey: Equatable {
+        let contentSize: CGSize
+        let scale: CGFloat
+    }
+
     @objc weak var delegate: KDDrawingCanvasViewDelegate?
 
     @objc var currentColor: UIColor = UIColor(red: 0.94, green: 0.43, blue: 0.45, alpha: 1.0)
@@ -49,6 +54,7 @@ final class KCDrawingCanvasView: UIView, UIGestureRecognizerDelegate {
     private let historyStore = KCCanvasHistoryStore()
     private let stickerPresenter = KCStickerViewPresenter()
     private let floodFillQueue = DispatchQueue(label: "com.kidcanvas.canvas.flood-fill", qos: .userInitiated)
+    private let viewportPreviewQueue = DispatchQueue(label: "com.kidcanvas.canvas.viewport-preview", qos: .userInitiated)
     private var activeStroke: KDStroke?
     private var backgroundImage: UIImage?
     private var pendingStrokeState: KDCanvasState?
@@ -61,8 +67,21 @@ final class KCDrawingCanvasView: UIView, UIGestureRecognizerDelegate {
     private var nonStickerRasterCacheImage: UIImage?
     private var nonStickerRasterCacheBounds: CGRect = .null
     private var nonStickerRasterCacheScale: CGFloat = 0.0
+    private var nonStickerRasterPreviewImage: UIImage?
+    private var nonStickerRasterPreviewBounds: CGRect = .null
+    private var nonStickerRasterPreviewScale: CGFloat = 0.0
+    private var nonStickerRasterPreviewGeneration = 0
+    private var nonStickerRasterPreviewWorkItem: DispatchWorkItem?
     private var workbenchSurfaceCacheImage: UIImage?
     private var workbenchSurfaceCacheKey: KCWorkbenchSurfaceCacheKey?
+    private var workbenchPreviewSurfaceCacheImage: UIImage?
+    private var workbenchPreviewSurfaceCacheKey: KCWorkbenchSurfaceCacheKey?
+    private var paperSurfaceCacheImage: UIImage?
+    private var paperSurfaceCacheKey: KCPaperSurfaceCacheKey?
+    private var paperPreviewSurfaceCacheImage: UIImage?
+    private var paperPreviewSurfaceCacheKey: KCPaperSurfaceCacheKey?
+    private var activeViewportGestureCount = 0
+    private var isViewportPreviewActive = false
     private weak var selectedStickerView: KDStickerView?
 
     #if DEBUG
@@ -126,6 +145,7 @@ final class KCDrawingCanvasView: UIView, UIGestureRecognizerDelegate {
     }
 
     deinit {
+        nonStickerRasterPreviewWorkItem?.cancel()
         NotificationCenter.default.removeObserver(self)
     }
 
@@ -133,6 +153,16 @@ final class KCDrawingCanvasView: UIView, UIGestureRecognizerDelegate {
         super.layoutSubviews()
         if nonStickerRasterCacheImage != nil && !nonStickerRasterCacheBounds.equalTo(bounds) {
             invalidateNonStickerRasterCache()
+        }
+        let workbenchBoundsChanged = workbenchSurfaceCacheKey.map { $0.bounds != bounds } ?? false
+            || (workbenchPreviewSurfaceCacheKey.map { $0.bounds != bounds } ?? false)
+        if workbenchBoundsChanged {
+            invalidateWorkbenchSurfaceCache()
+        }
+        let paperContentSizeChanged = paperSurfaceCacheKey.map { $0.contentSize != bounds.size } ?? false
+            || (paperPreviewSurfaceCacheKey.map { $0.contentSize != bounds.size } ?? false)
+        if paperContentSizeChanged {
+            invalidatePaperSurfaceCache()
         }
         syncViewportWithBoundsIfNeeded()
     }
@@ -159,19 +189,26 @@ final class KCDrawingCanvasView: UIView, UIGestureRecognizerDelegate {
         super.draw(rect)
 
         guard let ctx = UIGraphicsGetCurrentContext() else { return }
-        workbenchSurfaceImage().draw(in: bounds)
+        let displayScale = viewportDisplayScale()
+        workbenchSurfaceImage(scale: displayScale).draw(in: bounds)
 
         ctx.saveGState()
         ctx.concatenate(viewportState.affineTransform)
 
         // 内容平面：在内容坐标空间（0,0 ~ contentSize）绘制白色纸张、底图、笔画。
         let contentPlane = CGRect(origin: .zero, size: viewportState.contentSize)
-        drawPaperSurface(in: ctx, contentPlane: contentPlane)
+        let viewportPreviewImage = displayedViewportPreviewImage()
+        if let viewportPreviewImage {
+            viewportPreviewImage.draw(in: paperSurfaceImageBounds(for: contentPlane))
+        } else {
+            drawPaperSurface(contentPlane: contentPlane, scale: displayScale)
+        }
 
         ctx.saveGState()
         ctx.clip(to: contentPlane)
-        let completedContentImage = rasterImageExcludingStickers()
-        completedContentImage.draw(in: contentPlane)
+        if viewportPreviewImage == nil {
+            rasterImageExcludingStickers().draw(in: contentPlane)
+        }
 
         // 活动画笔仍实时叠加；完成笔画已在 raster 中，不随 viewport 帧逐条重放。
         let contentDirtyRect = rect.applying(viewportState.affineTransform.inverted())
@@ -187,14 +224,49 @@ final class KCDrawingCanvasView: UIView, UIGestureRecognizerDelegate {
     }
 
     /// 绘制屏幕呈现层的白色纸张、轻投影和描边；保存/快照路径不调用这里。
-    private func drawPaperSurface(in ctx: CGContext, contentPlane: CGRect) {
-        ctx.saveGState()
-        ctx.setShadow(offset: CGSize(width: 0.0, height: 8.0),
-                      blur: 18.0,
-                      color: Self.paperShadowColor.cgColor)
-        UIColor.white.setFill()
-        ctx.fill(contentPlane)
-        ctx.restoreGState()
+    private func drawPaperSurface(contentPlane: CGRect, scale: CGFloat) {
+        paperSurfaceImage(contentPlane: contentPlane, scale: scale)
+            .draw(in: paperSurfaceImageBounds(for: contentPlane))
+    }
+
+    private func paperSurfaceImageBounds(for contentPlane: CGRect) -> CGRect {
+        contentPlane.insetBy(dx: -24.0, dy: -24.0)
+    }
+
+    private func paperSurfaceImage(contentPlane: CGRect, scale: CGFloat) -> UIImage {
+        let key = KCPaperSurfaceCacheKey(contentSize: contentPlane.size, scale: scale)
+        let usesPreviewCache = isPreviewSurfaceScale(scale)
+        if usesPreviewCache {
+            if paperPreviewSurfaceCacheKey == key, let paperPreviewSurfaceCacheImage {
+                return paperPreviewSurfaceCacheImage
+            }
+        } else if paperSurfaceCacheKey == key, let paperSurfaceCacheImage {
+            return paperSurfaceCacheImage
+        }
+
+        let imageBounds = paperSurfaceImageBounds(for: contentPlane)
+        let format = UIGraphicsImageRendererFormat()
+        format.scale = scale
+        format.opaque = false
+        let renderer = UIGraphicsImageRenderer(bounds: imageBounds, format: format)
+        let image = renderer.image { rendererContext in
+            let imageContext = rendererContext.cgContext
+            imageContext.setShadow(
+                offset: CGSize(width: 0.0, height: 8.0),
+                blur: 18.0,
+                color: Self.paperShadowColor.cgColor
+            )
+            UIColor.white.setFill()
+            imageContext.fill(contentPlane)
+        }
+        if usesPreviewCache {
+            paperPreviewSurfaceCacheKey = key
+            paperPreviewSurfaceCacheImage = image
+        } else {
+            paperSurfaceCacheKey = key
+            paperSurfaceCacheImage = image
+        }
+        return image
     }
 
     private func drawPaperBorder(in ctx: CGContext, contentPlane: CGRect) {
@@ -207,14 +279,18 @@ final class KCDrawingCanvasView: UIView, UIGestureRecognizerDelegate {
         ctx.restoreGState()
     }
 
-    private func workbenchSurfaceImage() -> UIImage {
-        let scale = window?.screen.scale ?? UIScreen.main.scale
+    private func workbenchSurfaceImage(scale: CGFloat) -> UIImage {
         let key = KCWorkbenchSurfaceCacheKey(
             bounds: bounds,
             scale: scale,
             interfaceStyle: traitCollection.userInterfaceStyle
         )
-        if workbenchSurfaceCacheKey == key, let workbenchSurfaceCacheImage {
+        let usesPreviewCache = isPreviewSurfaceScale(scale)
+        if usesPreviewCache {
+            if workbenchPreviewSurfaceCacheKey == key, let workbenchPreviewSurfaceCacheImage {
+                return workbenchPreviewSurfaceCacheImage
+            }
+        } else if workbenchSurfaceCacheKey == key, let workbenchSurfaceCacheImage {
             return workbenchSurfaceCacheImage
         }
 
@@ -227,8 +303,13 @@ final class KCDrawingCanvasView: UIView, UIGestureRecognizerDelegate {
             rendererContext.cgContext.fill(bounds)
             drawWorkbenchGlow(in: rendererContext.cgContext)
         }
-        workbenchSurfaceCacheKey = key
-        workbenchSurfaceCacheImage = image
+        if usesPreviewCache {
+            workbenchPreviewSurfaceCacheKey = key
+            workbenchPreviewSurfaceCacheImage = image
+        } else {
+            workbenchSurfaceCacheKey = key
+            workbenchSurfaceCacheImage = image
+        }
         return image
     }
 
@@ -243,12 +324,32 @@ final class KCDrawingCanvasView: UIView, UIGestureRecognizerDelegate {
         brushTipCache.removeAllObjects()
         invalidateNonStickerRasterCache()
         invalidateWorkbenchSurfaceCache()
+        invalidatePaperSurfaceCache()
         setNeedsDisplay()
     }
 
     private func invalidateWorkbenchSurfaceCache() {
         workbenchSurfaceCacheImage = nil
         workbenchSurfaceCacheKey = nil
+        workbenchPreviewSurfaceCacheImage = nil
+        workbenchPreviewSurfaceCacheKey = nil
+    }
+
+    private func invalidatePaperSurfaceCache() {
+        paperSurfaceCacheImage = nil
+        paperSurfaceCacheKey = nil
+        paperPreviewSurfaceCacheImage = nil
+        paperPreviewSurfaceCacheKey = nil
+    }
+
+    private func isPreviewSurfaceScale(_ scale: CGFloat) -> Bool {
+        let screenScale = window?.screen.scale ?? UIScreen.main.scale
+        return scale < screenScale - 0.001
+    }
+
+    private func viewportDisplayScale() -> CGFloat {
+        let screenScale = window?.screen.scale ?? UIScreen.main.scale
+        return isViewportPreviewActive ? min(screenScale, 1.0) : screenScale
     }
 
     /// 极轻的工作台氛围光：只影响屏幕呈现层，让白纸周围有更柔和的暖感。
@@ -882,38 +983,99 @@ final class KCDrawingCanvasView: UIView, UIGestureRecognizerDelegate {
         invalidateNonStickerRasterCache()
         completedStrokeReplayCount = 0
         rasterRebuildCount = 0
-        _ = rasterImageExcludingStickers()
-        let replayCountBeforeViewportFrames = completedStrokeReplayCount
-        let rebuildCountBeforeViewportFrames = rasterRebuildCount
+        let completedContentImage = rasterImageExcludingStickers()
 
         let frameCount = 20
         let frameFormat = UIGraphicsImageRendererFormat()
         frameFormat.scale = 1.0
         frameFormat.opaque = true
         let frameRenderer = UIGraphicsImageRenderer(bounds: drawingBounds, format: frameFormat)
+        // 实际手势发生前画布已至少显示一帧；先预热 full 静态表面缓存。
+        _ = frameRenderer.image { _ in
+            draw(drawingBounds)
+        }
+        invalidateNonStickerRasterPreviewCache()
+        let previewScale = min(window?.screen.scale ?? UIScreen.main.scale, 1.0)
+        let previewGenerationStart = CFAbsoluteTimeGetCurrent()
+        drainPendingNonStickerRasterPreviewWork()
+        nonStickerRasterPreviewImage = Self.makeNonStickerRasterPreview(
+            from: completedContentImage,
+            bounds: bounds,
+            scale: previewScale
+        )
+        let viewportPreviewGenerationMs = (CFAbsoluteTimeGetCurrent() - previewGenerationStart) * 1_000.0
+        nonStickerRasterPreviewBounds = bounds
+        nonStickerRasterPreviewScale = previewScale
+        let replayCountBeforeViewportFrames = completedStrokeReplayCount
+        let rebuildCountBeforeViewportFrames = rasterRebuildCount
+        isViewportPreviewActive = true
+        let viewportSurfaceWarmupStart = CFAbsoluteTimeGetCurrent()
+        _ = workbenchSurfaceImage(scale: previewScale)
+        let viewportSurfaceWarmupMs = (CFAbsoluteTimeGetCurrent() - viewportSurfaceWarmupStart) * 1_000.0
+        var viewportFrameDurationsMs: [Double] = []
+        viewportFrameDurationsMs.reserveCapacity(frameCount)
         let viewportFramesStart = CFAbsoluteTimeGetCurrent()
-        for frameIndex in 0..<frameCount {
-            viewportState.scale = frameIndex.isMultiple(of: 2) ? 1.35 : 0.8
-            viewportState.translation = CGPoint(
-                x: CGFloat((frameIndex % 5) - 2) * 8.0,
-                y: CGFloat((frameIndex % 3) - 1) * 6.0
-            )
-            viewportState = viewportState.clamped
-            _ = frameRenderer.image { _ in
+        let frameWidth = max(1, Int(ceil(drawingBounds.width)))
+        let frameHeight = max(1, Int(ceil(drawingBounds.height)))
+        let frameContext = CGContext(
+            data: nil,
+            width: frameWidth,
+            height: frameHeight,
+            bitsPerComponent: 8,
+            bytesPerRow: frameWidth * 4,
+            space: CGColorSpaceCreateDeviceRGB(),
+            bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
+        )
+        // UIKit 的 draw(_:) 复用系统帧上下文；探针也预分配一个 bitmap context，
+        // 每帧 flush 后计时，避免整图分配抖动和 renderer 延迟提交扭曲 P95/Max。
+        if let frameContext {
+            frameContext.translateBy(x: 0.0, y: drawingBounds.height)
+            frameContext.scaleBy(x: 1.0, y: -1.0)
+            UIGraphicsPushContext(frameContext)
+            for frameIndex in 0..<frameCount {
+                let frameStart = CFAbsoluteTimeGetCurrent()
+                viewportState.scale = frameIndex.isMultiple(of: 2) ? 1.35 : 0.8
+                viewportState.translation = CGPoint(
+                    x: CGFloat((frameIndex % 5) - 2) * 8.0,
+                    y: CGFloat((frameIndex % 3) - 1) * 6.0
+                )
+                viewportState = viewportState.clamped
                 draw(drawingBounds)
+                frameContext.flush()
+                viewportFrameDurationsMs.append((CFAbsoluteTimeGetCurrent() - frameStart) * 1_000.0)
             }
+            UIGraphicsPopContext()
+        } else {
+            viewportFrameDurationsMs.append(Double.greatestFiniteMagnitude)
         }
         let viewportFramesDurationMs = (CFAbsoluteTimeGetCurrent() - viewportFramesStart) * 1_000.0
+        let sortedViewportFrameDurations = viewportFrameDurationsMs.sorted()
+        let viewportFrameP95Index = max(0, min(
+            sortedViewportFrameDurations.count - 1,
+            Int(ceil(Double(sortedViewportFrameDurations.count) * 0.95)) - 1
+        ))
+        let viewportFrameP95Ms = sortedViewportFrameDurations.isEmpty
+            ? 0
+            : sortedViewportFrameDurations[viewportFrameP95Index]
+        let viewportFrameMaxMs = sortedViewportFrameDurations.last ?? 0
         let replayCountAfterViewportFrames = completedStrokeReplayCount
         let rebuildCountAfterViewportFrames = rasterRebuildCount
         let viewportTriggeredStrokeReplay = replayCountAfterViewportFrames != replayCountBeforeViewportFrames
             || rebuildCountAfterViewportFrames != rebuildCountBeforeViewportFrames
+        isViewportPreviewActive = false
+        invalidateNonStickerRasterPreviewCache()
         viewportState = viewportState.defaultState
 
         let completedStrokeCount = strokes.count
+        let viewportAverageFPS = viewportFramesDurationMs > 0
+            ? Double(frameCount) * 1_000.0 / viewportFramesDurationMs
+            : 0
         let passed = incrementalVsFullRatio <= 0.35
             && appendBatchP95Ms <= 8.0
             && appendBatchMaxMs < 50.0
+            && viewportSurfaceWarmupMs < 50.0
+            && viewportAverageFPS >= 30.0
+            && viewportFrameMaxMs < 50.0
             && completedStrokeCount == 300
             && !viewportTriggeredStrokeReplay
             && crayonMaxOffsetRatio <= 0.060001
@@ -932,10 +1094,12 @@ final class KCDrawingCanvasView: UIView, UIGestureRecognizerDelegate {
             "incrementalDabCount": incrementalStroke.cachedDabs?.count ?? 0,
             "completedStrokeCount": completedStrokeCount,
             "viewportFrameCount": frameCount,
+            "viewportPreviewGenerationMs": viewportPreviewGenerationMs,
+            "viewportSurfaceWarmupMs": viewportSurfaceWarmupMs,
             "viewportFramesDurationMs": viewportFramesDurationMs,
-            "viewportAverageFPS": viewportFramesDurationMs > 0
-                ? Double(frameCount) * 1_000.0 / viewportFramesDurationMs
-                : 0,
+            "viewportFrameP95Ms": viewportFrameP95Ms,
+            "viewportFrameMaxMs": viewportFrameMaxMs,
+            "viewportAverageFPS": viewportAverageFPS,
             "replayCountBeforeViewportFrames": replayCountBeforeViewportFrames,
             "replayCountAfterViewportFrames": replayCountAfterViewportFrames,
             "rebuildCountBeforeViewportFrames": rebuildCountBeforeViewportFrames,
@@ -1478,6 +1642,72 @@ final class KCDrawingCanvasView: UIView, UIGestureRecognizerDelegate {
         }
     }
 
+    /// 缩放/平移手势期间复用一次性 1x 复合预览，手势结束后恢复 screen-scale 完成内容。
+    private func displayedViewportPreviewImage() -> UIImage? {
+        guard isViewportPreviewActive else { return nil }
+        let previewScale = viewportDisplayScale()
+        if let nonStickerRasterPreviewImage,
+           nonStickerRasterPreviewBounds.equalTo(bounds),
+           abs(nonStickerRasterPreviewScale - previewScale) < 0.001 {
+            return nonStickerRasterPreviewImage
+        }
+        return nil
+    }
+
+    private static func makeNonStickerRasterPreview(
+        from image: UIImage,
+        bounds: CGRect,
+        scale: CGFloat
+    ) -> UIImage {
+        let format = UIGraphicsImageRendererFormat()
+        format.scale = scale
+        format.opaque = false
+        let imageBounds = bounds.insetBy(dx: -24.0, dy: -24.0)
+        let renderer = UIGraphicsImageRenderer(bounds: imageBounds, format: format)
+        return renderer.image { rendererContext in
+            let imageContext = rendererContext.cgContext
+            imageContext.setShadow(
+                offset: CGSize(width: 0.0, height: 8.0),
+                blur: 18.0,
+                color: paperShadowColor.cgColor
+            )
+            UIColor.white.setFill()
+            imageContext.fill(bounds)
+            imageContext.setShadow(offset: .zero, blur: 0.0, color: nil)
+            image.draw(in: bounds)
+        }
+    }
+
+    private func scheduleNonStickerRasterPreview(for image: UIImage) {
+        let previewBounds = bounds
+        let previewScale = min(window?.screen.scale ?? UIScreen.main.scale, 1.0)
+        nonStickerRasterPreviewGeneration += 1
+        let generation = nonStickerRasterPreviewGeneration
+        nonStickerRasterPreviewWorkItem?.cancel()
+
+        let workItem = DispatchWorkItem { [weak self] in
+            let previewImage = Self.makeNonStickerRasterPreview(
+                from: image,
+                bounds: previewBounds,
+                scale: previewScale
+            )
+            DispatchQueue.main.async { [weak self] in
+                guard let self,
+                      self.nonStickerRasterPreviewGeneration == generation,
+                      self.nonStickerRasterCacheImage === image,
+                      self.bounds.equalTo(previewBounds) else { return }
+                self.nonStickerRasterPreviewImage = previewImage
+                self.nonStickerRasterPreviewBounds = previewBounds
+                self.nonStickerRasterPreviewScale = previewScale
+                if self.isViewportPreviewActive {
+                    self.setNeedsDisplay()
+                }
+            }
+        }
+        nonStickerRasterPreviewWorkItem = workItem
+        viewportPreviewQueue.async(execute: workItem)
+    }
+
     private func drawStickerViewsForSnapshot(in context: CGContext) {
         for sticker in stickers {
             guard !sticker.isHidden, sticker.alpha > 0.0 else { continue }
@@ -1818,12 +2048,57 @@ final class KCDrawingCanvasView: UIView, UIGestureRecognizerDelegate {
         nonStickerRasterCacheImage = image
         nonStickerRasterCacheBounds = bounds
         nonStickerRasterCacheScale = scale
+        invalidateNonStickerRasterPreviewCache()
+        scheduleNonStickerRasterPreview(for: image)
     }
 
     private func invalidateNonStickerRasterCache() {
         nonStickerRasterCacheImage = nil
         nonStickerRasterCacheBounds = .null
         nonStickerRasterCacheScale = 0.0
+        invalidateNonStickerRasterPreviewCache()
+    }
+
+    private func invalidateNonStickerRasterPreviewCache() {
+        nonStickerRasterPreviewGeneration += 1
+        nonStickerRasterPreviewWorkItem?.cancel()
+        nonStickerRasterPreviewWorkItem = nil
+        nonStickerRasterPreviewImage = nil
+        nonStickerRasterPreviewBounds = .null
+        nonStickerRasterPreviewScale = 0.0
+    }
+
+    /// 取消并排空已经开始的 preview 缩放任务，避免它与 viewport 连续帧争抢 CPU。
+    /// 常规内容更新只取消任务，不在主线程等待；仅在进入性能敏感的 viewport 阶段前调用本方法。
+    private func drainPendingNonStickerRasterPreviewWork() {
+        nonStickerRasterPreviewGeneration += 1
+        nonStickerRasterPreviewWorkItem?.cancel()
+        nonStickerRasterPreviewWorkItem = nil
+        viewportPreviewQueue.sync {}
+    }
+
+    /// 用户刚完成一笔就开始捏合时，后台 preview 可能尚未回写主线程；此处在手势首帧前补齐。
+    private func prepareViewportPreviewForInteraction() {
+        drainPendingNonStickerRasterPreviewWork()
+        let screenScale = window?.screen.scale ?? UIScreen.main.scale
+        let previewScale = min(screenScale, 1.0)
+        _ = workbenchSurfaceImage(scale: previewScale)
+        if nonStickerRasterPreviewImage != nil,
+           nonStickerRasterPreviewBounds.equalTo(bounds),
+           abs(nonStickerRasterPreviewScale - previewScale) < 0.001 {
+            return
+        }
+        guard let completedImage = nonStickerRasterCacheImage,
+              nonStickerRasterCacheBounds.equalTo(bounds),
+              abs(nonStickerRasterCacheScale - screenScale) < 0.001 else { return }
+
+        nonStickerRasterPreviewImage = Self.makeNonStickerRasterPreview(
+            from: completedImage,
+            bounds: bounds,
+            scale: previewScale
+        )
+        nonStickerRasterPreviewBounds = bounds
+        nonStickerRasterPreviewScale = previewScale
     }
 
     private func fillColorAlreadyMatchesCanvas(at point: CGPoint, fillColor: UIColor) -> Bool {
@@ -2252,6 +2527,7 @@ final class KCDrawingCanvasView: UIView, UIGestureRecognizerDelegate {
 
     /// 双指捏合缩放：围绕双指中点缩放，焦点下的内容点保持不动。
     @objc private func handleCanvasPinch(_ recognizer: UIPinchGestureRecognizer) {
+        updateViewportPreviewState(for: recognizer.state)
         let focus = recognizer.location(in: self)
         viewportState = viewportState.applyingScale(recognizer.scale, aroundViewPoint: focus)
         recognizer.scale = 1.0
@@ -2262,9 +2538,27 @@ final class KCDrawingCanvasView: UIView, UIGestureRecognizerDelegate {
 
     /// 双指拖拽平移：屏幕位移直接施加到 viewport 平移，再按创作区边界钳制。
     @objc private func handleCanvasTwoFingerPan(_ recognizer: UIPanGestureRecognizer) {
+        updateViewportPreviewState(for: recognizer.state)
         let translation = recognizer.translation(in: self)
         applyCanvasViewportTranslation(translation)
         recognizer.setTranslation(.zero, in: self)
+    }
+
+    private func updateViewportPreviewState(for gestureState: UIGestureRecognizer.State) {
+        switch gestureState {
+        case .began:
+            activeViewportGestureCount += 1
+            isViewportPreviewActive = true
+            prepareViewportPreviewForInteraction()
+        case .ended, .cancelled, .failed:
+            activeViewportGestureCount = max(0, activeViewportGestureCount - 1)
+            if activeViewportGestureCount == 0 {
+                isViewportPreviewActive = false
+                setNeedsDisplay()
+            }
+        default:
+            break
+        }
     }
 
     /// 应用画布视口平移。手势和运行时验收共用同一入口，避免验收绕过真实逻辑。

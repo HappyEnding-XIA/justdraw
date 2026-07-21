@@ -106,9 +106,11 @@
 
 缓存按设备屏幕 scale 生成，不跟随 viewport scale 重建，避免捏合过程中反复分配大图。viewport 只负责显示变换；后续如确认 300% 下需要更高分辨率，单独评估松手后的异步高分辨率重建，不纳入 T116。
 
-### 6.4 静态工作台层
+### 6.4 静态工作台层与视口预览
 
-工作台底色和氛围光缓存为独立背景位图，缓存键由 view bounds、设备 scale 和 trait collection 构成；只有这些输入变化时才重建。纸张阴影和边界继续随 viewport 变换直接绘制，viewport 变化不重新生成工作台渐变。
+工作台底色和氛围光缓存为独立背景位图，缓存键由 view bounds、设备 scale 和 trait collection 构成；纸张阴影缓存键由内容尺寸和 scale 构成。viewport 手势期间工作台使用 1x preview，纸张阴影与完成内容预先合成为一张 1x 复合 preview，避免每帧重复合成两张大图；手势结束恢复 screen-scale full cache。只有 bounds、内容尺寸、屏幕 scale、trait 或内存警告发生变化时才清理对应缓存。
+
+完成内容在 raster cache 更新后异步生成 1x 复合 preview；viewport 手势期间通过 generation guard 丢弃过期结果。进入手势前先取消并排空已开始的后台 preview 任务；若用户刚抬笔就立即捏合、preview 尚未回写，则在首帧前同步补齐，避免连续帧期间发生 CPU 争抢或退回双大图合成。
 
 该优化只影响屏幕呈现，不进入作品快照。
 
@@ -150,6 +152,7 @@
 
 - 记录 100、300、600 个活动采样按批追加的总耗时和最慢批次；
 - 记录 100、300 条已完成笔画下 viewport 变换前后的绘制耗时；
+- 记录 viewport preview 生成、工作台/纸张 preview 预热、每帧 P95/最大耗时和平均 FPS；
 - 生成 0.5x、1x、2x、3x 下继续绘制的蜡笔样张；
 - 输出 dab 数、最大中心偏移、最大 aspect ratio 和是否存在非有限值。
 
@@ -188,7 +191,7 @@ iPhone 17 Pro 与 iPad Pro 11 M4 横屏分别验证：
 - 缩放后继续画蜡笔不再向外分叉；
 - 活动笔画改为增量 dab，完成笔画使用 raster 缓存；
 - undo/redo 不丢失 dab 数据；
-- 新增单元测试、性能探针、validator 和模块文档；
+- 新增单元测试、性能探针、validator 和模块文档；viewport 探针明确要求平均 FPS `>= 30` 且最大帧 `< 50ms`。
 - 全量 Swift 测试、项目校验、iPhone/iPad build 与相关 runtime acceptance 通过；
 - 用户完成双端实际绘制确认。
 
@@ -198,5 +201,5 @@ iPhone 17 Pro 与 iPad Pro 11 M4 横屏分别验证：
 - `swift test --package-path Packages/KidCanvasModules`：277 tests，0 failures。
 - `scripts/validate_project.py`：Validation passed；完整 iOS Simulator Debug build 通过。
 - `drawing-tools`、`canvas-viewport`、`save-history-restore`：iPhone 17 Pro 与 iPad Pro 11 M4 双端通过。
-- `brush-interaction`：iPhone 增量/全量约 `0.0273`、P95 `0.0091ms`、最大 `0.0130ms`；iPad 增量/全量约 `0.0299`、P95 `0.0150ms`、最大 `0.0380ms`；两端 300 条历史 viewport 均无新增 replay/rebuild，蜡笔偏移比约 `0.060000000000003`，aspect ratio `1.35`，几何有限。
-- iPad Pro 11 M4 模拟器 300 条历史 viewport 合成观测约 `22.7 FPS`。2026-07-21 检查时目标 iPad7,11 在 CoreDevice 中为 `unavailable`，且不在 Xcode destination 列表；因此该项保持人工待验收，不能据模拟器结果宣称最低 30 FPS 已完成。
+- `brush-interaction`（2026-07-21，最终代码测量）：iPhone 17 Pro 增量/全量约 `0.02930`、追加 P95 `0.01204ms`、最大 `0.01609ms`、viewport 平均 `189.75 FPS`、P95 `6.38ms`、最大帧 `7.00ms`、preview 预热 `6.31ms`；iPad Pro 11 M4 增量/全量约 `0.02770`、追加 P95 `0.01299ms`、最大 `0.03397ms`、viewport 平均 `82.28 FPS`、P95 `14.10ms`、最大帧 `15.10ms`、preview 预热 `16.27ms`。双端均为 `passed: true`，300 条历史 viewport 均无新增 replay/rebuild，蜡笔偏移比约 `0.060000000000003`，aspect ratio `1.35`，几何有限。
+- iPad Pro 11 M4 模拟器的 300 条历史 viewport 合成观测已达到 30 FPS 阈值，但不能替代老款实体 iPad 的最终结论。2026-07-21 检查时目标 iPad7,11 在 CoreDevice 中为 `unavailable`，且不在 Xcode destination 列表；该项仍保持人工真机待验收。
